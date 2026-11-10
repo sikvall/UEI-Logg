@@ -4,17 +4,25 @@
 #define _POSIX_C_SOURCE 200809L
 #include <ctype.h>
 #include <curl/curl.h>
+#include <dirent.h>
+#include <limits.h>
 #include <locale.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 #include <math.h>
 #include <pthread.h>
 #include <wchar.h>
 #include <wctype.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #define LOG_FILE "qsolog.adi"
 #define CONFIG_FILE "station.conf"
@@ -23,7 +31,7 @@
 #define MIN_COLS 60
 #define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 10
+#define STATION_FIELD_COUNT 11
 
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
 static const char * const BAND_OPTIONS[] = {
@@ -1624,6 +1632,206 @@ static void load_qsos_from_adif(const char *filename, QSOList *list) {
     free(content);
 }
 
+static int qso_is_duplicate(const QSOList *list, const QSO *q) {
+    if (q->call[0] == '\0') return 0;
+    for (size_t i = 0; i < list->count; ++i) {
+        const QSO *ex = &list->items[i];
+        if (strcasecmp(ex->call, q->call) == 0 &&
+            strcmp(ex->date, q->date) == 0 &&
+            strcmp(ex->time_utc, q->time_utc) == 0) {
+            if (ex->band[0] == '\0' || q->band[0] == '\0' || strcasecmp(ex->band, q->band) == 0 ||
+                (ex->freq[0] != '\0' && q->freq[0] != '\0' && strcmp(ex->freq, q->freq) == 0)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static void finalize_imported_qso(QSO *current, const StationSettings *st) {
+    to_upper_str(current->call);
+    to_upper_str(current->gridsquare);
+
+    /* Formatera datum och tid */
+    if (current->date[0] != '\0') {
+        format_date_yyyy_mm_dd(current->date, current->date, sizeof(current->date));
+    }
+    if (current->time_utc[0] != '\0') {
+        format_time_hh_mm(current->time_utc, current->time_utc, sizeof(current->time_utc));
+    }
+
+    /* Frekvens och band */
+    if (current->freq[0] != '\0') {
+        char norm_freq[32];
+        parse_and_normalize_freq(current->freq, norm_freq, sizeof(norm_freq));
+        if (norm_freq[0] != '\0') {
+            copy_str(current->freq, sizeof(current->freq), norm_freq);
+        }
+    }
+    if (current->band[0] != '\0') {
+        format_band_display(current->band, current->band, sizeof(current->band));
+    } else if (current->freq[0] != '\0') {
+        resolve_band_from_freq(current->freq, current->band, sizeof(current->band));
+    }
+    if (current->band[0] == '\0') {
+        copy_str(current->band, sizeof(current->band), "20 m");
+    }
+    if (current->freq[0] == '\0') {
+        int bidx = find_band_index(current->band);
+        if (bidx >= 0) copy_str(current->freq, sizeof(current->freq), BAND_DEFAULT_FREQ[bidx]);
+        else copy_str(current->freq, sizeof(current->freq), "14.200");
+    }
+
+    /* Trafiksätt */
+    if (current->mode[0] == '\0') {
+        copy_str(current->mode, sizeof(current->mode), "SSB");
+    }
+    to_upper_str(current->mode);
+
+    /* RST */
+    if (current->rst_sent[0] == '\0') {
+        copy_str(current->rst_sent, sizeof(current->rst_sent), strcmp(current->mode, "CW") == 0 ? "599" : "59");
+    }
+    if (current->rst_rcvd[0] == '\0') {
+        copy_str(current->rst_rcvd, sizeof(current->rst_rcvd), strcmp(current->mode, "CW") == 0 ? "599" : "59");
+    }
+
+    /* DXCC */
+    if (current->dxcc[0] == '\0' && current->call[0] != '\0') {
+        lookup_dxcc(current->call, current->dxcc, sizeof(current->dxcc));
+    }
+
+    /* Avstånd (QRB i hela kilometer) */
+    if (current->distance[0] == '\0' && st != NULL) {
+        char calc_qrb[32];
+        compute_qrb_str(st, current, calc_qrb, sizeof(calc_qrb));
+        if (calc_qrb[0] != '\0' && strcmp(calc_qrb, "-") != 0) {
+            int d_val = (int)atol(calc_qrb);
+            if (d_val > 0) {
+                snprintf(current->distance, sizeof(current->distance), "%d", d_val);
+            }
+        }
+    } else if (current->distance[0] != '\0') {
+        int d_val = (int)atol(current->distance);
+        if (d_val > 0) {
+            snprintf(current->distance, sizeof(current->distance), "%d", d_val);
+        }
+    }
+}
+
+static int cmp_qso_chronological(const void *a_ptr, const void *b_ptr) {
+    const QSO *a = (const QSO *)a_ptr;
+    const QSO *b = (const QSO *)b_ptr;
+    int c = strcmp(a->date, b->date);
+    if (c != 0) return c;
+    return strcmp(a->time_utc, b->time_utc);
+}
+
+static const char *get_path_basename(const char *path) {
+    if (path == NULL) return "";
+    const char *slash = strrchr(path, '/');
+    return slash ? slash + 1 : path;
+}
+
+/* Importera och slå samman ADIF-poster från en annan fil till log_list */
+static int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st) {
+    if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) return -1;
+
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    if (fsize <= 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    char *content = malloc((size_t)fsize + 1);
+    if (content == NULL) {
+        fclose(fp);
+        return -1;
+    }
+    size_t read_bytes = fread(content, 1, (size_t)fsize, fp);
+    content[read_bytes] = '\0';
+    fclose(fp);
+
+    const char *p = content;
+    const char *cursor = content;
+    while ((cursor = strchr(cursor, '<')) != NULL) {
+        if (strncasecmp(cursor, "<EOH>", 5) == 0) {
+            p = cursor + 5;
+            break;
+        }
+        cursor++;
+    }
+
+    int imported_count = 0;
+    QSO current;
+    memset(&current, 0, sizeof(current));
+
+    while ((p = strchr(p, '<')) != NULL) {
+        const char *end_tag = strchr(p, '>');
+        if (end_tag == NULL) break;
+
+        char tag_buf[64];
+        size_t tag_len = (size_t)(end_tag - (p + 1));
+        if (tag_len >= sizeof(tag_buf)) tag_len = sizeof(tag_buf) - 1;
+        memcpy(tag_buf, p + 1, tag_len);
+        tag_buf[tag_len] = '\0';
+
+        if (strcasecmp(tag_buf, "EOR") == 0) {
+            if (current.call[0] != '\0') {
+                finalize_imported_qso(&current, st);
+                if (!qso_is_duplicate(list, &current)) {
+                    qso_list_push(list, &current);
+                    imported_count++;
+                }
+            }
+            memset(&current, 0, sizeof(current));
+            p = end_tag + 1;
+            continue;
+        }
+
+        char *colon = strchr(tag_buf, ':');
+        if (colon != NULL) {
+            *colon = '\0';
+            int val_len = atoi(colon + 1);
+            if (val_len < 0) val_len = 0;
+            const char *val_start = end_tag + 1;
+            size_t avail = strlen(val_start);
+            if ((size_t)val_len > avail) val_len = (int)avail;
+
+            char val_buf[512];
+            size_t copy_len = (size_t)val_len < sizeof(val_buf) - 1 ? (size_t)val_len : sizeof(val_buf) - 1;
+            memcpy(val_buf, val_start, copy_len);
+            val_buf[copy_len] = '\0';
+
+            assign_adif_field(&current, tag_buf, val_buf);
+            p = val_start + val_len;
+        } else {
+            p = end_tag + 1;
+        }
+    }
+
+    if (current.call[0] != '\0') {
+        finalize_imported_qso(&current, st);
+        if (!qso_is_duplicate(list, &current)) {
+            qso_list_push(list, &current);
+            imported_count++;
+        }
+    }
+
+    free(content);
+
+    if (imported_count > 0) {
+        qsort(list->items, list->count, sizeof(QSO), cmp_qso_chronological);
+        save_all_qsos_adif(LOG_FILE, list, st);
+    }
+
+    return imported_count;
+}
+
 static char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len) {
     switch (idx) {
         case FLD_CALL: *max_len = sizeof(qso->call);       return qso->call;
@@ -2245,6 +2453,7 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
         const char *label;
     } btns_modal[] = {
         {"Enter/F2",  "Spara"},
+        {"F5",        "Importera"},
         {"Tab/Pilar", "Byt fält"},
         {"Esc",       "Tillbaka"}
     };
@@ -2661,7 +2870,7 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
         mvprintw(14, 4, "F9                : Visa denna hjälpsida");
         mvprintw(15, 4, "F10 / Ctrl-Q      : Avsluta programmet");
-        mvprintw(16, 4, "F12               : Inställningar (Station, Färgschema, SM Callbook, Auto RST)");
+        mvprintw(16, 4, "F12               : Inställningar (Station, Färg, SM Callbook, F5 Importera)");
 
         if (LINES >= 22) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -2702,6 +2911,354 @@ static int clear_log_book(QSOList *log_list, const StationSettings *st) {
     return 0;
 }
 
+typedef struct {
+    char name[256];
+    int is_dir;
+    long size_bytes;
+} FileDialogItem;
+
+static int cmp_file_dialog_item(const void *a_ptr, const void *b_ptr) {
+    const FileDialogItem *a = (const FileDialogItem *)a_ptr;
+    const FileDialogItem *b = (const FileDialogItem *)b_ptr;
+    if (strcmp(a->name, "..") == 0) return -1;
+    if (strcmp(b->name, "..") == 0) return 1;
+    if (a->is_dir != b->is_dir) {
+        return a->is_dir ? -1 : 1;
+    }
+    return strcasecmp(a->name, b->name);
+}
+
+static int matches_extension(const char *filename, const char *ext_list) {
+    if (ext_list == NULL || ext_list[0] == '\0') return 1;
+    const char *dot = strrchr(filename, '.');
+    if (dot == NULL) return 0;
+
+    char buf[128];
+    copy_str(buf, sizeof(buf), ext_list);
+    char *token = strtok(buf, ";, ");
+    while (token != NULL) {
+        while (*token == '*' || *token == ' ') token++;
+        if (*token == '.') {
+            if (strcasecmp(dot, token) == 0) return 1;
+        } else {
+            if (strcasecmp(dot + 1, token) == 0) return 1;
+        }
+        token = strtok(NULL, ";, ");
+    }
+    return 0;
+}
+
+static void format_file_size(long bytes, char *out, size_t out_sz) {
+    if (bytes < 0) {
+        copy_str(out, out_sz, "");
+    } else if (bytes < 1024) {
+        snprintf(out, out_sz, "%ld B", bytes);
+    } else if (bytes < 1024 * 1024) {
+        snprintf(out, out_sz, "%.1f KB", (double)bytes / 1024.0);
+    } else if (bytes < 1024L * 1024 * 1024) {
+        snprintf(out, out_sz, "%.1f MB", (double)bytes / (1024.0 * 1024.0));
+    } else {
+        snprintf(out, out_sz, "%.1f GB", (double)bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+}
+
+static int load_dir_items(const char *dir_path, int filter_active, const char *ext_filter,
+                          FileDialogItem **items_out, size_t *count_out) {
+    *items_out = NULL;
+    *count_out = 0;
+
+    DIR *d = opendir(dir_path);
+    if (d == NULL) return -1;
+
+    size_t cap = 32;
+    FileDialogItem *items = malloc(cap * sizeof(FileDialogItem));
+    if (items == NULL) {
+        closedir(d);
+        return -1;
+    }
+    size_t count = 0;
+
+    if (strcmp(dir_path, "/") != 0) {
+        copy_str(items[count].name, sizeof(items[count].name), "..");
+        items[count].is_dir = 1;
+        items[count].size_bytes = -1;
+        count++;
+    }
+
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+            continue;
+        }
+        if (ent->d_name[0] == '.') {
+            continue;
+        }
+
+        char full_path[PATH_MAX + 512];
+        if (strcmp(dir_path, "/") == 0) {
+            snprintf(full_path, sizeof(full_path), "/%s", ent->d_name);
+        } else {
+            snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, ent->d_name);
+        }
+
+        struct stat st;
+        if (stat(full_path, &st) != 0) {
+            continue;
+        }
+
+        int is_dir = S_ISDIR(st.st_mode);
+        int is_reg = S_ISREG(st.st_mode);
+
+        if (!is_dir && !is_reg) {
+            continue;
+        }
+
+        if (is_reg && filter_active && !matches_extension(ent->d_name, ext_filter)) {
+            continue;
+        }
+
+        if (count >= cap) {
+            size_t new_cap = cap * 2;
+            FileDialogItem *new_items = realloc(items, new_cap * sizeof(FileDialogItem));
+            if (new_items == NULL) break;
+            items = new_items;
+            cap = new_cap;
+        }
+
+        copy_str(items[count].name, sizeof(items[count].name), ent->d_name);
+        items[count].is_dir = is_dir;
+        items[count].size_bytes = is_dir ? -1 : (long)st.st_size;
+        count++;
+    }
+
+    closedir(d);
+
+    if (count > 1) {
+        qsort(items, count, sizeof(FileDialogItem), cmp_file_dialog_item);
+    }
+
+    *items_out = items;
+    *count_out = count;
+    return 0;
+}
+
+/* Generisk filväljardialog med ncurses.
+ * start_dir: startkatalog (t.ex. "." eller NULL)
+ * ext_filter: t.ex. ".adi;.adif"
+ * selected_path: buffert som fylls med vald sökväg
+ * max_path_len: storlek på selected_path
+ * Returnerar 1 om fil valdes, 0 om avbruten med Esc. */
+static int run_file_dialog(const char *title, const char *start_dir, const char *ext_filter,
+                           char *selected_path, size_t max_path_len) {
+    char current_dir[PATH_MAX];
+    if (start_dir != NULL && start_dir[0] != '\0') {
+        if (realpath(start_dir, current_dir) == NULL) {
+            if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
+                copy_str(current_dir, sizeof(current_dir), ".");
+            }
+        }
+    } else {
+        if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
+            copy_str(current_dir, sizeof(current_dir), ".");
+        }
+    }
+
+    int filter_active = (ext_filter != NULL && ext_filter[0] != '\0') ? 1 : 0;
+    FileDialogItem *items = NULL;
+    size_t count = 0;
+    load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+
+    int selected_pos = 0;
+    int scroll_offset = 0;
+
+    while (1) {
+        int box_h = LINES - 4;
+        if (box_h > 22) box_h = 22;
+        if (box_h < 12) box_h = 12;
+        int box_w = COLS - 6;
+        if (box_w > 76) box_w = 76;
+        if (box_w < 46) box_w = 46;
+        int by = (LINES - box_h) / 2;
+        int bx = (COLS - box_w) / 2;
+
+        for (int r = 0; r < box_h; ++r) {
+            mvhline(by + r, bx, ' ', box_w);
+        }
+        draw_box_with_title(by, bx, box_h, box_w,
+                            (title && title[0]) ? title : "Välj fil", 1);
+
+        /* Katalograd */
+        int max_dir_w = box_w - 14;
+        char disp_dir[PATH_MAX];
+        int dlen = (int)strlen(current_dir);
+        if (dlen > max_dir_w && max_dir_w > 4) {
+            snprintf(disp_dir, sizeof(disp_dir), "...%s", current_dir + dlen - (max_dir_w - 3));
+        } else {
+            copy_str(disp_dir, sizeof(disp_dir), current_dir);
+        }
+        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+        mvprintw(by + 1, bx + 2, "Katalog: ");
+        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+        mvprintw(by + 1, bx + 11, "%-*s", max_dir_w, disp_dir);
+
+        /* Filterrad */
+        attron(COLOR_PAIR(CP_LABEL));
+        mvprintw(by + 2, bx + 2, "Filter : %-15s [F2: %s]",
+                 filter_active ? ext_filter : "*.* (alla)",
+                 filter_active ? "Visa alla" : "Filtrera");
+        attroff(COLOR_PAIR(CP_LABEL));
+
+        /* Separator */
+        attron(COLOR_PAIR(CP_BORDER));
+        mvaddch(by + 3, bx, ACS_LTEE);
+        mvhline(by + 3, bx + 1, ACS_HLINE, box_w - 2);
+        mvaddch(by + 3, bx + box_w - 1, ACS_RTEE);
+        attroff(COLOR_PAIR(CP_BORDER));
+
+        int visible_rows = box_h - 5;
+        if (visible_rows < 1) visible_rows = 1;
+
+        if (selected_pos < scroll_offset) {
+            scroll_offset = selected_pos;
+        } else if (selected_pos >= scroll_offset + visible_rows) {
+            scroll_offset = selected_pos - visible_rows + 1;
+        }
+
+        if (count == 0) {
+            attron(COLOR_PAIR(CP_FIELD_INACTIVE));
+            mvprintw(by + 4, bx + 4, "(Inga filer matchar filter)");
+            attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
+        } else {
+            for (int i = 0; i < visible_rows; ++i) {
+                int item_idx = scroll_offset + i;
+                int r = by + 4 + i;
+                if (item_idx >= (int)count) break;
+
+                int is_sel = (item_idx == selected_pos);
+                if (is_sel) {
+                    attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
+                } else {
+                    attron(COLOR_PAIR(CP_LOG_ROW));
+                }
+                mvhline(r, bx + 1, ' ', box_w - 2);
+
+                const FileDialogItem *it = &items[item_idx];
+                if (it->is_dir) {
+                    mvprintw(r, bx + 2, "%c [MAPP] %-s", is_sel ? '>' : ' ', it->name);
+                } else {
+                    char sz_str[32];
+                    format_file_size(it->size_bytes, sz_str, sizeof(sz_str));
+                    int max_name_w = box_w - 22;
+                    if (max_name_w < 10) max_name_w = 10;
+                    mvprintw(r, bx + 2, "%c        %-*.*s %8s",
+                             is_sel ? '>' : ' ', max_name_w, max_name_w, it->name, sz_str);
+                }
+
+                if (is_sel) {
+                    attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
+                } else {
+                    attroff(COLOR_PAIR(CP_LOG_ROW));
+                }
+            }
+        }
+
+        /* Scrollindikatorer */
+        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+        if (scroll_offset > 0) {
+            mvaddch(by + 4, bx + box_w - 2, '^');
+        }
+        if (scroll_offset + visible_rows < (int)count) {
+            mvaddch(by + box_h - 2, bx + box_w - 2, 'v');
+        }
+        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+        /* Nedersta statusrad i popupen */
+        attron(COLOR_PAIR(CP_FKEY_LABEL));
+        mvhline(by + box_h - 1, bx, ' ', box_w);
+        mvprintw(by + box_h - 1, bx + 2, "[Enter] Välj/Öppna  [F2] Växla filter  [Esc] Avbryt");
+        attroff(COLOR_PAIR(CP_FKEY_LABEL));
+
+        refresh();
+
+        int ch = getch();
+        if (ch == ERR) continue;
+
+        if (ch == 27 || ch == KEY_F(5)) {
+            if (items) free(items);
+            return 0;
+        } else if (ch == KEY_UP) {
+            if (selected_pos > 0) selected_pos--;
+        } else if (ch == KEY_DOWN) {
+            if (selected_pos + 1 < (int)count) selected_pos++;
+        } else if (ch == KEY_PPAGE) {
+            selected_pos -= visible_rows;
+            if (selected_pos < 0) selected_pos = 0;
+        } else if (ch == KEY_NPAGE) {
+            selected_pos += visible_rows;
+            if (selected_pos >= (int)count) selected_pos = count > 0 ? (int)count - 1 : 0;
+        } else if (ch == KEY_HOME) {
+            selected_pos = 0;
+        } else if (ch == KEY_END) {
+            selected_pos = count > 0 ? (int)count - 1 : 0;
+        } else if (ch == KEY_F(2)) {
+            filter_active = !filter_active;
+            if (items) free(items);
+            items = NULL;
+            count = 0;
+            load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+            selected_pos = 0;
+            scroll_offset = 0;
+        } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+            /* Gå till föräldrakatalog */
+            char parent_dir[PATH_MAX + 512];
+            snprintf(parent_dir, sizeof(parent_dir), "%s/..", current_dir);
+            char resolved[PATH_MAX];
+            if (realpath(parent_dir, resolved) != NULL) {
+                copy_str(current_dir, sizeof(current_dir), resolved);
+                if (items) free(items);
+                items = NULL;
+                count = 0;
+                load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+                selected_pos = 0;
+                scroll_offset = 0;
+            }
+        } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            if (count > 0 && selected_pos < (int)count) {
+                FileDialogItem *sel = &items[selected_pos];
+                if (sel->is_dir) {
+                    char next_dir[PATH_MAX + 512];
+                    if (strcmp(sel->name, "..") == 0) {
+                        snprintf(next_dir, sizeof(next_dir), "%s/..", current_dir);
+                    } else if (strcmp(current_dir, "/") == 0) {
+                        snprintf(next_dir, sizeof(next_dir), "/%s", sel->name);
+                    } else {
+                        snprintf(next_dir, sizeof(next_dir), "%s/%s", current_dir, sel->name);
+                    }
+                    char resolved[PATH_MAX];
+                    if (realpath(next_dir, resolved) != NULL) {
+                        copy_str(current_dir, sizeof(current_dir), resolved);
+                        if (items) free(items);
+                        items = NULL;
+                        count = 0;
+                        load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+                        selected_pos = 0;
+                        scroll_offset = 0;
+                    }
+                } else {
+                    /* Regular file selected */
+                    if (strcmp(current_dir, "/") == 0) {
+                        snprintf(selected_path, max_path_len, "/%s", sel->name);
+                    } else {
+                        snprintf(selected_path, max_path_len, "%s/%s", current_dir, sel->name);
+                    }
+                    if (items) free(items);
+                    return 1;
+                }
+            }
+        }
+    }
+}
+
 /* F12: Inställningssida med ':'-linjerade fält, färgscheman, SM Callbook, Auto RST och Töm loggbok */
 static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                                QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
@@ -2732,11 +3289,12 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             draw_field_aligned(6,  colon_col, "Lokator",       edit.gridsquare, fw, active == 3, cursor_pos, &cur_y, &cur_x);
             draw_field_aligned(7,  colon_col, "Lokal tidszon", edit.timezone,   fw, active == 4, cursor_pos, &cur_y, &cur_x);
 
-            int r_theme = 8;
-            int r_smcb  = 9;
-            int r_rst   = 10;
-            int r_flt   = 11;
-            int r_clear = 12;
+            int r_theme  = 8;
+            int r_smcb   = 9;
+            int r_rst    = 10;
+            int r_flt    = 11;
+            int r_import = 12;
+            int r_clear  = 13;
 
             /* Fält 5: Färgschema */
             const char *lbl_theme = "Färgschema";
@@ -2814,13 +3372,31 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 9: Töm loggbok och börja på nytt */
+            /* Fält 9: Importera ADIF från fil (F5) */
+            const char *lbl_import = "Importera ADIF (F5)";
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(r_import, colon_col - utf8_display_width(lbl_import), "%s:", lbl_import);
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+            if (active == 9) {
+                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
+                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                cur_y = r_import;
+                cur_x = fcol + 2;
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+                mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+            }
+
+            /* Fält 10: Töm loggbok och börja på nytt */
             const char *lbl_clear = "Töm loggbok";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            if (active == 9) {
+            if (active == 10) {
                 attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
                 mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
                 attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -2832,8 +3408,14 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
+            if (status_msg != NULL && status_msg[0] != '\0' && LINES >= 19) {
+                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+                mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
+                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+            }
+
             if (LINES >= 17) {
-                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. Vänster/Höger ändrar val. Enter = Spara/Utför. Esc = Avbryt.");
+                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. Vänster/Höger ändrar val. F5 = Importera ADIF. Enter = Spara.");
             }
 
             draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
@@ -2848,7 +3430,27 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             apply_color_theme(st->theme);
             copy_str(status_msg, status_sz, "Inställningar stängda.");
             return;
-        } else if (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (ch == KEY_F(5) || (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+            char chosen_path[PATH_MAX] = {0};
+            int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path));
+            if (chosen && chosen_path[0] != '\0') {
+                int added = import_qsos_from_adif(chosen_path, log_list, &edit);
+                if (added < 0) {
+                    snprintf(status_msg, status_sz, "Kunde inte läsa filen: %s", get_path_basename(chosen_path));
+                } else if (added == 0) {
+                    snprintf(status_msg, status_sz, "Import klar: Inga nya QSO hittades i %s.", get_path_basename(chosen_path));
+                } else {
+                    snprintf(status_msg, status_sz, "Importerade %d QSO från %s!", added, get_path_basename(chosen_path));
+                    if (selected_log_pos && log_list && log_list->count > 0) {
+                        *selected_log_pos = (int)log_list->count - 1;
+                    }
+                }
+            } else {
+                copy_str(status_msg, status_sz, "ADIF-import avbröts.");
+            }
+            apply_color_theme(edit.theme);
+            continue;
+        } else if (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             /* Bekräftelseruta för att tömma loggboken */
             int confirm = 0;
             while (1) {
@@ -2887,7 +3489,7 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             } else {
                 apply_color_theme(st->theme);
             }
-        } else if (ch == KEY_F(2) || ch == 19 || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+        } else if (ch == KEY_F(2) || ch == 19 || (active < 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
             to_upper_str(edit.call);
             to_upper_str(edit.gridsquare);
             *st = edit;
@@ -3262,19 +3864,19 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
     }
 
     /* Avstånd (ADIF: DISTANCE) i hela kilometer */
-    long d_val = 0;
+    int d_val = 0;
     if (current_qrb != NULL && current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
-        d_val = atol(current_qrb);
+        d_val = (int)atol(current_qrb);
     }
     if (d_val <= 0) {
         char temp_qrb[32];
         compute_qrb_str(st, qso, temp_qrb, sizeof(temp_qrb));
         if (temp_qrb[0] != '\0' && strcmp(temp_qrb, "-") != 0) {
-            d_val = atol(temp_qrb);
+            d_val = (int)atol(temp_qrb);
         }
     }
     if (d_val > 0) {
-        snprintf(qso->distance, sizeof(qso->distance), "%ld", d_val);
+        snprintf(qso->distance, sizeof(qso->distance), "%d", d_val);
     }
 
     persist_qso_radio_settings(qso, st);
