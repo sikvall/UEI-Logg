@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #define _POSIX_C_SOURCE 200809L
 #include <ctype.h>
 #include <curl/curl.h>
@@ -10,6 +13,8 @@
 #include <time.h>
 #include <math.h>
 #include <pthread.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #define LOG_FILE "qsolog.adi"
 #define CONFIG_FILE "station.conf"
@@ -22,12 +27,14 @@
 
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
 static const char * const BAND_OPTIONS[] = {
-    "160m", "80m", "60m", "40m", "30m", "20m",
-    "17m",  "15m", "12m", "10m", "6m",  "2m"
+    "160 m", "80 m", "60 m", "40 m", "30 m", "20 m",
+    "17 m",  "15 m", "12 m", "10 m", "6 m",  "2 m",
+    "70 cm", "23 cm"
 };
 static const char * const BAND_DEFAULT_FREQ[] = {
-    "1.900",  "3.600",  "5.400",  "7.100",  "10.100", "14.200",
-    "18.100", "21.200", "24.900", "28.800", "51.000", "145.000"
+    "1.900",   "3.600",   "5.400",   "7.100",   "10.100",  "14.200",
+    "18.100",  "21.200",  "24.900",  "28.800",  "51.000",  "145.000",
+    "432.200", "1296.200"
 };
 #define BAND_OPTION_COUNT ((int)(sizeof(BAND_OPTIONS) / sizeof(BAND_OPTIONS[0])))
 
@@ -1126,28 +1133,30 @@ static double parse_and_normalize_freq(const char *in, char *norm_out, size_t ou
     return mhz;
 }
 
-/* Föreslå amatörradioband (ur listan 160m..2m) utifrån frekvens */
+/* Föreslå amatörradioband (ur listan 160 m..23 cm) utifrån frekvens */
 static const char *guess_band_from_freq(const char *freq_str) {
     if (freq_str == NULL || freq_str[0] == '\0') return "";
     double f = parse_and_normalize_freq(freq_str, NULL, 0);
-    if (f >= 1.8 && f <= 2.0)       return "160m";
-    if (f >= 3.5 && f <= 3.8)       return "80m";
-    if (f >= 5.3 && f <= 5.4)       return "60m";
-    if (f >= 7.0 && f <= 7.2)       return "40m";
-    if (f >= 10.1 && f <= 10.15)    return "30m";
-    if (f >= 14.0 && f <= 14.35)    return "20m";
-    if (f >= 18.068 && f <= 18.168) return "17m";
-    if (f >= 21.0 && f <= 21.45)    return "15m";
-    if (f >= 24.89 && f <= 24.99)   return "12m";
-    if (f >= 28.0 && f <= 29.7)     return "10m";
-    if (f >= 50.0 && f <= 52.0)     return "6m";
-    if (f >= 144.0 && f <= 146.0)   return "2m";
+    if (f >= 1.8 && f <= 2.0)       return "160 m";
+    if (f >= 3.5 && f <= 3.8)       return "80 m";
+    if (f >= 5.3 && f <= 5.4)       return "60 m";
+    if (f >= 7.0 && f <= 7.2)       return "40 m";
+    if (f >= 10.1 && f <= 10.15)    return "30 m";
+    if (f >= 14.0 && f <= 14.35)    return "20 m";
+    if (f >= 18.068 && f <= 18.168) return "17 m";
+    if (f >= 21.0 && f <= 21.45)    return "15 m";
+    if (f >= 24.89 && f <= 24.99)   return "12 m";
+    if (f >= 28.0 && f <= 29.7)     return "10 m";
+    if (f >= 50.0 && f <= 52.0)     return "6 m";
+    if (f >= 144.0 && f <= 146.0)   return "2 m";
+    if (f >= 430.0 && f <= 440.0)   return "70 cm";
+    if (f >= 1240.0 && f <= 1300.0) return "23 cm";
     return "";
 }
 
 /* Bestäm band utifrån frekvens:
- * Om frekvensen tillhör något av amatörradiobanden (160m..2m) används det bandet.
- * Annars beräknas metervärdet enligt 300 / f avrundat till närmaste heltal (t.ex. "75m", "11m"). */
+ * Om frekvensen tillhör något av amatörradiobanden används det bandet.
+ * Annars beräknas metervärdet enligt 300 / f avrundat till närmaste heltal (t.ex. "75 m", "11 m"). */
 static void resolve_band_from_freq(const char *freq_str, char *band_out, size_t out_sz) {
     if (band_out == NULL || out_sz == 0) return;
     band_out[0] = '\0';
@@ -1164,25 +1173,81 @@ static void resolve_band_from_freq(const char *freq_str, char *band_out, size_t 
         long meters = (long)(300.0 / f + 0.5);
         if (meters < 1) meters = 1;
         if (meters > 999999) meters = 999999;
-        snprintf(band_out, out_sz, "%ldm", meters);
+        snprintf(band_out, out_sz, "%ld m", meters);
     }
 }
 
 static int find_band_index(const char *band_str) {
     if (band_str == NULL || band_str[0] == '\0') return -1;
     char norm[16];
-    copy_str(norm, sizeof(norm), band_str);
+    size_t j = 0;
+    for (size_t i = 0; band_str[i] != '\0' && j < sizeof(norm) - 1; ++i) {
+        if (band_str[i] != ' ' && band_str[i] != '\t') {
+            norm[j++] = band_str[i];
+        }
+    }
+    norm[j] = '\0';
+
     size_t len = strlen(norm);
     if (len > 0 && isdigit((unsigned char)norm[len - 1]) && len + 1 < sizeof(norm)) {
         norm[len] = 'm';
         norm[len + 1] = '\0';
     }
+
     for (int i = 0; i < BAND_OPTION_COUNT; ++i) {
-        if (strcasecmp(norm, BAND_OPTIONS[i]) == 0) {
+        char opt_clean[16];
+        size_t oj = 0;
+        for (size_t k = 0; BAND_OPTIONS[i][k] != '\0' && oj < sizeof(opt_clean) - 1; ++k) {
+            if (BAND_OPTIONS[i][k] != ' ' && BAND_OPTIONS[i][k] != '\t') {
+                opt_clean[oj++] = BAND_OPTIONS[i][k];
+            }
+        }
+        opt_clean[oj] = '\0';
+        if (strcasecmp(norm, opt_clean) == 0) {
             return i;
         }
     }
     return -1;
+}
+
+/* Formatera bandnamn för användargränssnittet med mellanslag (t.ex. "80 m", "70 cm") */
+static void format_band_display(const char *in, char *out, size_t out_sz) {
+    if (in == NULL || out == NULL || out_sz == 0) return;
+    int idx = find_band_index(in);
+    if (idx >= 0) {
+        copy_str(out, out_sz, BAND_OPTIONS[idx]);
+        return;
+    }
+    char digits[8], unit[8];
+    size_t di = 0, ui = 0;
+    for (size_t i = 0; in[i] != '\0'; ++i) {
+        if (isdigit((unsigned char)in[i])) {
+            if (di < sizeof(digits) - 1) digits[di++] = in[i];
+        } else if (isalpha((unsigned char)in[i])) {
+            if (ui < sizeof(unit) - 1) unit[ui++] = in[i];
+        }
+    }
+    digits[di] = '\0';
+    unit[ui] = '\0';
+    if (di > 0 && ui > 0) {
+        snprintf(out, out_sz, "%.6s %-.4s", digits, unit);
+    } else if (di > 0) {
+        snprintf(out, out_sz, "%.6s m", digits);
+    } else {
+        copy_str(out, out_sz, in);
+    }
+}
+
+/* Normalisera bandnamn enligt ADIF 3.1.8-specifikationen utan mellanslag (t.ex. "80m", "70cm") */
+static void normalize_band_adif(const char *in, char *out, size_t out_sz) {
+    if (in == NULL || out == NULL || out_sz == 0) return;
+    size_t j = 0;
+    for (size_t i = 0; in[i] != '\0' && j < out_sz - 1; ++i) {
+        if (in[i] != ' ' && in[i] != '\t') {
+            out[j++] = (char)tolower((unsigned char)in[i]);
+        }
+    }
+    out[j] = '\0';
 }
 
 static void normalize_date_adif(const char *in, char *out, size_t out_sz) {
@@ -1242,7 +1307,7 @@ static void format_time_hh_mm(const char *raw, char *out, size_t out_sz) {
 static void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
-    copy_str(st->last_band, sizeof(st->last_band), "20m");
+    copy_str(st->last_band, sizeof(st->last_band), "20 m");
     copy_str(st->last_freq, sizeof(st->last_freq), "14.200");
     copy_str(st->last_mode, sizeof(st->last_mode), "SSB");
 
@@ -1284,12 +1349,7 @@ static void load_station_settings(const char *filename, StationSettings *st) {
             parse_and_normalize_freq(val, norm, sizeof(norm));
             copy_str(st->last_freq, sizeof(st->last_freq), norm[0] ? norm : val);
         } else if (strcasecmp(key, "BAND") == 0 && val[0] != '\0') {
-            int bidx = find_band_index(val);
-            if (bidx >= 0) {
-                copy_str(st->last_band, sizeof(st->last_band), BAND_OPTIONS[bidx]);
-            } else {
-                copy_str(st->last_band, sizeof(st->last_band), val);
-            }
+            format_band_display(val, st->last_band, sizeof(st->last_band));
         } else if (strcasecmp(key, "MODE") == 0 && val[0] != '\0') {
             copy_str(st->last_mode, sizeof(st->last_mode), val);
             to_upper_str(st->last_mode);
@@ -1323,17 +1383,35 @@ static void write_adif_field(FILE *fp, const char *tag, const char *val) {
     }
 }
 
+static void write_adif_header(FILE *fp) {
+    char created_ts[32];
+    time_t now = time(NULL);
+    struct tm tm_utc;
+    gmtime_r(&now, &tm_utc);
+    snprintf(created_ts, sizeof(created_ts), "%04d%02d%02d %02d%02d%02d",
+             tm_utc.tm_year + 1900, tm_utc.tm_mon + 1, tm_utc.tm_mday,
+             tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec);
+
+    fprintf(fp, "ADIF Log created by qsolog\n");
+    fprintf(fp, "<ADIF_VER:5>3.1.8\n");
+    fprintf(fp, "<CREATED_TIMESTAMP:%zu>%s\n", strlen(created_ts), created_ts);
+    fprintf(fp, "<PROGRAMID:6>qsolog\n");
+    fprintf(fp, "<PROGRAMVERSION:5>1.0.0\n");
+    fprintf(fp, "<EOH>\n\n");
+}
+
 static void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSettings *st) {
-    char clean_date[16], clean_time[16];
+    char clean_date[16], clean_time[16], clean_band[16];
     normalize_date_adif(qso->date, clean_date, sizeof(clean_date));
     normalize_time_adif(qso->time_utc, clean_time, sizeof(clean_time));
+    normalize_band_adif(qso->band, clean_band, sizeof(clean_band));
 
     write_adif_field(fp, "CALL", qso->call);
     write_adif_field(fp, "NAME", qso->name);
     write_adif_field(fp, "QSO_DATE", clean_date);
     write_adif_field(fp, "TIME_ON", clean_time);
     write_adif_field(fp, "FREQ", qso->freq);
-    write_adif_field(fp, "BAND", qso->band);
+    write_adif_field(fp, "BAND", clean_band);
     write_adif_field(fp, "MODE", qso->mode);
     write_adif_field(fp, "RST_SENT", qso->rst_sent);
     write_adif_field(fp, "RST_RCVD", qso->rst_rcvd);
@@ -1344,6 +1422,7 @@ static void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSetting
     write_adif_field(fp, "DISTANCE", qso->distance);
     if (st != NULL) {
         write_adif_field(fp, "STATION_CALLSIGN", st->call);
+        write_adif_field(fp, "OPERATOR", st->call);
         write_adif_field(fp, "MY_NAME", st->name);
         write_adif_field(fp, "MY_CITY", st->qth);
         write_adif_field(fp, "MY_GRIDSQUARE", st->gridsquare);
@@ -1368,10 +1447,7 @@ static int append_qso_adif(const char *filename, const QSO *qso, const StationSe
     if (fp == NULL) return -1;
 
     if (need_header) {
-        fprintf(fp, "ADIF Log skapad av qsolog\n");
-        fprintf(fp, "<ADIF_VER:5>3.1.4\n");
-        fprintf(fp, "<PROGRAMID:6>qsolog\n");
-        fprintf(fp, "<EOH>\n\n");
+        write_adif_header(fp);
     }
 
     write_qso_record_adif(fp, qso, st);
@@ -1383,10 +1459,7 @@ static int save_all_qsos_adif(const char *filename, const QSOList *list, const S
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) return -1;
 
-    fprintf(fp, "ADIF Log skapad av qsolog\n");
-    fprintf(fp, "<ADIF_VER:5>3.1.4\n");
-    fprintf(fp, "<PROGRAMID:6>qsolog\n");
-    fprintf(fp, "<EOH>\n\n");
+    write_adif_header(fp);
 
     for (size_t i = 0; i < list->count; ++i) {
         write_qso_record_adif(fp, &list->items[i], st);
@@ -1405,12 +1478,18 @@ static void assign_adif_field(QSO *qso, const char *tag, const char *val) {
         format_date_yyyy_mm_dd(val, qso->date, sizeof(qso->date));
     } else if (strcasecmp(tag, "TIME_ON") == 0) {
         format_time_hh_mm(val, qso->time_utc, sizeof(qso->time_utc));
+    } else if (strcasecmp(tag, "TIME_OFF") == 0) {
+        if (qso->time_utc[0] == '\0') format_time_hh_mm(val, qso->time_utc, sizeof(qso->time_utc));
     } else if (strcasecmp(tag, "FREQ") == 0) {
         parse_and_normalize_freq(val, qso->freq, sizeof(qso->freq));
     } else if (strcasecmp(tag, "BAND") == 0) {
-        copy_str(qso->band, sizeof(qso->band), val);
+        format_band_display(val, qso->band, sizeof(qso->band));
     } else if (strcasecmp(tag, "MODE") == 0) {
         copy_str(qso->mode, sizeof(qso->mode), val);
+    } else if (strcasecmp(tag, "SUBMODE") == 0) {
+        if (val[0] != '\0' && (qso->mode[0] == '\0' || strcasecmp(qso->mode, "MFSK") == 0 || strcasecmp(qso->mode, "DATA") == 0)) {
+            copy_str(qso->mode, sizeof(qso->mode), val);
+        }
     } else if (strcasecmp(tag, "RST_SENT") == 0) {
         copy_str(qso->rst_sent, sizeof(qso->rst_sent), val);
     } else if (strcasecmp(tag, "RST_RCVD") == 0) {
@@ -1423,6 +1502,8 @@ static void assign_adif_field(QSO *qso, const char *tag, const char *val) {
         copy_str(qso->dxcc, sizeof(qso->dxcc), val);
     } else if (strcasecmp(tag, "COMMENT") == 0) {
         copy_str(qso->comment, sizeof(qso->comment), val);
+    } else if (strcasecmp(tag, "QSLMSG") == 0 || strcasecmp(tag, "NOTES") == 0) {
+        if (qso->comment[0] == '\0') copy_str(qso->comment, sizeof(qso->comment), val);
     } else if (strcasecmp(tag, "DISTANCE") == 0) {
         copy_str(qso->distance, sizeof(qso->distance), val);
     }
@@ -1771,7 +1852,7 @@ static void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen
     if (last_smcb_call) last_smcb_call[0] = '\0';
     if (current_qrb) copy_str(current_qrb, 32, "-");
 
-    copy_str(qso->band, sizeof(qso->band), saved_band[0] ? saved_band : "20m");
+    copy_str(qso->band, sizeof(qso->band), saved_band[0] ? saved_band : "20 m");
     copy_str(qso->freq, sizeof(qso->freq), saved_freq[0] ? saved_freq : "14.200");
     copy_str(qso->mode, sizeof(qso->mode), saved_mode);
 
@@ -2074,7 +2155,7 @@ static void draw_band_selector_aligned(int row, int colon_col, const char *val,
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     int fcol = colon_col + 2;
-    const char *shown = (val && val[0]) ? val : "20m";
+    const char *shown = (val && val[0]) ? val : "20 m";
 
     if (is_active) {
         int attr = A_BOLD | (band_selecting ? A_REVERSE : 0);
@@ -2090,7 +2171,7 @@ static void draw_band_selector_aligned(int row, int colon_col, const char *val,
     }
 }
 
-/* Rita raden för bandval (160, 80, 60, 40, 30, 20, 17, 15, 12, 10, 6, 2) när Band är aktivt */
+/* Rita raden för bandval när Band är aktivt */
 static void draw_band_popup_list(int row, const char *current_band, int band_selecting) {
     int x = 2;
     if (!band_selecting) {
@@ -2102,15 +2183,27 @@ static void draw_band_popup_list(int row, const char *current_band, int band_sel
 
     int cur_idx = find_band_index(current_band);
     attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-    mvprintw(row, x, "Band (Pilar väljer, Enter=Klar): ");
+    if (COLS >= 95) {
+        mvprintw(row, x, "Band (Pilar väljer, Enter=Klar): ");
+        x += 33;
+    } else {
+        mvprintw(row, x, "Band: ");
+        x += 6;
+    }
     attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-    x += 33;
 
     static const char * const SHORT_NAMES[] = {
-        "160", "80", "60", "40", "30", "20", "17", "15", "12", "10", "6", "2"
+        "160", "80", "60", "40", "30", "20", "17", "15", "12", "10", "6", "2", "70cm", "23cm"
     };
 
-    for (int i = 0; i < BAND_OPTION_COUNT && x + 5 < COLS - 1; ++i) {
+    int start_i = 0;
+    if (cur_idx >= 7 && COLS < 80) {
+        start_i = cur_idx - 5;
+        if (start_i + 8 > BAND_OPTION_COUNT) start_i = BAND_OPTION_COUNT - 8;
+        if (start_i < 0) start_i = 0;
+    }
+
+    for (int i = start_i; i < BAND_OPTION_COUNT && x + 5 < COLS - 1; ++i) {
         if (i == cur_idx) {
             attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD | A_REVERSE);
             mvprintw(row, x, "[%s]", SHORT_NAMES[i]);
@@ -2190,18 +2283,53 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
     }
 }
 
+/* Skiftlägesokänslig delsökning som hanterar både ASCII och UTF-8 (t.ex. å, ä, ö) */
+static int utf8_contains_ci(const char *haystack, const char *needle) {
+    if (needle == NULL || needle[0] == '\0') return 1;
+    if (haystack == NULL || haystack[0] == '\0') return 0;
+
+    size_t h_len = strlen(haystack);
+    size_t n_len = strlen(needle);
+
+    wchar_t stack_h[128];
+    wchar_t stack_n[64];
+    wchar_t *w_haystack = (h_len < 128) ? stack_h : malloc((h_len + 1) * sizeof(wchar_t));
+    wchar_t *w_needle   = (n_len < 64)  ? stack_n : malloc((n_len + 1) * sizeof(wchar_t));
+
+    int found = 0;
+    if (w_haystack != NULL && w_needle != NULL) {
+        size_t h_res = mbstowcs(w_haystack, haystack, h_len + 1);
+        size_t n_res = mbstowcs(w_needle, needle, n_len + 1);
+        if (h_res != (size_t)-1 && n_res != (size_t)-1) {
+            for (size_t i = 0; i < h_res; ++i) {
+                w_haystack[i] = towupper(w_haystack[i]);
+            }
+            for (size_t i = 0; i < n_res; ++i) {
+                w_needle[i] = towupper(w_needle[i]);
+            }
+            found = (wcsstr(w_haystack, w_needle) != NULL);
+            if (w_haystack != stack_h) free(w_haystack);
+            if (w_needle != stack_n) free(w_needle);
+            return found;
+        }
+    }
+    if (w_haystack && w_haystack != stack_h) free(w_haystack);
+    if (w_needle && w_needle != stack_n) free(w_needle);
+
+    return (strcasestr(haystack, needle) != NULL);
+}
+
 static int build_filtered_indices(const QSOList *log_list, const char *search_filter,
                                   int *out_indices, int max_out) {
     int count = 0;
     for (int i = (int)log_list->count - 1; i >= 0 && count < max_out; --i) {
         const QSO *item = &log_list->items[i];
         if (search_filter != NULL && search_filter[0] != '\0') {
-            char call_u[32], filt_u[32];
-            copy_str(call_u, sizeof(call_u), item->call);
-            copy_str(filt_u, sizeof(filt_u), search_filter);
-            to_upper_str(call_u);
-            to_upper_str(filt_u);
-            if (strstr(call_u, filt_u) == NULL) continue;
+            int match = utf8_contains_ci(item->call, search_filter) ||
+                        utf8_contains_ci(item->name, search_filter) ||
+                        utf8_contains_ci(item->qth, search_filter) ||
+                        utf8_contains_ci(item->gridsquare, search_filter);
+            if (!match) continue;
         }
         out_indices[count++] = i;
     }
@@ -2377,17 +2505,17 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
     int avail_log_rows = (log_top + log_height - 1) - first_data_row;
     if (avail_log_rows < 0) avail_log_rows = 0;
 
-    /* Frekv-kolumnen är högerställd (%8s) och formaterad med 3 decimaler */
+    /* Band och Frekv i loggraderna: Band är högerställt (%5s) och Frekv (%8s) med 3 decimaler */
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
     if (COLS >= 92) {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-11s %8s %-5s %-5s %-7s %-8s %-12s %-s",
-                 "Datum", "UTC", "Signal", "Frekv", "Band", "Mode", "RST S/M", "Lokator", "Namn", "QTH");
+        mvprintw(hdr_row, 2, "%-10s %-5s %-11s %5s %8s %-5s %-7s %-8s %-12s %-s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST S/M", "Lokator", "Namn", "QTH");
     } else if (COLS >= 74) {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-10s %8s %-5s %-5s %-7s %-6s %-s",
-                 "Datum", "UTC", "Signal", "Frekv", "Band", "Mode", "RST", "Lok.", "Namn/QTH");
+        mvprintw(hdr_row, 2, "%-10s %-5s %-10s %5s %8s %-5s %-7s %-6s %-s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Lok.", "Namn/QTH");
     } else {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-9s %8s %-4s %-4s %-7s %-s",
-                 "Datum", "UTC", "Signal", "Frekv", "Band", "Mode", "RST", "Namn");
+        mvprintw(hdr_row, 2, "%-10s %-5s %-9s %5s %8s %-4s %-7s %-s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Namn");
     }
     attroff(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
 
@@ -2416,9 +2544,10 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
         int r = first_data_row + shown;
         int is_selected_row = (focus_mode == FOCUS_LOG && pos == selected_log_pos);
 
-        char d_disp[16], t_disp[16], f_disp[16], rst_disp[36];
+        char d_disp[16], t_disp[16], f_disp[16], b_disp[16], rst_disp[36];
         format_date_yyyy_mm_dd(item->date, d_disp, sizeof(d_disp));
         format_time_hh_mm(item->time_utc, t_disp, sizeof(t_disp));
+        format_band_display(item->band, b_disp, sizeof(b_disp));
         parse_and_normalize_freq(item->freq, f_disp, sizeof(f_disp));
         snprintf(rst_disp, sizeof(rst_disp), "%s/%s",
                  item->rst_sent[0] ? item->rst_sent : "-",
@@ -2446,12 +2575,12 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
         if (COLS >= 92) {
             int rem_qth = (COLS - 2) - 82;
             if (rem_qth < 4) rem_qth = 4;
-            mvprintw(r, 2, "%-10.10s %-5.5s %-11.11s %8.8s %-5.5s %-5.5s %-7.7s %-8.8s %-12.12s %-.*s",
+            mvprintw(r, 2, "%-10.10s %-5.5s %-11.11s %5.5s %8.8s %-5.5s %-7.7s %-8.8s %-12.12s %-.*s",
                      d_disp[0] ? d_disp : "-",
                      t_disp[0] ? t_disp : "-",
                      item->call[0] ? item->call : "-",
+                     b_disp[0] ? b_disp : "-",
                      f_disp[0] ? f_disp : "-",
-                     item->band[0] ? item->band : "-",
                      item->mode[0] ? item->mode : "-",
                      rst_disp,
                      item->gridsquare[0] ? item->gridsquare : "-",
@@ -2462,12 +2591,12 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
             int rem = (COLS - 2) - 64;
             if (rem < 4) rem = 4;
             const char *nq = item->name[0] ? item->name : (item->qth[0] ? item->qth : "-");
-            mvprintw(r, 2, "%-10.10s %-5.5s %-10.10s %8.8s %-5.5s %-5.5s %-7.7s %-6.6s %-.*s",
+            mvprintw(r, 2, "%-10.10s %-5.5s %-10.10s %5.5s %8.8s %-5.5s %-7.7s %-6.6s %-.*s",
                      d_disp[0] ? d_disp : "-",
                      t_disp[0] ? t_disp : "-",
                      item->call[0] ? item->call : "-",
+                     b_disp[0] ? b_disp : "-",
                      f_disp[0] ? f_disp : "-",
-                     item->band[0] ? item->band : "-",
                      item->mode[0] ? item->mode : "-",
                      rst_disp,
                      item->gridsquare[0] ? item->gridsquare : "-",
@@ -2475,12 +2604,12 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
         } else {
             int rem = (COLS - 2) - 54;
             if (rem < 3) rem = 3;
-            mvprintw(r, 2, "%-10.10s %-5.5s %-9.9s %8.8s %-4.4s %-4.4s %-7.7s %-.*s",
+            mvprintw(r, 2, "%-10.10s %-5.5s %-9.9s %5.5s %8.8s %-4.4s %-7.7s %-.*s",
                      d_disp[0] ? d_disp : "-",
                      t_disp[0] ? t_disp : "-",
                      item->call[0] ? item->call : "-",
+                     b_disp[0] ? b_disp : "-",
                      f_disp[0] ? f_disp : "-",
-                     item->band[0] ? item->band : "-",
                      item->mode[0] ? item->mode : "-",
                      rst_disp,
                      rem,
@@ -2526,7 +2655,7 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(7,  4, "Enter på Band     : Aktivera bandval (byt med pilar, Enter bekräftar)");
         mvprintw(8,  4, "F1 / Esc          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
         mvprintw(9,  4, "F2 / Enter        : Logga QSO direkt med ifyllda uppgifter");
-        mvprintw(10, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
+        mvprintw(10, 4, "F3 / Ctrl-F       : Sök/filtrera (Signal, Namn, QTH, Lokator)");
         mvprintw(11, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
         mvprintw(12, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
         mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
@@ -2560,20 +2689,15 @@ static void run_help_modal(const StationSettings *st) {
     }
 }
 
-/* Rensa hela loggboken i minnet och på disk (qsolog.adi skrivs över med tom ADIF-header) */
+/* Rensa hela loggboken i minnet och på disk (qsolog.adi skrivs över med tom ADIF 3.1.8-header) */
 static int clear_log_book(QSOList *log_list, const StationSettings *st) {
+    (void)st;
     if (log_list != NULL) {
         log_list->count = 0;
     }
     FILE *fp = fopen(LOG_FILE, "w");
     if (fp == NULL) return -1;
-    fprintf(fp, "ADIF Log skapad av qsolog\n");
-    fprintf(fp, "<ADIF_VER:5>3.1.4\n");
-    fprintf(fp, "<PROGRAMID:6>qsolog\n");
-    if (st != NULL && st->call[0] != '\0') {
-        fprintf(fp, "<STATION_CALLSIGN:%zu>%s\n", strlen(st->call), st->call);
-    }
-    fprintf(fp, "<EOH>\n\n");
+    write_adif_header(fp);
     fclose(fp);
     return 0;
 }
@@ -2835,15 +2959,22 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
     }
 }
 
-/* F3: Sök/filtrera på anropssignal i Loggrader */
+/* F3: Sök/filtrera i Loggrader (Signal, Namn, QTH, Lokator) */
 static void run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz) {
     int cpos = utf8_display_width(search_filter);
     while (1) {
-        int cur_y = LINES - 1, cur_x = 42;
+        int cur_y = LINES - 1, cur_x = 35;
         draw_top_bar(st);
         mvhline(LINES - 1, 0, ' ', COLS);
-        draw_field_aligned(LINES - 1, 40, "Sök signal (Enter=Klar, Tom=Visa alla)",
-                           search_filter, 14, 1, cpos, &cur_y, &cur_x);
+        const char *prompt_lbl = (COLS >= 80) ? "Sök (Signal/Namn/QTH/Lokator)" : "Sök";
+        int colon_x = (COLS >= 80) ? 33 : 6;
+        draw_field_aligned(LINES - 1, colon_x, prompt_lbl,
+                           search_filter, 18, 1, cpos, &cur_y, &cur_x);
+        if (COLS >= 75) {
+            attron(COLOR_PAIR(CP_FKEY_LABEL));
+            mvprintw(LINES - 1, colon_x + 22, "[Enter=Klar, Tom=Alla]");
+            attroff(COLOR_PAIR(CP_FKEY_LABEL));
+        }
         move(cur_y, cur_x);
         refresh();
 
@@ -2861,8 +2992,7 @@ static void run_search_bar(const StationSettings *st, char *search_filter, size_
         } else if (ch == KEY_DC) {
             utf8_delete_at(search_filter, cpos);
         } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
-            char c = (char)toupper((unsigned char)ch);
-            utf8_insert_byte_at(search_filter, filter_sz, &cpos, c);
+            utf8_insert_byte_at(search_filter, filter_sz, &cpos, (char)ch);
         }
     }
 }
@@ -3116,7 +3246,7 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
         }
     }
     if (qso->band[0] == '\0') {
-        copy_str(qso->band, sizeof(qso->band), "20m");
+        copy_str(qso->band, sizeof(qso->band), "20 m");
     } else if (find_band_index(qso->band) >= 0) {
         copy_str(qso->band, sizeof(qso->band), BAND_OPTIONS[find_band_index(qso->band)]);
     }
