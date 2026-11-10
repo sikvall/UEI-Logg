@@ -49,9 +49,9 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman */
+/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom och Retro Ambra) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 6
+#define THEME_COUNT 8
 
 /* Fokusläge (F4 växlar mellan inmatning och loggrader) */
 typedef enum {
@@ -107,7 +107,7 @@ typedef struct {
     char time_utc[16];   /* ADIF: TIME_ON    - Tid UTC (HH:MM) */
     char gridsquare[16]; /* ADIF: GRIDSQUARE - Lokator */
     char freq[32];       /* ADIF: FREQ       - Frekvens (MHz) */
-    char band[16];       /* ADIF: BAND       - Band (160m..2m) */
+    char band[16];       /* ADIF: BAND       - Band (160m..23cm) */
     char mode[16];       /* ADIF: MODE       - Trafiksätt (t.ex. SSB, CW) */
     char rst_sent[16];   /* ADIF: RST_SENT   - RST Sänt */
     char rst_rcvd[16];   /* ADIF: RST_RCVD   - RST Mott. */
@@ -125,41 +125,5 @@ typedef struct {
     size_t count;
     size_t capacity;
 } QSOList;
-
-/* Delade sträng- och UTF-8-funktioner */
-void copy_str(char *dest, size_t dest_size, const char *src);
-void trim_newline(char *str);
-void trim_str(char *str);
-void to_upper_str(char *str);
-int utf8_display_width(const char *str);
-size_t utf8_char_to_byte(const char *str, int char_pos);
-void utf8_backspace_at(char *str, int *char_pos);
-void utf8_delete_at(char *str, int char_pos);
-void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch);
-int utf8_contains_ci(const char *haystack, const char *needle);
-const char *get_path_basename(const char *path);
-
-/* Frekvens & Band */
-double parse_and_normalize_freq(const char *freq_str, char *norm_out, size_t out_sz);
-const char *guess_band_from_freq(const char *freq_str);
-void resolve_band_from_freq(const char *freq_str, char *band_out, size_t out_sz);
-int find_band_index(const char *band_str);
-void format_band_display(const char *in, char *out, size_t out_sz);
-
-/* Datum & Tid */
-void format_date_yyyy_mm_dd(const char *raw, char *out, size_t out_sz);
-void format_time_hh_mm(const char *raw, char *out, size_t out_sz);
-int parse_tz_offset_seconds(const char *tz_str, long *offset_sec_out);
-void get_utc_strings(char *date_buf, size_t date_sz,
-                     char *time_buf, size_t time_sz,
-                     char *top_buf, size_t top_sz);
-
-/* Inställningar & ADIF I/O */
-void load_station_settings(const char *filename, StationSettings *st);
-int save_station_settings(const char *filename, const StationSettings *st);
-int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st);
-int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode);
-int clear_log_book(QSOList *log_list, const StationSettings *st);
-void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new);
 
 #endif /* QSOLOG_H */

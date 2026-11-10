@@ -4,6 +4,11 @@
 #include "qsolog.h"
 #include <ncurses.h>
 
+/**
+ * @file tui.h
+ * @brief Terminal User Interface (TUI) med ncurses, färgscheman, komponenter och hjälpskärmar.
+ */
+
 /* Färgpar för ncurses TUI */
 enum {
     CP_MAIN_BG = 1,
@@ -31,7 +36,12 @@ enum {
     CP_FLAG_NEW_SEL,
     CP_FLAG_HANDLED_SEL,
     CP_FLAG_NEW_MRK,
-    CP_FLAG_HANDLED_MRK
+    CP_FLAG_HANDLED_MRK,
+    CP_SW_NORMAL,
+    CP_SW_OK,      /* Grön (optimalt / lugnt) */
+    CP_SW_WARN,    /* Gul (förhöjt / måttligt) */
+    CP_SW_BAD,     /* Röd (stört / hög dämpning) */
+    CP_SW_SEVERE   /* Magenta / Stark storm */
 };
 
 /* TUI-livscykel */
@@ -41,7 +51,7 @@ void tui_cleanup(void);
 /* Färgscheman */
 void apply_color_theme(int theme_idx);
 
-/* Ritytor och fält */
+/* Ritytor och komponenter */
 int get_avail_log_rows(void);
 int build_filtered_indices(const QSOList *log_list, const char *search_filter,
                            int *indices_out, int max_out);
@@ -55,6 +65,7 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int *cur_y, int *cur_x);
 void draw_band_popup_list(int row, const char *current_band, int band_selecting);
 void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter);
+void draw_space_weather_box(int top_y, int width);
 void draw_main_screen(const StationSettings *st, const QSO *qso,
                       FocusMode focus_mode, int active_field, int band_selecting,
                       int field_cursor_pos, int time_frozen, int editing_index,
@@ -63,14 +74,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       const char *qrb_str,
                       int *cur_y, int *cur_x);
 
-/* Modala dialoger & hjälpskärmar */
+/* Hjälpskärm och sökruta */
 void run_help_modal(const StationSettings *st);
-int run_file_dialog(const char *title, const char *start_dir, const char *ext_filter,
-                    char *selected_path, size_t max_path_len,
-                    int is_save_mode, const char *default_filename);
-void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
-                        QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
-                        char *status_msg, size_t status_sz);
 void run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz);
 
 /* Navigering och fälthantering */
