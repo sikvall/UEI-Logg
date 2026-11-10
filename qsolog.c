@@ -16,7 +16,7 @@
 #define MIN_COLS 60
 #define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 9
+#define STATION_FIELD_COUNT 10
 
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
 static const char * const BAND_OPTIONS[] = {
@@ -2128,8 +2128,27 @@ static void run_help_modal(const StationSettings *st) {
     }
 }
 
-/* F12: Inställningssida med ':'-linjerade fält, färgscheman, SM Callbook och Auto RST 59/59 */
+/* Rensa hela loggboken i minnet och på disk (qsolog.adi skrivs över med tom ADIF-header) */
+static int clear_log_book(QSOList *log_list, const StationSettings *st) {
+    if (log_list != NULL) {
+        log_list->count = 0;
+    }
+    FILE *fp = fopen(LOG_FILE, "w");
+    if (fp == NULL) return -1;
+    fprintf(fp, "ADIF Log skapad av qsolog\n");
+    fprintf(fp, "<ADIF_VER:5>3.1.4\n");
+    fprintf(fp, "<PROGRAMID:6>qsolog\n");
+    if (st != NULL && st->call[0] != '\0') {
+        fprintf(fp, "<STATION_CALLSIGN:%zu>%s\n", strlen(st->call), st->call);
+    }
+    fprintf(fp, "<EOH>\n\n");
+    fclose(fp);
+    return 0;
+}
+
+/* F12: Inställningssida med ':'-linjerade fält, färgscheman, SM Callbook, Auto RST och Töm loggbok */
 static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
+                               QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
                                char *status_msg, size_t status_sz) {
     StationSettings edit = *st;
     int active = 0;
@@ -2152,51 +2171,56 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             if (fw < 12) fw = 12;
 
             draw_field_aligned(3,  colon_col, "Signal",        edit.call,       fw, active == 0, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(5,  colon_col, "Namn",          edit.name,       fw, active == 1, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(7,  colon_col, "QTH",           edit.qth,        fw, active == 2, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(9,  colon_col, "Lokator",       edit.gridsquare, fw, active == 3, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(11, colon_col, "Lokal tidszon", edit.timezone,   fw, active == 4, cursor_pos, &cur_y, &cur_x);
+            draw_field_aligned(4,  colon_col, "Namn",          edit.name,       fw, active == 1, cursor_pos, &cur_y, &cur_x);
+            draw_field_aligned(5,  colon_col, "QTH",           edit.qth,        fw, active == 2, cursor_pos, &cur_y, &cur_x);
+            draw_field_aligned(6,  colon_col, "Lokator",       edit.gridsquare, fw, active == 3, cursor_pos, &cur_y, &cur_x);
+            draw_field_aligned(7,  colon_col, "Lokal tidszon", edit.timezone,   fw, active == 4, cursor_pos, &cur_y, &cur_x);
+
+            int r_theme = 8;
+            int r_smcb  = 9;
+            int r_rst   = 10;
+            int r_flt   = 11;
+            int r_clear = 12;
 
             /* Fält 5: Färgschema */
             const char *lbl_theme = "Färgschema";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(13, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
+            mvprintw(r_theme, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
             int fcol = colon_col + 2;
             if (active == 5) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(13, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
+                mvprintw(r_theme, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = 13;
+                cur_y = r_theme;
                 cur_x = fcol + 2;
             } else {
                 attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(13, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
+                mvprintw(r_theme, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
             /* Fält 6: SM Callbook toggle (Default Avstängd) */
             const char *lbl_smcb = "SM Callbook (ssa.se)";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(15, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
+            mvprintw(r_smcb, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
             const char *smcb_txt = edit.smcb_enabled ? "På (Slå upp SA-SM, 7S, 8S)" : "Av";
             if (active == 6) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(15, fcol, "< %-28s >", smcb_txt);
+                mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = 15;
+                cur_y = r_smcb;
                 cur_x = fcol + 2;
             } else {
                 attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(15, fcol, "< %-28s >", smcb_txt);
+                mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
             /* Fält 7: Automatisk RST 59/59 vid nytt QSO */
-            int r_rst = (LINES >= 22) ? 17 : 16;
             const char *lbl_rst = "Auto RST 59/59";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_rst, colon_col - utf8_display_width(lbl_rst), "%s:", lbl_rst);
@@ -2216,7 +2240,6 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
 
             /* Fält 8: Filtrera loggrader efter anropssignal */
-            int r_flt = (LINES >= 23) ? 19 : ((LINES >= 22) ? 18 : 17);
             const char *lbl_flt = "Filtrera loggrader";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_flt, colon_col - utf8_display_width(lbl_flt), "%s:", lbl_flt);
@@ -2235,12 +2258,26 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            if (LINES >= 24) {
-                mvprintw(21, 3, "Tab / Pil Upp/Ned byter fält. Vänster/Höger rör sig i fält eller ändrar val.");
-            } else if (LINES >= 22) {
-                mvprintw(20, 3, "Tab / Pil Upp/Ned byter fält. Vänster/Höger rör sig i fält eller ändrar val.");
-            } else if (LINES >= 20) {
-                mvprintw(18, 3, "Tab / Pil Upp/Ned byter fält. Vänster/Höger rör sig i fält eller ändrar val.");
+            /* Fält 9: Töm loggbok och börja på nytt */
+            const char *lbl_clear = "Töm loggbok";
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+            if (active == 9) {
+                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+                mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
+                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+                cur_y = r_clear;
+                cur_x = fcol + 2;
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+                mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+            }
+
+            if (LINES >= 17) {
+                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. Vänster/Höger ändrar val. Enter = Spara/Utför. Esc = Avbryt.");
             }
 
             draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
@@ -2255,6 +2292,45 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             apply_color_theme(st->theme);
             copy_str(status_msg, status_sz, "Inställningar stängda.");
             return;
+        } else if (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+            /* Bekräftelseruta för att tömma loggboken */
+            int confirm = 0;
+            while (1) {
+                int box_h = 7, box_w = 46;
+                int by = (LINES - box_h) / 2;
+                int bx = (COLS - box_w) / 2;
+                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+                for (int r = 0; r < box_h; ++r) {
+                    mvhline(by + r, bx, ' ', box_w);
+                }
+                mvprintw(by + 1, bx + 2, "VARNING: Tömma hela loggboken?");
+                mvprintw(by + 2, bx + 2, "Alla QSO kommer att raderas permanent!");
+                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+
+                attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+                mvprintw(by + 4, bx + 4, "[J] Ja, radera allt    [N/Esc] Avbryt");
+                attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+                refresh();
+
+                int cch = getch();
+                if (cch == 'j' || cch == 'J') {
+                    confirm = 1;
+                    break;
+                } else if (cch == 'n' || cch == 'N' || cch == 27 || cch == KEY_F(12)) {
+                    confirm = 0;
+                    break;
+                }
+            }
+            if (confirm) {
+                clear_log_book(log_list, st);
+                if (selected_log_pos) *selected_log_pos = 0;
+                if (log_scroll_offset) *log_scroll_offset = 0;
+                apply_color_theme(st->theme);
+                copy_str(status_msg, status_sz, "Loggboken har tömts!");
+                return;
+            } else {
+                apply_color_theme(st->theme);
+            }
         } else if (ch == KEY_F(2) || ch == 19 || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
             to_upper_str(edit.call);
             to_upper_str(edit.gridsquare);
@@ -2674,7 +2750,9 @@ int main(void) {
             continue;
         } else if (ch == KEY_F(12)) { /* F12: Ändra inställningar */
             band_selecting = 0;
-            run_settings_modal(&station, &current_qso, editing_index, status_msg, sizeof(status_msg));
+            run_settings_modal(&station, &current_qso, editing_index, &log_list,
+                               &selected_log_pos, &log_scroll_offset,
+                               status_msg, sizeof(status_msg));
             continue;
         } else if (ch == KEY_F(3) || ch == 6) { /* F3 eller Ctrl+F: Sök */
             band_selecting = 0;
