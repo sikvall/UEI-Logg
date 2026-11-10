@@ -39,6 +39,13 @@
 #define QSO_FIELD_COUNT 13
 #define STATION_FIELD_COUNT 12
 
+#ifndef KEY_CTRL_HOME
+#define KEY_CTRL_HOME 2001
+#endif
+#ifndef KEY_CTRL_END
+#define KEY_CTRL_END 2002
+#endif
+
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
 static const char * const BAND_OPTIONS[] = {
     "160 m", "80 m", "60 m", "40 m", "30 m", "20 m",
@@ -2654,6 +2661,15 @@ static int build_filtered_indices(const QSOList *log_list, const char *search_fi
     return count;
 }
 
+/* Returnera antalet tillgängliga datarader i loggradsfönstret */
+static int get_avail_log_rows(void) {
+    int log_top = 8;
+    int log_height = (LINES - 1) - log_top;
+    int first_data_row = log_top + 2;
+    int avail = (log_top + log_height - 1) - first_data_row;
+    return (avail > 0) ? avail : 1;
+}
+
 /* Rita hela huvudskärmen med fälten logiskt linjerade på ':' */
 static void draw_main_screen(const StationSettings *st, const QSO *qso,
                              FocusMode focus_mode, int active_field, int band_selecting,
@@ -2820,8 +2836,7 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     int hdr_row = log_top + 1;
     int first_data_row = log_top + 2;
-    int avail_log_rows = (log_top + log_height - 1) - first_data_row;
-    if (avail_log_rows < 0) avail_log_rows = 0;
+    int avail_log_rows = get_avail_log_rows();
 
     /* Band och Frekv i loggraderna: Band är högerställt (%5s) och Frekv (%8s) med 3 decimaler */
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
@@ -2992,18 +3007,22 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(12, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
         mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
         mvprintw(14, 4, "                    F5 = Markera som hanterad (✓), F6 = Markera som ny (✗)");
-        mvprintw(15, 4, "F9                : Visa denna hjälpsida");
-        mvprintw(16, 4, "F10 / Ctrl-Q      : Avsluta programmet");
-        mvprintw(17, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
+        mvprintw(15, 4, "                    Home/End = Första/sista rad på sidan, PgUp/PgDn = Bläddra sida");
+        mvprintw(16, 4, "                    Ctrl-Home / Ctrl-End = Översta / sista raden i hela loggen");
+        mvprintw(17, 4, "Inmatningsfält    : Home = Anropssignal, End = Not (Kommentarsfältet)");
+        mvprintw(18, 4, "F9                : Visa denna hjälpsida");
+        mvprintw(19, 4, "F10 / Ctrl-Q      : Avsluta programmet");
+        mvprintw(20, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
 
-        if (LINES >= 23) {
+        if (LINES >= 26) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-            mvprintw(18, 3, "Smarta funktioner:");
+            mvprintw(21, 3, "Smarta funktioner:");
             attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
             attron(COLOR_PAIR(CP_LABEL));
-            mvprintw(19, 4, "- Frekvens utanför amatörband ger beräknat metervärde (300/f avrundat).");
-            mvprintw(20, 4, "- DXCC identifieras automatiskt från dxcc.txt när du skriver anropssignal.");
-            mvprintw(21, 4, "- Svenska signaler (SA-SM, 7S, 8S) kan slås upp i SM Callbook (slås på i F12).");
+            mvprintw(22, 4, "- Frekvens utanför amatörband ger beräknat metervärde (300/f avrundat).");
+            mvprintw(23, 4, "- DXCC identifieras automatiskt från dxcc.txt när du skriver anropssignal.");
+            mvprintw(24, 4, "- Svenska signaler (SA-SM, 7S, 8S) kan slås upp i SM Callbook (slås på i F12).");
+            mvprintw(25, 4, "- Fältet 'Not' lagras som standard ADIF-kommentar (COMMENT).");
         }
         attroff(COLOR_PAIR(CP_LABEL));
 
@@ -4427,6 +4446,22 @@ int main(void) {
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
+    define_key("\033[1;5H", KEY_CTRL_HOME);
+    define_key("\033[1;5F", KEY_CTRL_END);
+    define_key("\033[1;6H", KEY_CTRL_HOME);
+    define_key("\033[1;6F", KEY_CTRL_END);
+    define_key("\033[7^",   KEY_CTRL_HOME);
+    define_key("\033[8^",   KEY_CTRL_END);
+    define_key("\033[7;5~", KEY_CTRL_HOME);
+    define_key("\033[8;5~", KEY_CTRL_END);
+    define_key("\033[H",    KEY_HOME);
+    define_key("\033[F",    KEY_END);
+    define_key("\033OH",    KEY_HOME);
+    define_key("\033OF",    KEY_END);
+    define_key("\033[1~",   KEY_HOME);
+    define_key("\033[4~",   KEY_END);
+    define_key("\033[5~",   KEY_PPAGE);
+    define_key("\033[6~",   KEY_NPAGE);
     timeout(250);
     apply_color_theme(station.theme);
 
@@ -4572,6 +4607,52 @@ int main(void) {
                 if (selected_log_pos > 0) selected_log_pos--;
             } else if (ch == KEY_DOWN || ch == KEY_RIGHT) {
                 if (selected_log_pos + 1 < f_cnt) selected_log_pos++;
+            } else if (ch == KEY_CTRL_HOME) {
+                /* Ctrl-Home: översta raden i hela loggen */
+                selected_log_pos = 0;
+                log_scroll_offset = 0;
+            } else if (ch == KEY_CTRL_END) {
+                /* Ctrl-End: sista raden i hela loggen */
+                if (f_cnt > 0) {
+                    selected_log_pos = f_cnt - 1;
+                    int avail = get_avail_log_rows();
+                    log_scroll_offset = f_cnt - avail;
+                    if (log_scroll_offset < 0) log_scroll_offset = 0;
+                }
+            } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1) {
+                /* Home: första raden på den sida vi ser */
+                if (f_cnt > 0) {
+                    selected_log_pos = log_scroll_offset;
+                    if (selected_log_pos >= f_cnt) selected_log_pos = f_cnt - 1;
+                    if (selected_log_pos < 0) selected_log_pos = 0;
+                }
+            } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1) {
+                /* End: sista raden på den sida vi ser */
+                if (f_cnt > 0) {
+                    int avail = get_avail_log_rows();
+                    int last_vis = log_scroll_offset + avail - 1;
+                    if (last_vis >= f_cnt) last_vis = f_cnt - 1;
+                    if (last_vis < 0) last_vis = 0;
+                    selected_log_pos = last_vis;
+                }
+            } else if (ch == KEY_PPAGE) {
+                /* PgUp: bläddra en sida uppåt i taget */
+                int avail = get_avail_log_rows();
+                selected_log_pos -= avail;
+                if (selected_log_pos < 0) selected_log_pos = 0;
+                log_scroll_offset -= avail;
+                if (log_scroll_offset < 0) log_scroll_offset = 0;
+            } else if (ch == KEY_NPAGE) {
+                /* PgDown: bläddra en sida nedåt i taget */
+                int avail = get_avail_log_rows();
+                selected_log_pos += avail;
+                if (selected_log_pos >= f_cnt) selected_log_pos = f_cnt > 0 ? f_cnt - 1 : 0;
+                if (selected_log_pos < 0) selected_log_pos = 0;
+                log_scroll_offset += avail;
+                if (log_scroll_offset + avail > f_cnt) {
+                    log_scroll_offset = f_cnt - avail;
+                    if (log_scroll_offset < 0) log_scroll_offset = 0;
+                }
             } else if (ch == KEY_IC || ch == 331) {
                 /* INS: Markera aktuell rad och flytta till nästa rad */
                 if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
@@ -4784,6 +4865,44 @@ int main(void) {
             }
             active_field = step_field_vertical(active_field, -1, preferred_col);
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+        } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1 || ch == KEY_CTRL_HOME) {
+            /* Home i inmatningsfältet: gå till anropssignal (FLD_CALL) */
+            band_selecting = 0;
+            apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
+                                          last_smcb_call, sizeof(last_smcb_call),
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
+            active_field = FLD_CALL;
+            preferred_col = 0;
+            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+        } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1 || ch == KEY_CTRL_END) {
+            /* End i inmatningsfältet: gå till Not / Kommentarsfältet (FLD_COMM) */
+            band_selecting = 0;
+            apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
+                                          last_smcb_call, sizeof(last_smcb_call),
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
+            active_field = FLD_COMM;
+            preferred_col = 0;
+            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+        } else if (ch == KEY_PPAGE) {
+            /* PgUp i inmatningsfältet: bläddra loggraderna uppåt */
+            int avail = get_avail_log_rows();
+            log_scroll_offset -= avail;
+            if (log_scroll_offset < 0) log_scroll_offset = 0;
+            selected_log_pos -= avail;
+            if (selected_log_pos < 0) selected_log_pos = 0;
+        } else if (ch == KEY_NPAGE) {
+            /* PgDown i inmatningsfältet: bläddra loggraderna nedåt */
+            int max_f = (int)log_list.count;
+            int avail = get_avail_log_rows();
+            log_scroll_offset += avail;
+            if (log_scroll_offset + avail > max_f) {
+                log_scroll_offset = max_f - avail;
+                if (log_scroll_offset < 0) log_scroll_offset = 0;
+            }
+            selected_log_pos += avail;
+            if (selected_log_pos >= max_f) selected_log_pos = max_f > 0 ? max_f - 1 : 0;
         } else if (active_field != FLD_BAND && (ch == KEY_BACKSPACE || ch == 127 || ch == '\b')) {
             size_t max_len = 0;
             char *field_ptr = get_qso_field_ptr(&current_qso, active_field, &max_len);
