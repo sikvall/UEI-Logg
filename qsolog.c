@@ -1853,11 +1853,21 @@ static int import_qsos_from_adif(const char *filename, QSOList *list, const Stat
     return imported_count;
 }
 
+/* Exportläge för ADIF-export */
+enum {
+    EXPORT_MODE_ALL = 0,
+    EXPORT_MODE_MARKED = 1,
+    EXPORT_MODE_ONLY_NEW = 2
+};
+
 /* Exportera QSO till en extern ADIF-fil.
- * Om only_marked är 1 exporteras endast markerade poster, annars alla i listan.
+ * export_mode:
+ *   EXPORT_MODE_ALL (0)      = alla QSO i listan
+ *   EXPORT_MODE_MARKED (1)   = endast markerade poster (marked == 1)
+ *   EXPORT_MODE_ONLY_NEW (2) = endast nya poster (handled == 0)
  * Rader som exporteras markeras som hanterade (handled = 1).
  * Returnerar antal exporterade QSO, eller -1 vid filfel. */
-static int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int only_marked) {
+static int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode) {
     if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) return -1;
@@ -1866,7 +1876,16 @@ static int export_qsos_adif(const char *filename, QSOList *list, const StationSe
 
     int count = 0;
     for (size_t i = 0; i < list->count; ++i) {
-        if (!only_marked || list->items[i].marked) {
+        int should_export = 0;
+        if (export_mode == EXPORT_MODE_MARKED) {
+            should_export = list->items[i].marked;
+        } else if (export_mode == EXPORT_MODE_ONLY_NEW) {
+            should_export = (list->items[i].handled == 0);
+        } else {
+            should_export = 1;
+        }
+
+        if (should_export) {
             list->items[i].handled = 1;
             write_qso_record_adif(fp, &list->items[i], st);
             count++;
@@ -3541,6 +3560,56 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
     }
 }
 
+/* Bygg standardfilnamn för export:
+ * Egen stationssignal_datum_tid där datum är YYMMDD och tid är HHMMSS.
+ * Om endast nya loggrader exporteras läggs _nya till på slutet.
+ * Filnamnet avslutas alltid med .adi. */
+static void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
+    if (out == NULL || out_sz == 0) return;
+
+    char clean_call[32];
+    if (st != NULL && st->call[0] != '\0') {
+        copy_str(clean_call, sizeof(clean_call), st->call);
+    } else {
+        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
+    }
+    to_upper_str(clean_call);
+    trim_str(clean_call);
+    if (clean_call[0] == '\0') {
+        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
+    }
+
+    /* Rensa tecken som inte bör ingå i filnamn (t.ex. snedstreck vid portabel-suffix) */
+    for (char *c = clean_call; *c; ++c) {
+        if (!isalnum((unsigned char)*c) && *c != '-') {
+            *c = '-';
+        }
+    }
+
+    time_t now = time(NULL);
+    struct tm exp_tm;
+    long offset_sec = 0;
+    if (st != NULL && parse_tz_offset_seconds(st->timezone, &offset_sec)) {
+        time_t adj = now + offset_sec;
+        struct tm *l = gmtime(&adj);
+        if (l != NULL) exp_tm = *l;
+        else exp_tm = *gmtime(&now);
+    } else {
+        struct tm *l = localtime(&now);
+        if (l != NULL) exp_tm = *l;
+        else exp_tm = *gmtime(&now);
+    }
+
+    char dt_buf[32];
+    strftime(dt_buf, sizeof(dt_buf), "%y%m%d_%H%M%S", &exp_tm);
+
+    if (only_new) {
+        snprintf(out, out_sz, "%s_%s_nya.adi", clean_call, dt_buf);
+    } else {
+        snprintf(out, out_sz, "%s_%s.adi", clean_call, dt_buf);
+    }
+}
+
 /* F12: Inställningssida med ':'-linjerade fält, färgscheman, SM Callbook, Auto RST och Töm loggbok */
 static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                                QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
@@ -3686,11 +3755,23 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             mvprintw(r_export, colon_col - utf8_display_width(lbl_export), "%s:", lbl_export);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            char export_hint[72];
+            char export_hint[128];
             if (marked_count > 0) {
                 snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera %d markerade QSO ]", marked_count);
+            } else if (log_list != NULL && log_list->count > 0) {
+                int new_count = 0;
+                for (size_t i = 0; i < log_list->count; ++i) {
+                    if (log_list->items[i].handled == 0) new_count++;
+                }
+                if (new_count > 0 && new_count < (int)log_list->count) {
+                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera (%d nya / %zu totalt) ]", new_count, log_list->count);
+                } else if (new_count > 0) {
+                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu nya QSO) ]", log_list->count);
+                } else {
+                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu QSO) ]", log_list->count);
+                }
             } else {
-                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu QSO) ]", log_list ? log_list->count : 0);
+                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (0 QSO) ]");
             }
 
             if (active == 10) {
@@ -3766,25 +3847,106 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             apply_color_theme(edit.theme);
             continue;
         } else if (ch == KEY_F(6) || (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
-            int m_cnt = 0;
-            if (log_list != NULL) {
-                for (size_t i = 0; i < log_list->count; ++i) {
-                    if (log_list->items[i].marked) m_cnt++;
-                }
+            if (log_list == NULL || log_list->count == 0) {
+                copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
+                apply_color_theme(edit.theme);
+                continue;
             }
-            const char *def_name = (m_cnt > 0) ? "export_marked.adi" : "export.adi";
-            const char *diag_title = (m_cnt > 0) ? "Exportera markerade QSO till ADIF" : "Exportera hela loggen till ADIF";
+
+            int m_cnt = 0;
+            int m_new_cnt = 0;
+            int new_cnt = 0;
+            int handled_cnt = 0;
+            for (size_t i = 0; i < log_list->count; ++i) {
+                if (log_list->items[i].marked) {
+                    m_cnt++;
+                    if (log_list->items[i].handled == 0) m_new_cnt++;
+                }
+                if (log_list->items[i].handled == 0) new_cnt++;
+                else handled_cnt++;
+            }
+
+            int exp_mode = EXPORT_MODE_ALL;
+            int only_new = 0;
+            char diag_title[128];
+
+            if (m_cnt > 0) {
+                exp_mode = EXPORT_MODE_MARKED;
+                only_new = (m_new_cnt == m_cnt);
+                snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till ADIF", m_cnt);
+            } else if (new_cnt > 0 && handled_cnt > 0) {
+                /* Både nya och hanterade finns i loggen – låt användaren välja */
+                int choice = 0; /* 0 = avbröt, 1 = endast nya, 2 = alla */
+                while (1) {
+                    int box_h = 8, box_w = 48;
+                    int by = (LINES - box_h) / 2;
+                    int bx = (COLS - box_w) / 2;
+                    attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
+                    for (int r = 0; r < box_h; ++r) {
+                        mvhline(by + r, bx, ' ', box_w);
+                    }
+                    draw_box_with_title(by, bx, box_h, box_w, "Exportera till ADIF", 1);
+                    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+                    mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
+                    mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
+                    mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
+                    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+                    refresh();
+
+                    int k = getch();
+                    if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
+                        choice = 1;
+                        break;
+                    } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
+                        choice = 2;
+                        break;
+                    } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
+                        choice = 0;
+                        break;
+                    }
+                }
+                if (choice == 0) {
+                    copy_str(status_msg, status_sz, "ADIF-export avbröts.");
+                    apply_color_theme(edit.theme);
+                    continue;
+                }
+                if (choice == 1) {
+                    exp_mode = EXPORT_MODE_ONLY_NEW;
+                    only_new = 1;
+                    snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till ADIF", new_cnt);
+                } else {
+                    exp_mode = EXPORT_MODE_ALL;
+                    only_new = 0;
+                    snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
+                }
+            } else if (new_cnt > 0) {
+                /* Alla QSO i loggen är nya */
+                exp_mode = EXPORT_MODE_ALL;
+                only_new = 1;
+                snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till ADIF", log_list->count);
+            } else {
+                /* Alla QSO i loggen är redan hanterade */
+                exp_mode = EXPORT_MODE_ALL;
+                only_new = 0;
+                snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
+            }
+
+            char def_name[PATH_MAX];
+            build_default_export_filename(def_name, sizeof(def_name), &edit, only_new);
+
             char chosen_path[PATH_MAX] = {0};
             int chosen = run_file_dialog(diag_title, ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 1, def_name);
             if (chosen && chosen_path[0] != '\0') {
-                int exported = export_qsos_adif(chosen_path, log_list, &edit, (m_cnt > 0));
+                int exported = export_qsos_adif(chosen_path, log_list, &edit, exp_mode);
                 if (exported < 0) {
                     snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
                 } else {
-                    if (editing_index >= 0 && log_list != NULL && (size_t)editing_index < log_list->count) {
+                    if (editing_index >= 0 && (size_t)editing_index < log_list->count) {
                         qso->handled = log_list->items[editing_index].handled;
                     }
-                    if (m_cnt > 0) {
+                    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
+                        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(chosen_path));
+                    } else if (exp_mode == EXPORT_MODE_MARKED) {
                         snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(chosen_path));
                     } else {
                         snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(chosen_path));
