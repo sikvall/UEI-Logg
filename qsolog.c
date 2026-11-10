@@ -42,7 +42,7 @@ static const char * const THEME_NAMES[] = {
 };
 #define THEME_COUNT ((int)(sizeof(THEME_NAMES) / sizeof(THEME_NAMES[0])))
 
-/* Fokusläge (Ctrl-O växlar mellan inmatning och loggrader) */
+/* Fokusläge (F4 växlar mellan inmatning och loggrader) */
 typedef enum {
     FOCUS_INPUT = 0,
     FOCUS_LOG   = 1
@@ -2138,7 +2138,7 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
     } btns_main[] = {
         {"F1/Esc", "Nytt"},
         {"Enter",  focus_mode == FOCUS_LOG ? "Redigera" : "Logga"},
-        {"Ctrl-O", focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
+        {"F4",     focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
         {"F3",     (search_filter && search_filter[0]) ? "Sök*" : "Sök"},
         {"Ins",    focus_mode == FOCUS_LOG ? "Märk" : NULL},
         {"F8",     focus_mode == FOCUS_LOG ? "Radera" : NULL},
@@ -2526,7 +2526,7 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(7,  4, "Enter på Band     : Aktivera bandval (byt med pilar, Enter bekräftar)");
         mvprintw(8,  4, "Enter / F2        : Logga QSO direkt med ifyllda uppgifter");
         mvprintw(9,  4, "Esc / F1          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
-        mvprintw(10, 4, "Ctrl-O            : Växla mellan Inmatningsrutan och Loggraderna");
+        mvprintw(10, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
         mvprintw(11, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
         mvprintw(12, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
         mvprintw(13, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
@@ -3269,13 +3269,13 @@ int main(void) {
         idle_ticks_on_qth = 0;
         idle_ticks_on_grid = 0;
 
-        /* Globala funktionstangenter, ESC och Ctrl-O */
+        /* Globala funktionstangenter, ESC och F4 */
         if (ch == KEY_F(10) || ch == 17) { /* F10 eller Ctrl+Q: Avsluta */
             break;
         } else if (ch == KEY_F(9)) { /* F9: Hjälp */
             run_help_modal(&station);
             continue;
-        } else if (ch == 15) { /* Ctrl-O: Växla mellan inmatning och loggrader */
+        } else if (ch == KEY_F(4) || ch == 15) { /* F4 (eller Ctrl-O): Växla mellan inmatning och loggrader */
             band_selecting = 0;
             const char *cur_filter = (search_filter[0] != '\0') ? search_filter :
                                      (station.filter_log && current_qso.call[0] != '\0') ? current_qso.call : NULL;
