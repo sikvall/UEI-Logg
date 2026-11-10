@@ -31,7 +31,7 @@
 #define MIN_COLS 60
 #define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 11
+#define STATION_FIELD_COUNT 12
 
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
 static const char * const BAND_OPTIONS[] = {
@@ -1832,6 +1832,28 @@ static int import_qsos_from_adif(const char *filename, QSOList *list, const Stat
     return imported_count;
 }
 
+/* Exportera QSO till en extern ADIF-fil.
+ * Om only_marked är 1 exporteras endast markerade poster, annars alla i listan.
+ * Returnerar antal exporterade QSO, eller -1 vid filfel. */
+static int export_qsos_adif(const char *filename, const QSOList *list, const StationSettings *st, int only_marked) {
+    if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) return -1;
+
+    write_adif_header(fp);
+
+    int count = 0;
+    for (size_t i = 0; i < list->count; ++i) {
+        if (!only_marked || list->items[i].marked) {
+            write_qso_record_adif(fp, &list->items[i], st);
+            count++;
+        }
+    }
+
+    fclose(fp);
+    return count;
+}
+
 static char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len) {
     switch (idx) {
         case FLD_CALL: *max_len = sizeof(qso->call);       return qso->call;
@@ -2453,7 +2475,8 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
         const char *label;
     } btns_modal[] = {
         {"Enter/F2",  "Spara"},
-        {"F5",        "Importera"},
+        {"F5",        "Import"},
+        {"F6",        "Export"},
         {"Tab/Pilar", "Byt fält"},
         {"Esc",       "Tillbaka"}
     };
@@ -2870,7 +2893,7 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
         mvprintw(14, 4, "F9                : Visa denna hjälpsida");
         mvprintw(15, 4, "F10 / Ctrl-Q      : Avsluta programmet");
-        mvprintw(16, 4, "F12               : Inställningar (Station, Färg, SM Callbook, F5 Importera)");
+        mvprintw(16, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
 
         if (LINES >= 22) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -3042,14 +3065,50 @@ static int load_dir_items(const char *dir_path, int filter_active, const char *e
     return 0;
 }
 
-/* Generisk filväljardialog med ncurses.
+/* Rensa bort inledande och avslutande mellanslag/tabbar */
+static void trim_str(char *str) {
+    if (str == NULL) return;
+    char *start = str;
+    while (*start == ' ' || *start == '\t') start++;
+    if (*start == '\0') {
+        str[0] = '\0';
+        return;
+    }
+    char *end = start + strlen(start) - 1;
+    while (end > start && (*end == ' ' || *end == '\t')) {
+        *end = '\0';
+        end--;
+    }
+    if (start > str) {
+        memmove(str, start, strlen(start) + 1);
+    }
+}
+
+/* Säkerställ att filnamnet har en ändelse. Om ändelse saknas antas .adi */
+static void ensure_adif_extension(char *filename, size_t max_len) {
+    if (filename == NULL || filename[0] == '\0') return;
+    const char *base = get_path_basename(filename);
+    const char *dot = strrchr(base, '.');
+    if (dot == NULL || dot[1] == '\0') {
+        if (dot != NULL && dot[1] == '\0') {
+            strncat(filename, "adi", max_len - strlen(filename) - 1);
+        } else {
+            strncat(filename, ".adi", max_len - strlen(filename) - 1);
+        }
+    }
+}
+
+/* Generisk filväljardialog med ncurses (stöder både öppna/importera och spara/exportera).
  * start_dir: startkatalog (t.ex. "." eller NULL)
  * ext_filter: t.ex. ".adi;.adif"
  * selected_path: buffert som fylls med vald sökväg
  * max_path_len: storlek på selected_path
+ * is_save_mode: 0 för öppna/importera, 1 för spara/exportera (visar filnamnsinmatning)
+ * default_filename: förvalt filnamn vid spara (t.ex. "export.adi")
  * Returnerar 1 om fil valdes, 0 om avbruten med Esc. */
 static int run_file_dialog(const char *title, const char *start_dir, const char *ext_filter,
-                           char *selected_path, size_t max_path_len) {
+                           char *selected_path, size_t max_path_len,
+                           int is_save_mode, const char *default_filename) {
     char current_dir[PATH_MAX];
     if (start_dir != NULL && start_dir[0] != '\0') {
         if (realpath(start_dir, current_dir) == NULL) {
@@ -3071,6 +3130,13 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
     int selected_pos = 0;
     int scroll_offset = 0;
 
+    char fname_buf[PATH_MAX] = {0};
+    if (is_save_mode && default_filename != NULL && default_filename[0] != '\0') {
+        copy_str(fname_buf, sizeof(fname_buf), default_filename);
+    }
+    int fname_cursor_pos = utf8_display_width(fname_buf);
+    int focus_area = is_save_mode ? 0 : 1; /* 0 = Filnamnsfält, 1 = Fillista */
+
     while (1) {
         int box_h = LINES - 4;
         if (box_h > 22) box_h = 22;
@@ -3081,11 +3147,13 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
         int by = (LINES - box_h) / 2;
         int bx = (COLS - box_w) / 2;
 
+        int cur_y = by + 1, cur_x = bx + 2;
+
         for (int r = 0; r < box_h; ++r) {
             mvhline(by + r, bx, ' ', box_w);
         }
         draw_box_with_title(by, bx, box_h, box_w,
-                            (title && title[0]) ? title : "Välj fil", 1);
+                            (title && title[0]) ? title : (is_save_mode ? "Spara fil" : "Välj fil"), 1);
 
         /* Katalograd */
         int max_dir_w = box_w - 14;
@@ -3108,14 +3176,14 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
                  filter_active ? "Visa alla" : "Filtrera");
         attroff(COLOR_PAIR(CP_LABEL));
 
-        /* Separator */
+        /* Övre separator */
         attron(COLOR_PAIR(CP_BORDER));
         mvaddch(by + 3, bx, ACS_LTEE);
         mvhline(by + 3, bx + 1, ACS_HLINE, box_w - 2);
         mvaddch(by + 3, bx + box_w - 1, ACS_RTEE);
         attroff(COLOR_PAIR(CP_BORDER));
 
-        int visible_rows = box_h - 5;
+        int visible_rows = is_save_mode ? (box_h - 7) : (box_h - 5);
         if (visible_rows < 1) visible_rows = 1;
 
         if (selected_pos < scroll_offset) {
@@ -3134,7 +3202,7 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
                 int r = by + 4 + i;
                 if (item_idx >= (int)count) break;
 
-                int is_sel = (item_idx == selected_pos);
+                int is_sel = (item_idx == selected_pos && (focus_area == 1 || !is_save_mode));
                 if (is_sel) {
                     attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
                 } else {
@@ -3156,6 +3224,10 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
 
                 if (is_sel) {
                     attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
+                    if (focus_area == 1 || !is_save_mode) {
+                        cur_y = r;
+                        cur_x = bx + 2;
+                    }
                 } else {
                     attroff(COLOR_PAIR(CP_LOG_ROW));
                 }
@@ -3163,43 +3235,67 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
         }
 
         /* Scrollindikatorer */
+        int last_list_row = is_save_mode ? (by + box_h - 4) : (by + box_h - 2);
         attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
         if (scroll_offset > 0) {
             mvaddch(by + 4, bx + box_w - 2, '^');
         }
         if (scroll_offset + visible_rows < (int)count) {
-            mvaddch(by + box_h - 2, bx + box_w - 2, 'v');
+            mvaddch(last_list_row, bx + box_w - 2, 'v');
         }
         attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+        if (is_save_mode) {
+            /* Undre separator ovanför filnamnsfältet */
+            attron(COLOR_PAIR(CP_BORDER));
+            mvaddch(by + box_h - 3, bx, ACS_LTEE);
+            mvhline(by + box_h - 3, bx + 1, ACS_HLINE, box_w - 2);
+            mvaddch(by + box_h - 3, bx + box_w - 1, ACS_RTEE);
+            attroff(COLOR_PAIR(CP_BORDER));
+
+            /* Filnamnsfält */
+            int r_fname = by + box_h - 2;
+            const char *lbl_fn = "Filnamn:";
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(r_fname, bx + 2, "%s", lbl_fn);
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+            int fn_col = bx + 11;
+            int fn_w = box_w - 13;
+            if (fn_w < 10) fn_w = 10;
+            if (focus_area == 0) {
+                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                mvprintw(r_fname, fn_col, "%-*.*s", fn_w, fn_w, fname_buf);
+                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                cur_y = r_fname;
+                cur_x = fn_col + fname_cursor_pos;
+                if (cur_x >= fn_col + fn_w) cur_x = fn_col + fn_w - 1;
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+                mvprintw(r_fname, fn_col, "%-*.*s", fn_w, fn_w, fname_buf);
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+            }
+        }
 
         /* Nedersta statusrad i popupen */
         attron(COLOR_PAIR(CP_FKEY_LABEL));
         mvhline(by + box_h - 1, bx, ' ', box_w);
-        mvprintw(by + box_h - 1, bx + 2, "[Enter] Välj/Öppna  [F2] Växla filter  [Esc] Avbryt");
+        if (is_save_mode) {
+            mvprintw(by + box_h - 1, bx + 2, "[Enter] Spara  [Tab] Växla  [F2] Filter  [Esc] Avbryt");
+        } else {
+            mvprintw(by + box_h - 1, bx + 2, "[Enter] Välj/Öppna  [F2] Växla filter  [Esc] Avbryt");
+        }
         attroff(COLOR_PAIR(CP_FKEY_LABEL));
 
+        move(cur_y, cur_x);
         refresh();
 
         int ch = getch();
         if (ch == ERR) continue;
 
-        if (ch == 27 || ch == KEY_F(5)) {
+        if (ch == 27 || ch == KEY_F(5) || ch == KEY_F(6)) {
             if (items) free(items);
             return 0;
-        } else if (ch == KEY_UP) {
-            if (selected_pos > 0) selected_pos--;
-        } else if (ch == KEY_DOWN) {
-            if (selected_pos + 1 < (int)count) selected_pos++;
-        } else if (ch == KEY_PPAGE) {
-            selected_pos -= visible_rows;
-            if (selected_pos < 0) selected_pos = 0;
-        } else if (ch == KEY_NPAGE) {
-            selected_pos += visible_rows;
-            if (selected_pos >= (int)count) selected_pos = count > 0 ? (int)count - 1 : 0;
-        } else if (ch == KEY_HOME) {
-            selected_pos = 0;
-        } else if (ch == KEY_END) {
-            selected_pos = count > 0 ? (int)count - 1 : 0;
         } else if (ch == KEY_F(2)) {
             filter_active = !filter_active;
             if (items) free(items);
@@ -3208,51 +3304,155 @@ static int run_file_dialog(const char *title, const char *start_dir, const char 
             load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
             selected_pos = 0;
             scroll_offset = 0;
-        } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
-            /* Gå till föräldrakatalog */
-            char parent_dir[PATH_MAX + 512];
-            snprintf(parent_dir, sizeof(parent_dir), "%s/..", current_dir);
-            char resolved[PATH_MAX];
-            if (realpath(parent_dir, resolved) != NULL) {
-                copy_str(current_dir, sizeof(current_dir), resolved);
-                if (items) free(items);
-                items = NULL;
-                count = 0;
-                load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-                selected_pos = 0;
-                scroll_offset = 0;
-            }
-        } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
-            if (count > 0 && selected_pos < (int)count) {
-                FileDialogItem *sel = &items[selected_pos];
-                if (sel->is_dir) {
-                    char next_dir[PATH_MAX + 512];
-                    if (strcmp(sel->name, "..") == 0) {
-                        snprintf(next_dir, sizeof(next_dir), "%s/..", current_dir);
-                    } else if (strcmp(current_dir, "/") == 0) {
-                        snprintf(next_dir, sizeof(next_dir), "/%s", sel->name);
-                    } else {
-                        snprintf(next_dir, sizeof(next_dir), "%s/%s", current_dir, sel->name);
-                    }
-                    char resolved[PATH_MAX];
-                    if (realpath(next_dir, resolved) != NULL) {
-                        copy_str(current_dir, sizeof(current_dir), resolved);
-                        if (items) free(items);
-                        items = NULL;
-                        count = 0;
-                        load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-                        selected_pos = 0;
-                        scroll_offset = 0;
-                    }
-                } else {
-                    /* Regular file selected */
+            continue;
+        }
+
+        if (is_save_mode && focus_area == 0) {
+            /* Tangenthändelser i Filnamnsfältet */
+            if (ch == '\t' || ch == KEY_DOWN) {
+                focus_area = 1;
+            } else if (ch == KEY_UP) {
+                focus_area = 1;
+            } else if (ch == KEY_LEFT) {
+                if (fname_cursor_pos > 0) fname_cursor_pos--;
+            } else if (ch == KEY_RIGHT) {
+                int max_c = utf8_display_width(fname_buf);
+                if (fname_cursor_pos < max_c) fname_cursor_pos++;
+            } else if (ch == KEY_HOME) {
+                fname_cursor_pos = 0;
+            } else if (ch == KEY_END) {
+                fname_cursor_pos = utf8_display_width(fname_buf);
+            } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+                utf8_backspace_at(fname_buf, &fname_cursor_pos);
+            } else if (ch == KEY_DC) {
+                utf8_delete_at(fname_buf, fname_cursor_pos);
+            } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
+                utf8_insert_byte_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, (char)ch);
+            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+                trim_str(fname_buf);
+                if (fname_buf[0] != '\0') {
+                    ensure_adif_extension(fname_buf, sizeof(fname_buf));
                     if (strcmp(current_dir, "/") == 0) {
-                        snprintf(selected_path, max_path_len, "/%s", sel->name);
+                        snprintf(selected_path, max_path_len, "/%s", fname_buf);
                     } else {
-                        snprintf(selected_path, max_path_len, "%s/%s", current_dir, sel->name);
+                        snprintf(selected_path, max_path_len, "%s/%s", current_dir, fname_buf);
                     }
+
+                    /* Bekräfta om filen redan existerar */
+                    if (access(selected_path, F_OK) == 0) {
+                        int confirm = 0;
+                        while (1) {
+                            int qh = 6, qw = 46;
+                            int qy = (LINES - qh) / 2;
+                            int qx = (COLS - qw) / 2;
+                            attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+                            for (int r = 0; r < qh; ++r) {
+                                mvhline(qy + r, qx, ' ', qw);
+                            }
+                            mvprintw(qy + 1, qx + 2, "Filen finns redan!");
+                            mvprintw(qy + 2, qx + 2, "Vill du skriva över den?");
+                            attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+
+                            attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+                            mvprintw(qy + 4, qx + 4, "[J] Ja, skriv över    [N/Esc] Avbryt");
+                            attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+                            refresh();
+
+                            int cch = getch();
+                            if (cch == 'j' || cch == 'J') {
+                                confirm = 1;
+                                break;
+                            } else if (cch == 'n' || cch == 'N' || cch == 27) {
+                                confirm = 0;
+                                break;
+                            }
+                        }
+                        if (!confirm) {
+                            continue;
+                        }
+                    }
+
                     if (items) free(items);
                     return 1;
+                }
+            }
+        } else {
+            /* Tangenthändelser i Fillistan (och hela fönstret i Open-läge) */
+            if (is_save_mode && (ch == '\t')) {
+                focus_area = 0;
+            } else if (ch == KEY_UP) {
+                if (selected_pos > 0) {
+                    selected_pos--;
+                } else if (is_save_mode) {
+                    focus_area = 0;
+                }
+            } else if (ch == KEY_DOWN) {
+                if (selected_pos + 1 < (int)count) {
+                    selected_pos++;
+                } else if (is_save_mode) {
+                    focus_area = 0;
+                }
+            } else if (ch == KEY_PPAGE) {
+                selected_pos -= visible_rows;
+                if (selected_pos < 0) selected_pos = 0;
+            } else if (ch == KEY_NPAGE) {
+                selected_pos += visible_rows;
+                if (selected_pos >= (int)count) selected_pos = count > 0 ? (int)count - 1 : 0;
+            } else if (ch == KEY_HOME) {
+                selected_pos = 0;
+            } else if (ch == KEY_END) {
+                selected_pos = count > 0 ? (int)count - 1 : 0;
+            } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+                /* Gå till föräldrakatalog */
+                char parent_dir[PATH_MAX + 512];
+                snprintf(parent_dir, sizeof(parent_dir), "%s/..", current_dir);
+                char resolved[PATH_MAX];
+                if (realpath(parent_dir, resolved) != NULL) {
+                    copy_str(current_dir, sizeof(current_dir), resolved);
+                    if (items) free(items);
+                    items = NULL;
+                    count = 0;
+                    load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+                    selected_pos = 0;
+                    scroll_offset = 0;
+                }
+            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+                if (count > 0 && selected_pos < (int)count) {
+                    FileDialogItem *sel = &items[selected_pos];
+                    if (sel->is_dir) {
+                        char next_dir[PATH_MAX + 512];
+                        if (strcmp(sel->name, "..") == 0) {
+                            snprintf(next_dir, sizeof(next_dir), "%s/..", current_dir);
+                        } else if (strcmp(current_dir, "/") == 0) {
+                            snprintf(next_dir, sizeof(next_dir), "/%s", sel->name);
+                        } else {
+                            snprintf(next_dir, sizeof(next_dir), "%s/%s", current_dir, sel->name);
+                        }
+                        char resolved[PATH_MAX];
+                        if (realpath(next_dir, resolved) != NULL) {
+                            copy_str(current_dir, sizeof(current_dir), resolved);
+                            if (items) free(items);
+                            items = NULL;
+                            count = 0;
+                            load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
+                            selected_pos = 0;
+                            scroll_offset = 0;
+                        }
+                    } else if (is_save_mode) {
+                        /* Vid spara: kopiera vald fil till filnamnsfältet och fokusera det */
+                        copy_str(fname_buf, sizeof(fname_buf), sel->name);
+                        fname_cursor_pos = utf8_display_width(fname_buf);
+                        focus_area = 0;
+                    } else {
+                        /* Vid öppna/importera: välj filen direkt */
+                        if (strcmp(current_dir, "/") == 0) {
+                            snprintf(selected_path, max_path_len, "/%s", sel->name);
+                        } else {
+                            snprintf(selected_path, max_path_len, "%s/%s", current_dir, sel->name);
+                        }
+                        if (items) free(items);
+                        return 1;
+                    }
                 }
             }
         }
@@ -3294,7 +3494,8 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             int r_rst    = 10;
             int r_flt    = 11;
             int r_import = 12;
-            int r_clear  = 13;
+            int r_export = 13;
+            int r_clear  = 14;
 
             /* Fält 5: Färgschema */
             const char *lbl_theme = "Färgschema";
@@ -3390,13 +3591,45 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 10: Töm loggbok och börja på nytt */
+            /* Fält 10: Exportera ADIF till fil (F6) */
+            int marked_count = 0;
+            if (log_list != NULL) {
+                for (size_t i = 0; i < log_list->count; ++i) {
+                    if (log_list->items[i].marked) marked_count++;
+                }
+            }
+
+            const char *lbl_export = "Exportera ADIF (F6)";
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(r_export, colon_col - utf8_display_width(lbl_export), "%s:", lbl_export);
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+            char export_hint[72];
+            if (marked_count > 0) {
+                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera %d markerade QSO ]", marked_count);
+            } else {
+                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu QSO) ]", log_list ? log_list->count : 0);
+            }
+
+            if (active == 10) {
+                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                mvprintw(r_export, fcol, "%-s", export_hint);
+                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                cur_y = r_export;
+                cur_x = fcol + 2;
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+                mvprintw(r_export, fcol, "%-s", export_hint);
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+            }
+
+            /* Fält 11: Töm loggbok och börja på nytt */
             const char *lbl_clear = "Töm loggbok";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            if (active == 10) {
+            if (active == 11) {
                 attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
                 mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
                 attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -3415,7 +3648,7 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
 
             if (LINES >= 17) {
-                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. Vänster/Höger ändrar val. F5 = Importera ADIF. Enter = Spara.");
+                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. F5=Importera, F6=Exportera. Enter=Spara.");
             }
 
             draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
@@ -3432,7 +3665,7 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             return;
         } else if (ch == KEY_F(5) || (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             char chosen_path[PATH_MAX] = {0};
-            int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path));
+            int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
             if (chosen && chosen_path[0] != '\0') {
                 int added = import_qsos_from_adif(chosen_path, log_list, &edit);
                 if (added < 0) {
@@ -3450,7 +3683,34 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (ch == KEY_F(6) || (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+            int m_cnt = 0;
+            if (log_list != NULL) {
+                for (size_t i = 0; i < log_list->count; ++i) {
+                    if (log_list->items[i].marked) m_cnt++;
+                }
+            }
+            const char *def_name = (m_cnt > 0) ? "export_marked.adi" : "export.adi";
+            const char *diag_title = (m_cnt > 0) ? "Exportera markerade QSO till ADIF" : "Exportera hela loggen till ADIF";
+            char chosen_path[PATH_MAX] = {0};
+            int chosen = run_file_dialog(diag_title, ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 1, def_name);
+            if (chosen && chosen_path[0] != '\0') {
+                int exported = export_qsos_adif(chosen_path, log_list, &edit, (m_cnt > 0));
+                if (exported < 0) {
+                    snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
+                } else {
+                    if (m_cnt > 0) {
+                        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(chosen_path));
+                    } else {
+                        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(chosen_path));
+                    }
+                }
+            } else {
+                copy_str(status_msg, status_sz, "ADIF-export avbröts.");
+            }
+            apply_color_theme(edit.theme);
+            continue;
+        } else if (active == 11 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             /* Bekräftelseruta för att tömma loggboken */
             int confirm = 0;
             while (1) {
