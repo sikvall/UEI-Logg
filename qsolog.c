@@ -65,6 +65,7 @@ enum {
     CP_TABLE_HEADER,
     CP_LOG_ROW,
     CP_LOG_SELECTED,
+    CP_LOG_MARKED,
     CP_FKEY_NUM,
     CP_FKEY_LABEL,
     CP_STATUS_OK,
@@ -102,6 +103,8 @@ typedef struct {
     char qth[64];        /* ADIF: QTH        - QTH */
     char dxcc[64];       /* ADIF: COUNTRY    - DXCC */
     char comment[256];   /* ADIF: COMMENT    - Kommentar */
+    char distance[16];   /* ADIF: DISTANCE   - Avstånd i km */
+    int  marked;         /* 1 om markerad i logglistan */
 } QSO;
 
 /* Fältindex i visnings- och Tab/Pil-ordning:
@@ -1338,6 +1341,7 @@ static void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSetting
     write_adif_field(fp, "QTH", qso->qth);
     write_adif_field(fp, "COUNTRY", qso->dxcc);
     write_adif_field(fp, "COMMENT", qso->comment);
+    write_adif_field(fp, "DISTANCE", qso->distance);
     if (st != NULL) {
         write_adif_field(fp, "STATION_CALLSIGN", st->call);
         write_adif_field(fp, "MY_NAME", st->name);
@@ -1419,6 +1423,8 @@ static void assign_adif_field(QSO *qso, const char *tag, const char *val) {
         copy_str(qso->dxcc, sizeof(qso->dxcc), val);
     } else if (strcasecmp(tag, "COMMENT") == 0) {
         copy_str(qso->comment, sizeof(qso->comment), val);
+    } else if (strcasecmp(tag, "DISTANCE") == 0) {
+        copy_str(qso->distance, sizeof(qso->distance), val);
     }
 }
 
@@ -1431,6 +1437,31 @@ static void qso_list_push(QSOList *list, const QSO *qso) {
         list->capacity = new_cap;
     }
     list->items[list->count++] = *qso;
+}
+
+static void qso_list_delete_at(QSOList *list, size_t index) {
+    if (index >= list->count) return;
+    for (size_t i = index; i + 1 < list->count; ++i) {
+        list->items[i] = list->items[i + 1];
+    }
+    list->count--;
+}
+
+static int qso_list_delete_marked(QSOList *list) {
+    size_t write_idx = 0;
+    int deleted = 0;
+    for (size_t read_idx = 0; read_idx < list->count; ++read_idx) {
+        if (list->items[read_idx].marked) {
+            deleted++;
+        } else {
+            if (write_idx != read_idx) {
+                list->items[write_idx] = list->items[read_idx];
+            }
+            write_idx++;
+        }
+    }
+    list->count = write_idx;
+    return deleted;
 }
 
 static void load_qsos_from_adif(const char *filename, QSOList *list) {
@@ -1780,6 +1811,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_CYAN,   COLOR_BLUE);
             init_pair(CP_LOG_ROW,        COLOR_YELLOW, COLOR_BLUE);
             init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_CYAN);
+            init_pair(CP_LOG_MARKED,     COLOR_YELLOW, COLOR_MAGENTA);
             init_pair(CP_FKEY_NUM,       COLOR_RED,    COLOR_WHITE);
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLUE);
@@ -1802,6 +1834,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_LOG_ROW,        COLOR_WHITE,  COLOR_BLACK);
             init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_CYAN);
+            init_pair(CP_LOG_MARKED,     COLOR_YELLOW, COLOR_BLUE);
             init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_CYAN);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
@@ -1824,6 +1857,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_LOG_ROW,        COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_GREEN);
+            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  COLOR_GREEN);
             init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
@@ -1846,6 +1880,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_BLUE,   COLOR_WHITE);
             init_pair(CP_LOG_ROW,        COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_LOG_SELECTED,   COLOR_WHITE,  COLOR_BLUE);
+            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  COLOR_MAGENTA);
             init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLUE);
             init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_CYAN);
             init_pair(CP_STATUS_OK,      COLOR_BLUE,   COLOR_WHITE);
@@ -1868,6 +1903,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_WHITE,  COLOR_BLACK);
             init_pair(CP_LOG_ROW,        COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_GREEN);
+            init_pair(CP_LOG_MARKED,     COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_FKEY_NUM,       COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_STATUS_OK,      COLOR_WHITE,  COLOR_BLACK);
@@ -1892,6 +1928,7 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_TABLE_HEADER,   COLOR_BLUE,   bg_gray);
             init_pair(CP_LOG_ROW,        COLOR_BLACK,  bg_gray);
             init_pair(CP_LOG_SELECTED,   COLOR_WHITE,  COLOR_BLUE);
+            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  fg_orange);
             init_pair(CP_FKEY_NUM,       COLOR_WHITE,  fg_orange);
             init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_STATUS_OK,      COLOR_BLUE,   bg_gray);
@@ -2103,7 +2140,9 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
         {"Enter",  focus_mode == FOCUS_LOG ? "Redigera" : "Logga"},
         {"Ctrl-O", focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
         {"F3",     (search_filter && search_filter[0]) ? "Sök*" : "Sök"},
-        {"F11",    "Hjälp"},
+        {"Ins",    focus_mode == FOCUS_LOG ? "Märk" : NULL},
+        {"F8",     focus_mode == FOCUS_LOG ? "Radera" : NULL},
+        {"F9",     "Hjälp"},
         {"F12",    "Inställn."},
         {"F10",    "Avsluta"}
     };
@@ -2120,7 +2159,11 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
     int col = 1;
     if (mode_type == 0) {
         int count = (int)(sizeof(btns_main) / sizeof(btns_main[0]));
-        for (int i = 0; i < count && col < COLS - 4; ++i) {
+        for (int i = 0; i < count; ++i) {
+            if (btns_main[i].label == NULL) continue;
+            int btn_len = (int)strlen(btns_main[i].key) + (int)strlen(btns_main[i].label) + 2;
+            if (col + btn_len >= COLS) break;
+
             attron(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
             mvprintw(row, col, "%s", btns_main[i].key);
             col += (int)strlen(btns_main[i].key);
@@ -2295,16 +2338,37 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* 3. Under inmatningsrutan: Redan loggade QSO ("Loggrader") */
     int log_top = 8;
     int log_height = (LINES - 1) - log_top;
+    int marked_count = 0;
+    for (size_t i = 0; i < log_list->count; ++i) {
+        if (log_list->items[i].marked) marked_count++;
+    }
+
     char log_title[112];
     if (focus_mode == FOCUS_LOG) {
-        snprintf(log_title, sizeof(log_title),
-                 "Loggrader – Välj med Pilar, Enter = Redigera, Ctrl-O = Tillbaka (%zu QSO)",
-                 log_list->count);
+        if (marked_count > 0) {
+            snprintf(log_title, sizeof(log_title),
+                     "Loggrader – Ins=Märk, F8=Radera (%d markerade, %zu QSO)",
+                     marked_count, log_list->count);
+        } else {
+            snprintf(log_title, sizeof(log_title),
+                     "Loggrader – Välj med Pilar, Ins=Märk, F8=Radera, Enter=Redigera (%zu QSO)",
+                     log_list->count);
+        }
     } else if (search_filter != NULL && search_filter[0] != '\0') {
-        snprintf(log_title, sizeof(log_title), "Loggrader (Filter: %s | Totalt: %zu QSO)",
-                 search_filter, log_list->count);
+        if (marked_count > 0) {
+            snprintf(log_title, sizeof(log_title), "Loggrader (Filter: %s | %d markerade | %zu QSO)",
+                     search_filter, marked_count, log_list->count);
+        } else {
+            snprintf(log_title, sizeof(log_title), "Loggrader (Filter: %s | %zu QSO)",
+                     search_filter, log_list->count);
+        }
     } else {
-        snprintf(log_title, sizeof(log_title), "Loggrader (%zu QSO)", log_list->count);
+        if (marked_count > 0) {
+            snprintf(log_title, sizeof(log_title), "Loggrader (%d markerade, %zu QSO)",
+                     marked_count, log_list->count);
+        } else {
+            snprintf(log_title, sizeof(log_title), "Loggrader (%zu QSO)", log_list->count);
+        }
     }
     draw_box_with_title(log_top, 0, log_height, COLS, log_title, focus_mode == FOCUS_LOG);
 
@@ -2363,10 +2427,20 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
         if (is_selected_row) {
             attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
             mvhline(r, 1, ' ', COLS - 2);
+            if (item->marked) {
+                mvaddch(r, 1, '*');
+            } else {
+                mvaddch(r, 1, '>');
+            }
             *cur_y = r;
             *cur_x = 2;
+        } else if (item->marked) {
+            attron(COLOR_PAIR(CP_LOG_MARKED) | A_BOLD);
+            mvhline(r, 1, ' ', COLS - 2);
+            mvaddch(r, 1, '*');
         } else {
             attron(COLOR_PAIR(CP_LOG_ROW) | A_BOLD);
+            mvaddch(r, 1, ' ');
         }
 
         if (COLS >= 92) {
@@ -2434,12 +2508,12 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
     refresh();
 }
 
-/* F11: Hjälpskärm */
+/* F9: Hjälpskärm */
 static void run_help_modal(const StationSettings *st) {
     while (1) {
         erase();
         draw_top_bar(st);
-        draw_box_with_title(1, 0, LINES - 2, COLS, "Hjälp – QSO-logg (F11)", 1);
+        draw_box_with_title(1, 0, LINES - 2, COLS, "Hjälp – QSO-logg (F9)", 1);
 
         attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
         mvprintw(3, 3, "Tangentbordskommandon:");
@@ -2453,11 +2527,12 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(8,  4, "Enter / F2        : Logga QSO direkt med ifyllda uppgifter");
         mvprintw(9,  4, "Esc / F1          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
         mvprintw(10, 4, "Ctrl-O            : Växla mellan Inmatningsrutan och Loggraderna");
-        mvprintw(11, 4, "                    (Välj loggrad med Pil upp/ned, Enter = Redigera)");
-        mvprintw(12, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
-        mvprintw(13, 4, "F11               : Visa denna hjälpsida");
-        mvprintw(14, 4, "F12               : Inställningar (Station, Färgschema, SM Callbook, Auto RST)");
-        mvprintw(15, 4, "F10 / Ctrl-Q      : Avsluta programmet");
+        mvprintw(11, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
+        mvprintw(12, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
+        mvprintw(13, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
+        mvprintw(14, 4, "F9                : Visa denna hjälpsida");
+        mvprintw(15, 4, "F12               : Inställningar (Station, Färgschema, SM Callbook, Auto RST)");
+        mvprintw(16, 4, "F10 / Ctrl-Q      : Avsluta programmet");
 
         if (LINES >= 22) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -2473,13 +2548,13 @@ static void run_help_modal(const StationSettings *st) {
         int row = LINES - 1;
         attron(COLOR_PAIR(CP_FKEY_LABEL));
         mvhline(row, 0, ' ', COLS);
-        mvprintw(row, 2, "Tryck Esc, Enter eller F11 för att stänga hjälpen.");
+        mvprintw(row, 2, "Tryck Esc, Enter eller F9 för att stänga hjälpen.");
         attroff(COLOR_PAIR(CP_FKEY_LABEL));
 
         refresh();
 
         int ch = getch();
-        if (ch == 27 || ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(11)) {
+        if (ch == 27 || ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(9)) {
             break;
         }
     }
@@ -3056,6 +3131,22 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
         copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), strcmp(qso->mode, "CW") == 0 ? "599" : "59");
     }
 
+    /* Avstånd (ADIF: DISTANCE) i hela kilometer */
+    long d_val = 0;
+    if (current_qrb != NULL && current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
+        d_val = atol(current_qrb);
+    }
+    if (d_val <= 0) {
+        char temp_qrb[32];
+        compute_qrb_str(st, qso, temp_qrb, sizeof(temp_qrb));
+        if (temp_qrb[0] != '\0' && strcmp(temp_qrb, "-") != 0) {
+            d_val = atol(temp_qrb);
+        }
+    }
+    if (d_val > 0) {
+        snprintf(qso->distance, sizeof(qso->distance), "%ld", d_val);
+    }
+
     persist_qso_radio_settings(qso, st);
 
     if (*editing_index >= 0 && (size_t)(*editing_index) < log_list->count) {
@@ -3181,7 +3272,7 @@ int main(void) {
         /* Globala funktionstangenter, ESC och Ctrl-O */
         if (ch == KEY_F(10) || ch == 17) { /* F10 eller Ctrl+Q: Avsluta */
             break;
-        } else if (ch == KEY_F(11)) { /* F11: Hjälp */
+        } else if (ch == KEY_F(9)) { /* F9: Hjälp */
             run_help_modal(&station);
             continue;
         } else if (ch == 15) { /* Ctrl-O: Växla mellan inmatning och loggrader */
@@ -3197,7 +3288,7 @@ int main(void) {
                 if (f_cnt > 0) {
                     focus_mode = FOCUS_LOG;
                     if (selected_log_pos >= f_cnt) selected_log_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Välj med pilar, Enter = Redigera.");
+                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Välj med pilar, Ins=Märk, F8=Radera, Enter=Redigera.");
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Inga loggrader att välja ännu.");
                 }
@@ -3242,6 +3333,61 @@ int main(void) {
                 if (selected_log_pos > 0) selected_log_pos--;
             } else if (ch == KEY_DOWN || ch == KEY_RIGHT) {
                 if (selected_log_pos + 1 < f_cnt) selected_log_pos++;
+            } else if (ch == KEY_IC || ch == 331) {
+                /* INS: Markera aktuell rad och flytta till nästa rad */
+                if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
+                    int orig_idx = f_idx[selected_log_pos];
+                    log_list.items[orig_idx].marked = !log_list.items[orig_idx].marked;
+                    if (selected_log_pos + 1 < f_cnt) {
+                        selected_log_pos++;
+                    }
+                    int m_cnt = 0;
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        if (log_list.items[mi].marked) m_cnt++;
+                    }
+                    snprintf(status_msg, sizeof(status_msg),
+                             log_list.items[orig_idx].marked ?
+                             "Markerade rad (QSO med %s) [%d markerade]" :
+                             "Avmarkerade rad (QSO med %s) [%d markerade]",
+                             log_list.items[orig_idx].call, m_cnt);
+                }
+            } else if (ch == KEY_F(8)) {
+                /* F8: Radera alla markerade rader, eller aktuell rad om ingen är markerad */
+                int m_cnt = 0;
+                for (size_t mi = 0; mi < log_list.count; ++mi) {
+                    if (log_list.items[mi].marked) m_cnt++;
+                }
+                if (m_cnt > 0) {
+                    int del_cnt = qso_list_delete_marked(&log_list);
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    editing_index = -1;
+                    snprintf(status_msg, sizeof(status_msg), "Raderade %d markerade QSO:n.", del_cnt);
+                } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
+                    int orig_idx = f_idx[selected_log_pos];
+                    char del_call[32];
+                    copy_str(del_call, sizeof(del_call), log_list.items[orig_idx].call);
+                    qso_list_delete_at(&log_list, (size_t)orig_idx);
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    editing_index = -1;
+                    snprintf(status_msg, sizeof(status_msg), "Raderade QSO med %s.", del_call);
+                }
+                if (log_list.count == 0) {
+                    selected_log_pos = 0;
+                    log_scroll_offset = 0;
+                    focus_mode = FOCUS_INPUT;
+                    copy_str(status_msg, sizeof(status_msg), "Loggen är nu tom.");
+                } else {
+                    int max_f_new = (int)log_list.count;
+                    int *tmp_f = malloc((size_t)max_f_new * sizeof(int));
+                    int new_fcnt = tmp_f ? build_filtered_indices(&log_list, cur_filter, tmp_f, max_f_new) : 0;
+                    if (tmp_f) free(tmp_f);
+                    if (new_fcnt == 0) {
+                        selected_log_pos = 0;
+                        log_scroll_offset = 0;
+                    } else if (selected_log_pos >= new_fcnt) {
+                        selected_log_pos = new_fcnt - 1;
+                    }
+                }
             } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
                 if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
@@ -3254,6 +3400,9 @@ int main(void) {
                     sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
                     focus_mode = FOCUS_INPUT;
                     compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    if (strcmp(current_qrb, "-") == 0 && current_qso.distance[0] != '\0') {
+                        snprintf(current_qrb, sizeof(current_qrb), "%s km", current_qso.distance);
+                    }
                     snprintf(status_msg, sizeof(status_msg),
                              "Redigerar QSO #%d (%s) – Enter sparar ändring.",
                              orig_idx + 1, current_qso.call);
