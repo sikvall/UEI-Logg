@@ -5,6 +5,7 @@
 
 #include "callbook.h"
 #include "qrb.h"
+#include "qrz.h"
 #include "util.h"
 #include <ctype.h>
 #include <curl/curl.h>
@@ -490,7 +491,10 @@ void poll_smcb_background_result(QSO *qso, const StationSettings *st,
             snprintf(status_msg, status_sz, "SMCB: %s, %s", res_name, res_qth);
         }
     } else {
-        if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
+        if (st && st->qrz_enabled && st->qrz_username[0] != '\0') {
+            start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
+            snprintf(status_msg, status_sz, "SMCB: Ingen träff -> QRZ: Slår upp %s...", qso->call);
+        } else if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
             snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", res_call);
         }
     }

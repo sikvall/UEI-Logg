@@ -612,7 +612,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         const char *label;
     } FKeyItem;
 
-    FKeyItem items[8];
+    FKeyItem items[12];
     int count = 0;
 
     if (mode_type == 1) {
@@ -634,6 +634,8 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F2", "Logga"};
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
+            items[count++] = (FKeyItem){"F5", "Uppslag"};
+            items[count++] = (FKeyItem){"F6", "QRZ"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
             items[count++] = (FKeyItem){"F10", "Avsluta"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
@@ -1007,8 +1009,8 @@ void run_help_modal(const StationSettings *st) {
     (void)st;
     while (1) {
         erase();
-        int dialog_w = 66;
-        int dialog_h = 19;
+        int dialog_w = 68;
+        int dialog_h = 22;
         int top_y = (LINES - dialog_h) / 2;
         int left_x = (COLS - dialog_w) / 2;
         if (top_y < 0) top_y = 0;
@@ -1026,12 +1028,16 @@ void run_help_modal(const StationSettings *st) {
         mvprintw(top_y + 8,  left_x + 3, "  F10 el. ^Q   - Avsluta programmet");
         mvprintw(top_y + 9,  left_x + 3, "  F12          - Inställningar & import/export");
 
-        mvprintw(top_y + 11, left_x + 3, "I loggraderna (F4):");
-        mvprintw(top_y + 12, left_x + 3, "  Piltangenter - Bläddra mellan rader");
-        mvprintw(top_y + 13, left_x + 3, "  Insert (INS) - Markera / avmarkera rad");
-        mvprintw(top_y + 14, left_x + 3, "  F5 / F6      - Markera som hanterad (✓) / ny (✗)");
-        mvprintw(top_y + 15, left_x + 3, "  F8           - Radera markerade / aktuell rad");
-        mvprintw(top_y + 16, left_x + 3, "  Enter        - Redigera valt QSO");
+        mvprintw(top_y + 11, left_x + 3, "I inmatningsfälten:");
+        mvprintw(top_y + 12, left_x + 3, "  F5           - Manuellt uppslag (SMCB för SM, QRZ för övriga)");
+        mvprintw(top_y + 13, left_x + 3, "  F6           - Manuellt uppslag via QRZ.COM");
+
+        mvprintw(top_y + 15, left_x + 3, "I loggraderna (F4):");
+        mvprintw(top_y + 16, left_x + 3, "  Piltangenter - Bläddra mellan rader");
+        mvprintw(top_y + 17, left_x + 3, "  Insert (INS) - Markera / avmarkera rad");
+        mvprintw(top_y + 18, left_x + 3, "  F5 / F6      - Markera som hanterad (✓) / ny (✗)");
+        mvprintw(top_y + 19, left_x + 3, "  F8           - Radera markerade / aktuell rad");
+        mvprintw(top_y + 20, left_x + 3, "  Enter        - Redigera valt QSO");
         attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);

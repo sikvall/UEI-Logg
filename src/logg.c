@@ -7,6 +7,7 @@
 #include "callbook.h"
 #include "dxcc.h"
 #include "qrb.h"
+#include "qrz.h"
 #include "settings.h"
 #include "tui.h"
 #include "util.h"
@@ -425,30 +426,75 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         return;
     }
 
-    /* 2. Slå upp i SM Callbook om aktiverat och svensk signal */
-    if (!st->smcb_enabled) return;
-
     char base_call[32];
-    if (!extract_swedish_base_call(qso->call, base_call, sizeof(base_call))) return;
-    if (strcasecmp(base_call, last_smcb_call) == 0) return;
+    int is_swedish = extract_swedish_base_call(qso->call, base_call, sizeof(base_call));
 
-    copy_str(last_smcb_call, last_smcb_sz, base_call);
+    /* 2. Svensk signal: prova SM Callbook först */
+    if (is_swedish && st->smcb_enabled) {
+        if (strcasecmp(base_call, last_smcb_call) == 0) return;
+        copy_str(last_smcb_call, last_smcb_sz, base_call);
 
-    int was_cached = 0;
-    char cached_name[64] = "", cached_qth[64] = "";
-    if (lookup_smcb_cache(base_call, cached_name, sizeof(cached_name), cached_qth, sizeof(cached_qth), &was_cached)) {
-        if (cached_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), cached_name);
-        if (cached_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), cached_qth);
-        snprintf(status_msg, status_sz, "SMCB: %s, %s", cached_name, cached_qth);
+        int was_cached = 0;
+        char cached_name[64] = "", cached_qth[64] = "";
+        if (lookup_smcb_cache(base_call, cached_name, sizeof(cached_name), cached_qth, sizeof(cached_qth), &was_cached)) {
+            if (cached_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), cached_name);
+            if (cached_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), cached_qth);
+            snprintf(status_msg, status_sz, "SMCB: %s, %s", cached_name, cached_qth);
+            return;
+        }
+        if (was_cached) {
+            /* SMCB har ingen träff: prova QRZ.COM om det är aktiverat */
+            if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+                int qrz_cached = 0;
+                char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
+                if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
+                    if (q_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), q_name);
+                    if (q_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), q_qth);
+                    if (q_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), q_grid);
+                    snprintf(status_msg, status_sz, "QRZ: %s, %s", q_name, q_qth);
+                    return;
+                }
+                if (!qrz_cached) {
+                    start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
+                    snprintf(status_msg, status_sz, "SMCB: Ingen träff -> QRZ: Slår upp %s...", qso->call);
+                    return;
+                }
+            }
+            snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", base_call);
+            return;
+        }
+
+        start_smcb_background_lookup(base_call);
+        snprintf(status_msg, status_sz, "SMCB: Slår upp %s...", base_call);
         return;
     }
-    if (was_cached) {
-        snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", base_call);
-        return;
-    }
 
-    start_smcb_background_lookup(base_call);
-    snprintf(status_msg, status_sz, "SMCB: Slår upp %s...", base_call);
+    /* 3. Icke-svensk signal (eller svensk om SMCB avstängt): slå upp i QRZ.COM om aktiverat */
+    if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+        if (strcasecmp(qso->call, last_smcb_call) == 0) return;
+        copy_str(last_smcb_call, last_smcb_sz, qso->call);
+
+        int qrz_cached = 0;
+        char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
+        if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
+            if (q_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), q_name);
+            if (q_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), q_qth);
+            if (q_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), q_grid);
+            if (q_grid[0] != '\0') {
+                snprintf(status_msg, status_sz, "QRZ: %s, %s (%s)", q_name, q_qth, q_grid);
+            } else {
+                snprintf(status_msg, status_sz, "QRZ: %s, %s", q_name, q_qth);
+            }
+            return;
+        }
+        if (qrz_cached) {
+            snprintf(status_msg, status_sz, "QRZ.COM: Ingen träff för %s", qso->call);
+            return;
+        }
+
+        start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
+        snprintf(status_msg, status_sz, "QRZ: Slår upp %s...", qso->call);
+    }
 }
 
 /**

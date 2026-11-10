@@ -35,7 +35,7 @@
 #define MIN_COLS 60
 #define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 12
+#define STATION_FIELD_COUNT 15
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001
@@ -90,6 +90,9 @@ typedef struct {
     char qth[64];        /* ADIF: MY_CITY          - Eget QTH */
     char gridsquare[16]; /* ADIF: MY_GRIDSQUARE    - Egen lokator */
     char timezone[32];   /* Lokal tidszon (t.ex. UTC+1, CET) */
+    char qrz_username[36]; /* station.conf: QRZ_USER - QRZ.COM Användarnamn (max 32 tecken) */
+    char qrz_password[36]; /* station.conf: QRZ_PASS - QRZ.COM Lösenord (max 32 tecken) */
+    int  qrz_enabled;    /* Slå upp automatiskt via QRZ.COM (0=Av, 1=På) */
     int  theme;          /* Valt färgschema (0..THEME_COUNT-1) */
     int  smcb_enabled;   /* Slå upp svenska signaler via SM Callbook (0=Av, 1=På) */
     int  auto_rst_59;    /* Fyll i 59 / 59 automatiskt i RST vid nytt QSO (0=Av, 1=På) */

@@ -28,6 +28,9 @@
 void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
+    st->qrz_enabled = 0;
+    st->qrz_username[0] = '\0';
+    st->qrz_password[0] = '\0';
     copy_str(st->last_band, sizeof(st->last_band), "20 m");
     copy_str(st->last_freq, sizeof(st->last_freq), "14.200");
     copy_str(st->last_mode, sizeof(st->last_mode), "SSB");
@@ -61,6 +64,12 @@ void load_station_settings(const char *filename, StationSettings *st) {
             }
         } else if (strcasecmp(key, "SMCB") == 0) {
             st->smcb_enabled = (atoi(val) != 0) ? 1 : 0;
+        } else if (strcasecmp(key, "QRZ_USER") == 0) {
+            copy_str(st->qrz_username, sizeof(st->qrz_username), val);
+        } else if (strcasecmp(key, "QRZ_PASS") == 0) {
+            copy_str(st->qrz_password, sizeof(st->qrz_password), val);
+        } else if (strcasecmp(key, "QRZ_ENABLED") == 0) {
+            st->qrz_enabled = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "AUTO_RST") == 0) {
             st->auto_rst_59 = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "FILTER_LOG") == 0) {
@@ -95,6 +104,9 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "TIMEZONE=%s\n", st->timezone);
     fprintf(fp, "THEME=%d\n", st->theme);
     fprintf(fp, "SMCB=%d\n", st->smcb_enabled ? 1 : 0);
+    fprintf(fp, "QRZ_USER=%s\n", st->qrz_username);
+    fprintf(fp, "QRZ_PASS=%s\n", st->qrz_password);
+    fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled ? 1 : 0);
     fprintf(fp, "AUTO_RST=%d\n", st->auto_rst_59 ? 1 : 0);
     fprintf(fp, "FILTER_LOG=%d\n", st->filter_log ? 1 : 0);
     fprintf(fp, "FREQ=%s\n", st->last_freq);
@@ -942,22 +954,55 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             draw_field_aligned(6,  colon_col, "Lokator",       edit.gridsquare, fw, active == 3, cursor_pos, &cur_y, &cur_x);
             draw_field_aligned(7,  colon_col, "Lokal tidszon", edit.timezone,   fw, active == 4, cursor_pos, &cur_y, &cur_x);
 
-            int r_theme  = 8;
-            int r_smcb   = 9;
-            int r_rst    = 10;
-            int r_flt    = 11;
-            int r_import = 12;
-            int r_export = 13;
-            int r_clear  = 14;
+            /* Fält 5: QRZ.COM Användarnamn */
+            draw_field_aligned(8,  colon_col, "QRZ.COM Användare", edit.qrz_username, fw, active == 5, cursor_pos, &cur_y, &cur_x);
 
-            /* Fält 5: Färgschema */
+            /* Fält 6: QRZ.COM Lösenord (visas i klartext vid inmatning, maskeras som ********** när sparat/inaktivt) */
+            char pass_display[64] = "";
+            if (active == 6) {
+                copy_str(pass_display, sizeof(pass_display), edit.qrz_password);
+            } else if (edit.qrz_password[0] != '\0') {
+                copy_str(pass_display, sizeof(pass_display), "**********");
+            }
+            draw_field_aligned(9,  colon_col, "QRZ.COM Lösenord", pass_display, fw, active == 6, cursor_pos, &cur_y, &cur_x);
+
+            int r_qrz_auto = 10;
+            int r_theme    = 11;
+            int r_smcb     = 12;
+            int r_rst      = 13;
+            int r_flt      = 14;
+            int r_import   = 15;
+            int r_export   = 16;
+            int r_clear    = 17;
+
+            int fcol = colon_col + 2;
+
+            /* Fält 7: Auto QRZ.COM toggle */
+            const char *lbl_qrz = "Auto QRZ.COM";
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(r_qrz_auto, colon_col - utf8_display_width(lbl_qrz), "%s:", lbl_qrz);
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+            const char *qrz_txt = edit.qrz_enabled ? "På (Slå upp via qrz.com)" : "Av";
+            if (active == 7) {
+                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                mvprintw(r_qrz_auto, fcol, "< %-28s >", qrz_txt);
+                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+                cur_y = r_qrz_auto;
+                cur_x = fcol + 2;
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+                mvprintw(r_qrz_auto, fcol, "< %-28s >", qrz_txt);
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+            }
+
+            /* Fält 8: Färgschema */
             const char *lbl_theme = "Färgschema";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_theme, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            int fcol = colon_col + 2;
-            if (active == 5) {
+            if (active == 8) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_theme, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -969,14 +1014,14 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 6: SM Callbook toggle */
+            /* Fält 9: SM Callbook toggle */
             const char *lbl_smcb = "SM Callbook (ssa.se)";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_smcb, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
             const char *smcb_txt = edit.smcb_enabled ? "På (Slå upp SA-SM, 7S, 8S)" : "Av";
-            if (active == 6) {
+            if (active == 9) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -988,14 +1033,14 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 7: Automatisk RST 59/59 vid nytt QSO */
+            /* Fält 10: Automatisk RST 59/59 vid nytt QSO */
             const char *lbl_rst = "Auto RST 59/59";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_rst, colon_col - utf8_display_width(lbl_rst), "%s:", lbl_rst);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
             const char *rst_txt = edit.auto_rst_59 ? "På (Fyll i 59 / 59 vid nytt QSO)" : "Av";
-            if (active == 7) {
+            if (active == 10) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_rst, fcol, "< %-28s >", rst_txt);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1007,14 +1052,14 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 8: Filtrera loggrader efter anropssignal */
+            /* Fält 11: Filtrera loggrader efter anropssignal */
             const char *lbl_flt = "Filtrera loggrader";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_flt, colon_col - utf8_display_width(lbl_flt), "%s:", lbl_flt);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
             const char *flt_txt = edit.filter_log ? "På" : "Av";
-            if (active == 8) {
+            if (active == 11) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_flt, fcol, "< %-28s >", flt_txt);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1026,13 +1071,13 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 9: Importera ADIF från fil (F5) */
+            /* Fält 12: Importera ADIF från fil (F5) */
             const char *lbl_import = "Importera ADIF (F5)";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_import, colon_col - utf8_display_width(lbl_import), "%s:", lbl_import);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            if (active == 9) {
+            if (active == 12) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1044,7 +1089,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 10: Exportera ADIF till fil (F6) */
+            /* Fält 13: Exportera ADIF till fil (F6) */
             int marked_count = 0;
             if (log_list != NULL) {
                 for (size_t i = 0; i < log_list->count; ++i) {
@@ -1076,7 +1121,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (0 QSO) ]");
             }
 
-            if (active == 10) {
+            if (active == 13) {
                 attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
                 mvprintw(r_export, fcol, "%-s", export_hint);
                 attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1088,13 +1133,13 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
             }
 
-            /* Fält 11: Töm loggbok och börja på nytt */
+            /* Fält 14: Töm loggbok och börja på nytt */
             const char *lbl_clear = "Töm loggbok";
             attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
             mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
             attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            if (active == 11) {
+            if (active == 14) {
                 attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
                 mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
                 attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -1128,7 +1173,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             apply_color_theme(st->theme);
             copy_str(status_msg, status_sz, "Inställningar stängda.");
             return;
-        } else if (ch == KEY_F(5) || (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(5) || (active == 12 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             char chosen_path[PATH_MAX] = {0};
             int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
             if (chosen && chosen_path[0] != '\0') {
@@ -1148,7 +1193,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(6) || (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(6) || (active == 13 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             if (log_list == NULL || log_list->count == 0) {
                 copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
                 apply_color_theme(edit.theme);
@@ -1256,7 +1301,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 11 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (active == 14 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;
@@ -1294,7 +1339,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             } else {
                 apply_color_theme(st->theme);
             }
-        } else if (ch == KEY_F(2) || ch == 19 || (active < 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
+        } else if (ch == KEY_F(2) || ch == 19 || (active < 12 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
             to_upper_str(edit.call);
             to_upper_str(edit.gridsquare);
             *st = edit;
@@ -1308,33 +1353,42 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                          (active == 1) ? utf8_display_width(edit.name) :
                          (active == 2) ? utf8_display_width(edit.qth) :
                          (active == 3) ? utf8_display_width(edit.gridsquare) :
-                         (active == 4) ? utf8_display_width(edit.timezone) : 0;
+                         (active == 4) ? utf8_display_width(edit.timezone) :
+                         (active == 5) ? utf8_display_width(edit.qrz_username) :
+                         (active == 6) ? utf8_display_width(edit.qrz_password) : 0;
         } else if (ch == KEY_BTAB || ch == KEY_UP) {
             active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
             cursor_pos = (active == 0) ? utf8_display_width(edit.call) :
                          (active == 1) ? utf8_display_width(edit.name) :
                          (active == 2) ? utf8_display_width(edit.qth) :
                          (active == 3) ? utf8_display_width(edit.gridsquare) :
-                         (active == 4) ? utf8_display_width(edit.timezone) : 0;
-        } else if (active == 5 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+                         (active == 4) ? utf8_display_width(edit.timezone) :
+                         (active == 5) ? utf8_display_width(edit.qrz_username) :
+                         (active == 6) ? utf8_display_width(edit.qrz_password) : 0;
+        } else if (active == 7 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+            edit.qrz_enabled = !edit.qrz_enabled;
+        } else if (active == 8 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             int delta = (ch == KEY_LEFT) ? -1 : 1;
             edit.theme = (edit.theme + delta + THEME_COUNT) % THEME_COUNT;
             apply_color_theme(edit.theme);
-        } else if (active == 6 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 9 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.smcb_enabled = !edit.smcb_enabled;
-        } else if (active == 7 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 10 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.auto_rst_59 = !edit.auto_rst_59;
-        } else if (active == 8 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 11 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.filter_log = !edit.filter_log;
-        } else if (active < 5) {
+        } else if (active < 7) {
             char *buf = (active == 0) ? edit.call :
                         (active == 1) ? edit.name :
                         (active == 2) ? edit.qth :
-                        (active == 3) ? edit.gridsquare : edit.timezone;
+                        (active == 3) ? edit.gridsquare :
+                        (active == 4) ? edit.timezone :
+                        (active == 5) ? edit.qrz_username : edit.qrz_password;
             size_t max_len = (active == 0) ? sizeof(edit.call) :
                              (active == 1) ? sizeof(edit.name) :
                              (active == 2) ? sizeof(edit.qth) :
-                             (active == 3) ? sizeof(edit.gridsquare) : sizeof(edit.timezone);
+                             (active == 3) ? sizeof(edit.gridsquare) :
+                             (active == 4) ? sizeof(edit.timezone) : 33;
 
             if (ch == KEY_LEFT) {
                 if (cursor_pos > 0) cursor_pos--;
@@ -1350,6 +1404,9 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             } else if (ch == KEY_DC) {
                 utf8_delete_at(buf, cursor_pos);
             } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
+                if ((active == 5 || active == 6) && strlen(buf) >= 32) {
+                    continue;
+                }
                 char c = (char)ch;
                 if ((active == 0 || active == 3) && (unsigned char)c < 128) {
                     c = (char)toupper((unsigned char)c);
