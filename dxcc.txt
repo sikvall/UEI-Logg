@@ -1,0 +1,6112 @@
+# DXCC-tabell för qsolog
+# Format:
+#   PREFIX;DXCC-land
+#   =EXAKT_SIGNAL;DXCC-land
+
+3D2/C;Conway Reef
+3D2/R;Rotuma
+HK0/A;San Andres & Providencia
+HK0/M;Malpelo Island
+KH8/S;Swains Island
+PP0ZF;Fernando de Noronha
+PP0ZR;Fernando de Noronha
+PP0ZS;St. Peter & St. Paul
+PP0ZT;Trindade & Martim Vaz
+PQ0ZF;Fernando de Noronha
+PQ0ZR;Fernando de Noronha
+PQ0ZS;St. Peter & St. Paul
+PQ0ZT;Trindade & Martim Vaz
+PR0ZF;Fernando de Noronha
+PR0ZR;Fernando de Noronha
+PR0ZS;St. Peter & St. Paul
+PR0ZT;Trindade & Martim Vaz
+PS0ZF;Fernando de Noronha
+PS0ZR;Fernando de Noronha
+PS0ZS;St. Peter & St. Paul
+PS0ZT;Trindade & Martim Vaz
+PT0ZF;Fernando de Noronha
+PT0ZR;Fernando de Noronha
+PT0ZS;St. Peter & St. Paul
+PT0ZT;Trindade & Martim Vaz
+PU0ZF;Fernando de Noronha
+PU0ZR;Fernando de Noronha
+PU0ZS;St. Peter & St. Paul
+PU0ZT;Trindade & Martim Vaz
+PV0ZF;Fernando de Noronha
+PV0ZR;Fernando de Noronha
+PV0ZS;St. Peter & St. Paul
+PV0ZT;Trindade & Martim Vaz
+PW0ZF;Fernando de Noronha
+PW0ZR;Fernando de Noronha
+PW0ZS;St. Peter & St. Paul
+PW0ZT;Trindade & Martim Vaz
+PX0ZF;Fernando de Noronha
+PX0ZR;Fernando de Noronha
+PX0ZS;St. Peter & St. Paul
+PX0ZT;Trindade & Martim Vaz
+PY0ZS;St. Peter & St. Paul
+PY0ZT;Trindade & Martim Vaz
+RI1AN;Antarktis
+VK9FC;Cocos (Keeling) Islands
+VK9FL;Lord Howe Island
+VK9FW;Willis Island
+VK9FX;Christmas Island
+VK9KC;Cocos (Keeling) Islands
+VK9KX;Christmas Island
+VK9ZY;Cocos (Keeling) Islands
+VP6/D;Ducie Island
+VP8/G;Sydgeorgien
+VP8/H;Sydshetlandsöarna
+VP8/O;Sydorkneyöarna
+VP8/S;Sydsandwichöarna
+ZV0ZF;Fernando de Noronha
+ZV0ZR;Fernando de Noronha
+ZV0ZS;St. Peter & St. Paul
+ZV0ZT;Trindade & Martim Vaz
+ZW0ZF;Fernando de Noronha
+ZW0ZR;Fernando de Noronha
+ZW0ZS;St. Peter & St. Paul
+ZW0ZT;Trindade & Martim Vaz
+ZX0ZF;Fernando de Noronha
+ZX0ZR;Fernando de Noronha
+ZX0ZS;St. Peter & St. Paul
+ZX0ZT;Trindade & Martim Vaz
+ZY0ZS;St. Peter & St. Paul
+ZY0ZT;Trindade & Martim Vaz
+ZZ0ZF;Fernando de Noronha
+ZZ0ZR;Fernando de Noronha
+ZZ0ZS;St. Peter & St. Paul
+ZZ0ZT;Trindade & Martim Vaz
+3G0X;San Felix & San Ambrosio
+3G0Z;Juan Fernández
+3Y/B;Bouvet
+3Y/P;Peter I
+4U1I;ITU HQ
+4U1U;FN HQ
+AH7K;Kure Island
+AX9C;Cocos (Keeling) Islands
+AX9M;Mellish Reef
+AX9W;Willis Island
+AX9X;Christmas Island
+AX9Y;Cocos (Keeling) Islands
+AX9Z;Willis Island
+AY0V;Argentina
+AY0W;Argentina
+AY0X;Argentina
+AY0Y;Argentina
+AY1V;Argentina
+AY1W;Argentina
+AY1X;Argentina
+AY1Y;Argentina
+AY1Z;Antarktis
+AY2V;Argentina
+AY2W;Argentina
+AY2X;Argentina
+AY2Y;Argentina
+AY2Z;Antarktis
+AY3V;Argentina
+AY3W;Argentina
+AY3X;Argentina
+AY3Y;Argentina
+AY3Z;Antarktis
+AY4V;Argentina
+AY4W;Argentina
+AY4X;Argentina
+AY4Y;Argentina
+AY4Z;Antarktis
+AY5V;Argentina
+AY5W;Argentina
+AY5X;Argentina
+AY5Y;Argentina
+AY5Z;Antarktis
+AY6V;Argentina
+AY6W;Argentina
+AY6X;Argentina
+AY6Y;Argentina
+AY6Z;Antarktis
+AY7V;Argentina
+AY7W;Argentina
+AY7X;Argentina
+AY7Y;Argentina
+AY7Z;Antarktis
+AY8V;Argentina
+AY8W;Argentina
+AY8X;Argentina
+AY8Y;Argentina
+AY8Z;Antarktis
+AY9V;Argentina
+AY9W;Argentina
+AY9X;Argentina
+AY9Y;Argentina
+AY9Z;Antarktis
+AZ0V;Argentina
+AZ0W;Argentina
+AZ0X;Argentina
+AZ0Y;Argentina
+AZ1V;Argentina
+AZ1W;Argentina
+AZ1X;Argentina
+AZ1Y;Argentina
+AZ2V;Argentina
+AZ2W;Argentina
+AZ2X;Argentina
+AZ2Y;Argentina
+AZ3V;Argentina
+AZ3W;Argentina
+AZ3X;Argentina
+AZ3Y;Argentina
+AZ4V;Argentina
+AZ4W;Argentina
+AZ4X;Argentina
+AZ4Y;Argentina
+AZ5V;Argentina
+AZ5W;Argentina
+AZ5X;Argentina
+AZ5Y;Argentina
+AZ6V;Argentina
+AZ6W;Argentina
+AZ6X;Argentina
+AZ6Y;Argentina
+AZ7V;Argentina
+AZ7W;Argentina
+AZ7X;Argentina
+AZ7Y;Argentina
+AZ8V;Argentina
+AZ8W;Argentina
+AZ8X;Argentina
+AZ8Y;Argentina
+AZ9V;Argentina
+AZ9W;Argentina
+AZ9X;Argentina
+AZ9Y;Argentina
+BA2A;Kina
+BA2B;Kina
+BA2C;Kina
+BA2D;Kina
+BA2E;Kina
+BA2F;Kina
+BA2G;Kina
+BA2H;Kina
+BA2I;Kina
+BA2J;Kina
+BA2K;Kina
+BA2L;Kina
+BA2M;Kina
+BA2N;Kina
+BA2O;Kina
+BA2P;Kina
+BA3G;Kina
+BA3H;Kina
+BA3I;Kina
+BA3J;Kina
+BA3K;Kina
+BA3L;Kina
+BA6Q;Kina
+BA6R;Kina
+BA6S;Kina
+BA6T;Kina
+BA6U;Kina
+BA6V;Kina
+BA6W;Kina
+BA6X;Kina
+BA7A;Kina
+BA7B;Kina
+BA7C;Kina
+BA7D;Kina
+BA7E;Kina
+BA7F;Kina
+BA7G;Kina
+BA7H;Kina
+BA7Q;Kina
+BA7R;Kina
+BA7S;Kina
+BA7T;Kina
+BA7U;Kina
+BA7V;Kina
+BA7W;Kina
+BA7X;Kina
+BA8A;Kina
+BA8B;Kina
+BA8C;Kina
+BA8D;Kina
+BA8E;Kina
+BA8F;Kina
+BA8G;Kina
+BA8H;Kina
+BA8I;Kina
+BA8J;Kina
+BA8K;Kina
+BA8L;Kina
+BA8M;Kina
+BA8N;Kina
+BA8O;Kina
+BA8P;Kina
+BA8Q;Kina
+BA8R;Kina
+BA8S;Kina
+BA8T;Kina
+BA8U;Kina
+BA8V;Kina
+BA8W;Kina
+BA8X;Kina
+BA9A;Kina
+BA9B;Kina
+BA9C;Kina
+BA9D;Kina
+BA9E;Kina
+BA9F;Kina
+BA9S;Kina
+BA9T;Kina
+BA9U;Kina
+BA9V;Kina
+BA9W;Kina
+BA9X;Kina
+BB2A;Kina
+BB2B;Kina
+BB2C;Kina
+BB2D;Kina
+BB2E;Kina
+BB2F;Kina
+BB2G;Kina
+BB2H;Kina
+BB2I;Kina
+BB2J;Kina
+BB2K;Kina
+BB2L;Kina
+BB2M;Kina
+BB2N;Kina
+BB2O;Kina
+BB2P;Kina
+BB3G;Kina
+BB3H;Kina
+BB3I;Kina
+BB3J;Kina
+BB3K;Kina
+BB3L;Kina
+BB6Q;Kina
+BB6R;Kina
+BB6S;Kina
+BB6T;Kina
+BB6U;Kina
+BB6V;Kina
+BB6W;Kina
+BB6X;Kina
+BB7A;Kina
+BB7B;Kina
+BB7C;Kina
+BB7D;Kina
+BB7E;Kina
+BB7F;Kina
+BB7G;Kina
+BB7H;Kina
+BB7Q;Kina
+BB7R;Kina
+BB7S;Kina
+BB7T;Kina
+BB7U;Kina
+BB7V;Kina
+BB7W;Kina
+BB7X;Kina
+BB8A;Kina
+BB8B;Kina
+BB8C;Kina
+BB8D;Kina
+BB8E;Kina
+BB8F;Kina
+BB8G;Kina
+BB8H;Kina
+BB8I;Kina
+BB8J;Kina
+BB8K;Kina
+BB8L;Kina
+BB8M;Kina
+BB8N;Kina
+BB8O;Kina
+BB8P;Kina
+BB8Q;Kina
+BB8R;Kina
+BB8S;Kina
+BB8T;Kina
+BB8U;Kina
+BB8V;Kina
+BB8W;Kina
+BB8X;Kina
+BB9A;Kina
+BB9B;Kina
+BB9C;Kina
+BB9D;Kina
+BB9E;Kina
+BB9F;Kina
+BB9S;Kina
+BB9T;Kina
+BB9U;Kina
+BB9V;Kina
+BB9W;Kina
+BB9X;Kina
+BC2A;Kina
+BC2B;Kina
+BC2C;Kina
+BC2D;Kina
+BC2E;Kina
+BC2F;Kina
+BC2G;Kina
+BC2H;Kina
+BC2I;Kina
+BC2J;Kina
+BC2K;Kina
+BC2L;Kina
+BC2M;Kina
+BC2N;Kina
+BC2O;Kina
+BC2P;Kina
+BC3G;Kina
+BC3H;Kina
+BC3I;Kina
+BC3J;Kina
+BC3K;Kina
+BC3L;Kina
+BC6Q;Kina
+BC6R;Kina
+BC6S;Kina
+BC6T;Kina
+BC6U;Kina
+BC6V;Kina
+BC6W;Kina
+BC6X;Kina
+BC7A;Kina
+BC7B;Kina
+BC7C;Kina
+BC7D;Kina
+BC7E;Kina
+BC7F;Kina
+BC7G;Kina
+BC7H;Kina
+BC7Q;Kina
+BC7R;Kina
+BC7S;Kina
+BC7T;Kina
+BC7U;Kina
+BC7V;Kina
+BC7W;Kina
+BC7X;Kina
+BC8A;Kina
+BC8B;Kina
+BC8C;Kina
+BC8D;Kina
+BC8E;Kina
+BC8F;Kina
+BC8G;Kina
+BC8H;Kina
+BC8I;Kina
+BC8J;Kina
+BC8K;Kina
+BC8L;Kina
+BC8M;Kina
+BC8N;Kina
+BC8O;Kina
+BC8P;Kina
+BC8Q;Kina
+BC8R;Kina
+BC8S;Kina
+BC8T;Kina
+BC8U;Kina
+BC8V;Kina
+BC8W;Kina
+BC8X;Kina
+BC9A;Kina
+BC9B;Kina
+BC9C;Kina
+BC9D;Kina
+BC9E;Kina
+BC9F;Kina
+BC9S;Kina
+BC9T;Kina
+BC9U;Kina
+BC9V;Kina
+BC9W;Kina
+BC9X;Kina
+BD2A;Kina
+BD2B;Kina
+BD2C;Kina
+BD2D;Kina
+BD2E;Kina
+BD2F;Kina
+BD2G;Kina
+BD2H;Kina
+BD2I;Kina
+BD2J;Kina
+BD2K;Kina
+BD2L;Kina
+BD2M;Kina
+BD2N;Kina
+BD2O;Kina
+BD2P;Kina
+BD3G;Kina
+BD3H;Kina
+BD3I;Kina
+BD3J;Kina
+BD3K;Kina
+BD3L;Kina
+BD6Q;Kina
+BD6R;Kina
+BD6S;Kina
+BD6T;Kina
+BD6U;Kina
+BD6V;Kina
+BD6W;Kina
+BD6X;Kina
+BD7A;Kina
+BD7B;Kina
+BD7C;Kina
+BD7D;Kina
+BD7E;Kina
+BD7F;Kina
+BD7G;Kina
+BD7H;Kina
+BD7Q;Kina
+BD7R;Kina
+BD7S;Kina
+BD7T;Kina
+BD7U;Kina
+BD7V;Kina
+BD7W;Kina
+BD7X;Kina
+BD8A;Kina
+BD8B;Kina
+BD8C;Kina
+BD8D;Kina
+BD8E;Kina
+BD8F;Kina
+BD8G;Kina
+BD8H;Kina
+BD8I;Kina
+BD8J;Kina
+BD8K;Kina
+BD8L;Kina
+BD8M;Kina
+BD8N;Kina
+BD8O;Kina
+BD8P;Kina
+BD8Q;Kina
+BD8R;Kina
+BD8S;Kina
+BD8T;Kina
+BD8U;Kina
+BD8V;Kina
+BD8W;Kina
+BD8X;Kina
+BD9A;Kina
+BD9B;Kina
+BD9C;Kina
+BD9D;Kina
+BD9E;Kina
+BD9F;Kina
+BD9S;Kina
+BD9T;Kina
+BD9U;Kina
+BD9V;Kina
+BD9W;Kina
+BD9X;Kina
+BE2A;Kina
+BE2B;Kina
+BE2C;Kina
+BE2D;Kina
+BE2E;Kina
+BE2F;Kina
+BE2G;Kina
+BE2H;Kina
+BE2I;Kina
+BE2J;Kina
+BE2K;Kina
+BE2L;Kina
+BE2M;Kina
+BE2N;Kina
+BE2O;Kina
+BE2P;Kina
+BE3G;Kina
+BE3H;Kina
+BE3I;Kina
+BE3J;Kina
+BE3K;Kina
+BE3L;Kina
+BE6Q;Kina
+BE6R;Kina
+BE6S;Kina
+BE6T;Kina
+BE6U;Kina
+BE6V;Kina
+BE6W;Kina
+BE6X;Kina
+BE7A;Kina
+BE7B;Kina
+BE7C;Kina
+BE7D;Kina
+BE7E;Kina
+BE7F;Kina
+BE7G;Kina
+BE7H;Kina
+BE7Q;Kina
+BE7R;Kina
+BE7S;Kina
+BE7T;Kina
+BE7U;Kina
+BE7V;Kina
+BE7W;Kina
+BE7X;Kina
+BE8A;Kina
+BE8B;Kina
+BE8C;Kina
+BE8D;Kina
+BE8E;Kina
+BE8F;Kina
+BE8G;Kina
+BE8H;Kina
+BE8I;Kina
+BE8J;Kina
+BE8K;Kina
+BE8L;Kina
+BE8M;Kina
+BE8N;Kina
+BE8O;Kina
+BE8P;Kina
+BE8Q;Kina
+BE8R;Kina
+BE8S;Kina
+BE8T;Kina
+BE8U;Kina
+BE8V;Kina
+BE8W;Kina
+BE8X;Kina
+BE9A;Kina
+BE9B;Kina
+BE9C;Kina
+BE9D;Kina
+BE9E;Kina
+BE9F;Kina
+BE9S;Kina
+BE9T;Kina
+BE9U;Kina
+BE9V;Kina
+BE9W;Kina
+BE9X;Kina
+BF2A;Kina
+BF2B;Kina
+BF2C;Kina
+BF2D;Kina
+BF2E;Kina
+BF2F;Kina
+BF2G;Kina
+BF2H;Kina
+BF2I;Kina
+BF2J;Kina
+BF2K;Kina
+BF2L;Kina
+BF2M;Kina
+BF2N;Kina
+BF2O;Kina
+BF2P;Kina
+BF3G;Kina
+BF3H;Kina
+BF3I;Kina
+BF3J;Kina
+BF3K;Kina
+BF3L;Kina
+BF6Q;Kina
+BF6R;Kina
+BF6S;Kina
+BF6T;Kina
+BF6U;Kina
+BF6V;Kina
+BF6W;Kina
+BF6X;Kina
+BF7A;Kina
+BF7B;Kina
+BF7C;Kina
+BF7D;Kina
+BF7E;Kina
+BF7F;Kina
+BF7G;Kina
+BF7H;Kina
+BF7Q;Kina
+BF7R;Kina
+BF7S;Kina
+BF7T;Kina
+BF7U;Kina
+BF7V;Kina
+BF7W;Kina
+BF7X;Kina
+BF8A;Kina
+BF8B;Kina
+BF8C;Kina
+BF8D;Kina
+BF8E;Kina
+BF8F;Kina
+BF8G;Kina
+BF8H;Kina
+BF8I;Kina
+BF8J;Kina
+BF8K;Kina
+BF8L;Kina
+BF8M;Kina
+BF8N;Kina
+BF8O;Kina
+BF8P;Kina
+BF8Q;Kina
+BF8R;Kina
+BF8S;Kina
+BF8T;Kina
+BF8U;Kina
+BF8V;Kina
+BF8W;Kina
+BF8X;Kina
+BF9A;Kina
+BF9B;Kina
+BF9C;Kina
+BF9D;Kina
+BF9E;Kina
+BF9F;Kina
+BF9S;Kina
+BF9T;Kina
+BF9U;Kina
+BF9V;Kina
+BF9W;Kina
+BF9X;Kina
+BG2A;Kina
+BG2B;Kina
+BG2C;Kina
+BG2D;Kina
+BG2E;Kina
+BG2F;Kina
+BG2G;Kina
+BG2H;Kina
+BG2I;Kina
+BG2J;Kina
+BG2K;Kina
+BG2L;Kina
+BG2M;Kina
+BG2N;Kina
+BG2O;Kina
+BG2P;Kina
+BG3G;Kina
+BG3H;Kina
+BG3I;Kina
+BG3J;Kina
+BG3K;Kina
+BG3L;Kina
+BG6Q;Kina
+BG6R;Kina
+BG6S;Kina
+BG6T;Kina
+BG6U;Kina
+BG6V;Kina
+BG6W;Kina
+BG6X;Kina
+BG7A;Kina
+BG7B;Kina
+BG7C;Kina
+BG7D;Kina
+BG7E;Kina
+BG7F;Kina
+BG7G;Kina
+BG7H;Kina
+BG7Q;Kina
+BG7R;Kina
+BG7S;Kina
+BG7T;Kina
+BG7U;Kina
+BG7V;Kina
+BG7W;Kina
+BG7X;Kina
+BG8A;Kina
+BG8B;Kina
+BG8C;Kina
+BG8D;Kina
+BG8E;Kina
+BG8F;Kina
+BG8G;Kina
+BG8H;Kina
+BG8I;Kina
+BG8J;Kina
+BG8K;Kina
+BG8L;Kina
+BG8M;Kina
+BG8N;Kina
+BG8O;Kina
+BG8P;Kina
+BG8Q;Kina
+BG8R;Kina
+BG8S;Kina
+BG8T;Kina
+BG8U;Kina
+BG8V;Kina
+BG8W;Kina
+BG8X;Kina
+BG9A;Kina
+BG9B;Kina
+BG9C;Kina
+BG9D;Kina
+BG9E;Kina
+BG9F;Kina
+BG9S;Kina
+BG9T;Kina
+BG9U;Kina
+BG9V;Kina
+BG9W;Kina
+BG9X;Kina
+BH2A;Kina
+BH2B;Kina
+BH2C;Kina
+BH2D;Kina
+BH2E;Kina
+BH2F;Kina
+BH2G;Kina
+BH2H;Kina
+BH2I;Kina
+BH2J;Kina
+BH2K;Kina
+BH2L;Kina
+BH2M;Kina
+BH2N;Kina
+BH2O;Kina
+BH2P;Kina
+BH3G;Kina
+BH3H;Kina
+BH3I;Kina
+BH3J;Kina
+BH3K;Kina
+BH3L;Kina
+BH6Q;Kina
+BH6R;Kina
+BH6S;Kina
+BH6T;Kina
+BH6U;Kina
+BH6V;Kina
+BH6W;Kina
+BH6X;Kina
+BH7A;Kina
+BH7B;Kina
+BH7C;Kina
+BH7D;Kina
+BH7E;Kina
+BH7F;Kina
+BH7G;Kina
+BH7H;Kina
+BH7Q;Kina
+BH7R;Kina
+BH7S;Kina
+BH7T;Kina
+BH7U;Kina
+BH7V;Kina
+BH7W;Kina
+BH7X;Kina
+BH8A;Kina
+BH8B;Kina
+BH8C;Kina
+BH8D;Kina
+BH8E;Kina
+BH8F;Kina
+BH8G;Kina
+BH8H;Kina
+BH8I;Kina
+BH8J;Kina
+BH8K;Kina
+BH8L;Kina
+BH8M;Kina
+BH8N;Kina
+BH8O;Kina
+BH8P;Kina
+BH8Q;Kina
+BH8R;Kina
+BH8S;Kina
+BH8T;Kina
+BH8U;Kina
+BH8V;Kina
+BH8W;Kina
+BH8X;Kina
+BH9A;Kina
+BH9B;Kina
+BH9C;Kina
+BH9D;Kina
+BH9E;Kina
+BH9F;Kina
+BH9S;Kina
+BH9T;Kina
+BH9U;Kina
+BH9V;Kina
+BH9W;Kina
+BH9X;Kina
+BI2A;Kina
+BI2B;Kina
+BI2C;Kina
+BI2D;Kina
+BI2E;Kina
+BI2F;Kina
+BI2G;Kina
+BI2H;Kina
+BI2I;Kina
+BI2J;Kina
+BI2K;Kina
+BI2L;Kina
+BI2M;Kina
+BI2N;Kina
+BI2O;Kina
+BI2P;Kina
+BI3G;Kina
+BI3H;Kina
+BI3I;Kina
+BI3J;Kina
+BI3K;Kina
+BI3L;Kina
+BI6Q;Kina
+BI6R;Kina
+BI6S;Kina
+BI6T;Kina
+BI6U;Kina
+BI6V;Kina
+BI6W;Kina
+BI6X;Kina
+BI7A;Kina
+BI7B;Kina
+BI7C;Kina
+BI7D;Kina
+BI7E;Kina
+BI7F;Kina
+BI7G;Kina
+BI7H;Kina
+BI7Q;Kina
+BI7R;Kina
+BI7S;Kina
+BI7T;Kina
+BI7U;Kina
+BI7V;Kina
+BI7W;Kina
+BI7X;Kina
+BI8A;Kina
+BI8B;Kina
+BI8C;Kina
+BI8D;Kina
+BI8E;Kina
+BI8F;Kina
+BI8G;Kina
+BI8H;Kina
+BI8I;Kina
+BI8J;Kina
+BI8K;Kina
+BI8L;Kina
+BI8M;Kina
+BI8N;Kina
+BI8O;Kina
+BI8P;Kina
+BI8Q;Kina
+BI8R;Kina
+BI8S;Kina
+BI8T;Kina
+BI8U;Kina
+BI8V;Kina
+BI8W;Kina
+BI8X;Kina
+BI9A;Kina
+BI9B;Kina
+BI9C;Kina
+BI9D;Kina
+BI9E;Kina
+BI9F;Kina
+BI9S;Kina
+BI9T;Kina
+BI9U;Kina
+BI9V;Kina
+BI9W;Kina
+BI9X;Kina
+BK2A;Kina
+BK2B;Kina
+BK2C;Kina
+BK2D;Kina
+BK2E;Kina
+BK2F;Kina
+BK2G;Kina
+BK2H;Kina
+BK2I;Kina
+BK2J;Kina
+BK2K;Kina
+BK2L;Kina
+BK2M;Kina
+BK2N;Kina
+BK2O;Kina
+BK2P;Kina
+BK3G;Kina
+BK3H;Kina
+BK3I;Kina
+BK3J;Kina
+BK3K;Kina
+BK3L;Kina
+BK6Q;Kina
+BK6R;Kina
+BK6S;Kina
+BK6T;Kina
+BK6U;Kina
+BK6V;Kina
+BK6W;Kina
+BK6X;Kina
+BK7A;Kina
+BK7B;Kina
+BK7C;Kina
+BK7D;Kina
+BK7E;Kina
+BK7F;Kina
+BK7G;Kina
+BK7H;Kina
+BK7Q;Kina
+BK7R;Kina
+BK7S;Kina
+BK7T;Kina
+BK7U;Kina
+BK7V;Kina
+BK7W;Kina
+BK7X;Kina
+BK8A;Kina
+BK8B;Kina
+BK8C;Kina
+BK8D;Kina
+BK8E;Kina
+BK8F;Kina
+BK8G;Kina
+BK8H;Kina
+BK8I;Kina
+BK8J;Kina
+BK8K;Kina
+BK8L;Kina
+BK8M;Kina
+BK8N;Kina
+BK8O;Kina
+BK8P;Kina
+BK8Q;Kina
+BK8R;Kina
+BK8S;Kina
+BK8T;Kina
+BK8U;Kina
+BK8V;Kina
+BK8W;Kina
+BK8X;Kina
+BK9A;Kina
+BK9B;Kina
+BK9C;Kina
+BK9D;Kina
+BK9E;Kina
+BK9F;Kina
+BK9S;Kina
+BK9T;Kina
+BK9U;Kina
+BK9V;Kina
+BK9W;Kina
+BK9X;Kina
+BL2A;Kina
+BL2B;Kina
+BL2C;Kina
+BL2D;Kina
+BL2E;Kina
+BL2F;Kina
+BL2G;Kina
+BL2H;Kina
+BL2I;Kina
+BL2J;Kina
+BL2K;Kina
+BL2L;Kina
+BL2M;Kina
+BL2N;Kina
+BL2O;Kina
+BL2P;Kina
+BL3G;Kina
+BL3H;Kina
+BL3I;Kina
+BL3J;Kina
+BL3K;Kina
+BL3L;Kina
+BL6Q;Kina
+BL6R;Kina
+BL6S;Kina
+BL6T;Kina
+BL6U;Kina
+BL6V;Kina
+BL6W;Kina
+BL6X;Kina
+BL7A;Kina
+BL7B;Kina
+BL7C;Kina
+BL7D;Kina
+BL7E;Kina
+BL7F;Kina
+BL7G;Kina
+BL7H;Kina
+BL7Q;Kina
+BL7R;Kina
+BL7S;Kina
+BL7T;Kina
+BL7U;Kina
+BL7V;Kina
+BL7W;Kina
+BL7X;Kina
+BL8A;Kina
+BL8B;Kina
+BL8C;Kina
+BL8D;Kina
+BL8E;Kina
+BL8F;Kina
+BL8G;Kina
+BL8H;Kina
+BL8I;Kina
+BL8J;Kina
+BL8K;Kina
+BL8L;Kina
+BL8M;Kina
+BL8N;Kina
+BL8O;Kina
+BL8P;Kina
+BL8Q;Kina
+BL8R;Kina
+BL8S;Kina
+BL8T;Kina
+BL8U;Kina
+BL8V;Kina
+BL8W;Kina
+BL8X;Kina
+BL9A;Kina
+BL9B;Kina
+BL9C;Kina
+BL9D;Kina
+BL9E;Kina
+BL9F;Kina
+BL9S;Kina
+BL9T;Kina
+BL9U;Kina
+BL9V;Kina
+BL9W;Kina
+BL9X;Kina
+BM9P;Pratas
+BM9S;Spratlyöarna
+BN9P;Pratas
+BN9S;Spratlyöarna
+BO9P;Pratas
+BO9S;Spratlyöarna
+BP9P;Pratas
+BP9S;Spratlyöarna
+BQ9P;Pratas
+BQ9S;Spratlyöarna
+BT2A;Kina
+BT2B;Kina
+BT2C;Kina
+BT2D;Kina
+BT2E;Kina
+BT2F;Kina
+BT2G;Kina
+BT2H;Kina
+BT2I;Kina
+BT2J;Kina
+BT2K;Kina
+BT2L;Kina
+BT2M;Kina
+BT2N;Kina
+BT2O;Kina
+BT2P;Kina
+BT3G;Kina
+BT3H;Kina
+BT3I;Kina
+BT3J;Kina
+BT3K;Kina
+BT3L;Kina
+BT6Q;Kina
+BT6R;Kina
+BT6S;Kina
+BT6T;Kina
+BT6U;Kina
+BT6V;Kina
+BT6W;Kina
+BT6X;Kina
+BT7A;Kina
+BT7B;Kina
+BT7C;Kina
+BT7D;Kina
+BT7E;Kina
+BT7F;Kina
+BT7G;Kina
+BT7H;Kina
+BT7Q;Kina
+BT7R;Kina
+BT7S;Kina
+BT7T;Kina
+BT7U;Kina
+BT7V;Kina
+BT7W;Kina
+BT7X;Kina
+BT8A;Kina
+BT8B;Kina
+BT8C;Kina
+BT8D;Kina
+BT8E;Kina
+BT8F;Kina
+BT8G;Kina
+BT8H;Kina
+BT8I;Kina
+BT8J;Kina
+BT8K;Kina
+BT8L;Kina
+BT8M;Kina
+BT8N;Kina
+BT8O;Kina
+BT8P;Kina
+BT8Q;Kina
+BT8R;Kina
+BT8S;Kina
+BT8T;Kina
+BT8U;Kina
+BT8V;Kina
+BT8W;Kina
+BT8X;Kina
+BT9A;Kina
+BT9B;Kina
+BT9C;Kina
+BT9D;Kina
+BT9E;Kina
+BT9F;Kina
+BT9S;Kina
+BT9T;Kina
+BT9U;Kina
+BT9V;Kina
+BT9W;Kina
+BT9X;Kina
+BU9P;Pratas
+BU9S;Spratlyöarna
+BV9P;Pratas
+BV9S;Spratlyöarna
+BW9P;Pratas
+BW9S;Spratlyöarna
+BX9P;Pratas
+BX9S;Spratlyöarna
+BY2A;Kina
+BY2B;Kina
+BY2C;Kina
+BY2D;Kina
+BY2E;Kina
+BY2F;Kina
+BY2G;Kina
+BY2H;Kina
+BY2I;Kina
+BY2J;Kina
+BY2K;Kina
+BY2L;Kina
+BY2M;Kina
+BY2N;Kina
+BY2O;Kina
+BY2P;Kina
+BY3G;Kina
+BY3H;Kina
+BY3I;Kina
+BY3J;Kina
+BY3K;Kina
+BY3L;Kina
+BY6Q;Kina
+BY6R;Kina
+BY6S;Kina
+BY6T;Kina
+BY6U;Kina
+BY6V;Kina
+BY6W;Kina
+BY6X;Kina
+BY7A;Kina
+BY7B;Kina
+BY7C;Kina
+BY7D;Kina
+BY7E;Kina
+BY7F;Kina
+BY7G;Kina
+BY7H;Kina
+BY7Q;Kina
+BY7R;Kina
+BY7S;Kina
+BY7T;Kina
+BY7U;Kina
+BY7V;Kina
+BY7W;Kina
+BY7X;Kina
+BY8A;Kina
+BY8B;Kina
+BY8C;Kina
+BY8D;Kina
+BY8E;Kina
+BY8F;Kina
+BY8G;Kina
+BY8H;Kina
+BY8I;Kina
+BY8J;Kina
+BY8K;Kina
+BY8L;Kina
+BY8M;Kina
+BY8N;Kina
+BY8O;Kina
+BY8P;Kina
+BY8Q;Kina
+BY8R;Kina
+BY8S;Kina
+BY8T;Kina
+BY8U;Kina
+BY8V;Kina
+BY8W;Kina
+BY8X;Kina
+BY9A;Kina
+BY9B;Kina
+BY9C;Kina
+BY9D;Kina
+BY9E;Kina
+BY9F;Kina
+BY9S;Kina
+BY9T;Kina
+BY9U;Kina
+BY9V;Kina
+BY9W;Kina
+BY9X;Kina
+BZ2A;Kina
+BZ2B;Kina
+BZ2C;Kina
+BZ2D;Kina
+BZ2E;Kina
+BZ2F;Kina
+BZ2G;Kina
+BZ2H;Kina
+BZ2I;Kina
+BZ2J;Kina
+BZ2K;Kina
+BZ2L;Kina
+BZ2M;Kina
+BZ2N;Kina
+BZ2O;Kina
+BZ2P;Kina
+BZ3G;Kina
+BZ3H;Kina
+BZ3I;Kina
+BZ3J;Kina
+BZ3K;Kina
+BZ3L;Kina
+BZ6Q;Kina
+BZ6R;Kina
+BZ6S;Kina
+BZ6T;Kina
+BZ6U;Kina
+BZ6V;Kina
+BZ6W;Kina
+BZ6X;Kina
+BZ7A;Kina
+BZ7B;Kina
+BZ7C;Kina
+BZ7D;Kina
+BZ7E;Kina
+BZ7F;Kina
+BZ7G;Kina
+BZ7H;Kina
+BZ7Q;Kina
+BZ7R;Kina
+BZ7S;Kina
+BZ7T;Kina
+BZ7U;Kina
+BZ7V;Kina
+BZ7W;Kina
+BZ7X;Kina
+BZ8A;Kina
+BZ8B;Kina
+BZ8C;Kina
+BZ8D;Kina
+BZ8E;Kina
+BZ8F;Kina
+BZ8G;Kina
+BZ8H;Kina
+BZ8I;Kina
+BZ8J;Kina
+BZ8K;Kina
+BZ8L;Kina
+BZ8M;Kina
+BZ8N;Kina
+BZ8O;Kina
+BZ8P;Kina
+BZ8Q;Kina
+BZ8R;Kina
+BZ8S;Kina
+BZ8T;Kina
+BZ8U;Kina
+BZ8V;Kina
+BZ8W;Kina
+BZ8X;Kina
+BZ9A;Kina
+BZ9B;Kina
+BZ9C;Kina
+BZ9D;Kina
+BZ9E;Kina
+BZ9F;Kina
+BZ9S;Kina
+BZ9T;Kina
+BZ9U;Kina
+BZ9V;Kina
+BZ9W;Kina
+BZ9X;Kina
+CA0X;San Felix & San Ambrosio
+CA0Z;Juan Fernández
+CB0X;San Felix & San Ambrosio
+CB0Z;Juan Fernández
+CC0X;San Felix & San Ambrosio
+CC0Z;Juan Fernández
+CD0X;San Felix & San Ambrosio
+CD0Z;Juan Fernández
+CE0I;Juan Fernández
+CE0X;San Felix & San Ambrosio
+CE0Y;Påskön
+CE0Z;Juan Fernández
+E5/N;North Cook Islands
+E5/S;South Cook Islands
+EX0P;Kirgizistan
+EX0Q;Kirgizistan
+EX2P;Kirgizistan
+EX2Q;Kirgizistan
+EX6P;Kirgizistan
+EX6Q;Kirgizistan
+EX7P;Kirgizistan
+EX7Q;Kirgizistan
+EX8P;Kirgizistan
+EX8Q;Kirgizistan
+FK/C;Chesterfield Islands
+FO/A;Austral Islands
+FO/C;Clipperton Island
+FO/M;Marquesas Islands
+FT/G;Glorioso Islands
+FT/J;Juan de Nova, Europa
+FT/T;Tromelin Island
+FT/W;Crozet Island
+FT/X;Kerguelen Islands
+FT/Z;Amsterdam & St. Paul Is.
+FT0E;Juan de Nova, Europa
+FT0G;Glorioso Islands
+FT0J;Juan de Nova, Europa
+FT0T;Tromelin Island
+FT0W;Crozet Island
+FT0X;Kerguelen Islands
+FT0Y;Antarktis
+FT0Z;Amsterdam & St. Paul Is.
+FT1E;Juan de Nova, Europa
+FT1G;Glorioso Islands
+FT1J;Juan de Nova, Europa
+FT1T;Tromelin Island
+FT1Y;Antarktis
+FT1Z;Amsterdam & St. Paul Is.
+FT2E;Juan de Nova, Europa
+FT2G;Glorioso Islands
+FT2J;Juan de Nova, Europa
+FT2T;Tromelin Island
+FT2X;Kerguelen Islands
+FT2Y;Antarktis
+FT2Z;Amsterdam & St. Paul Is.
+FT3E;Juan de Nova, Europa
+FT3G;Glorioso Islands
+FT3J;Juan de Nova, Europa
+FT3T;Tromelin Island
+FT3Y;Antarktis
+FT3Z;Amsterdam & St. Paul Is.
+FT4E;Juan de Nova, Europa
+FT4G;Glorioso Islands
+FT4J;Juan de Nova, Europa
+FT4T;Tromelin Island
+FT4W;Crozet Island
+FT4X;Kerguelen Islands
+FT4Y;Antarktis
+FT4Z;Amsterdam & St. Paul Is.
+FT5G;Glorioso Islands
+FT5T;Tromelin Island
+FT5W;Crozet Island
+FT5X;Kerguelen Islands
+FT5Y;Antarktis
+FT5Z;Amsterdam & St. Paul Is.
+FT6E;Juan de Nova, Europa
+FT6G;Glorioso Islands
+FT6J;Juan de Nova, Europa
+FT6T;Tromelin Island
+FT6Y;Antarktis
+FT6Z;Amsterdam & St. Paul Is.
+FT7E;Juan de Nova, Europa
+FT7G;Glorioso Islands
+FT7J;Juan de Nova, Europa
+FT7T;Tromelin Island
+FT7Y;Antarktis
+FT7Z;Amsterdam & St. Paul Is.
+FT8E;Juan de Nova, Europa
+FT8G;Glorioso Islands
+FT8J;Juan de Nova, Europa
+FT8T;Tromelin Island
+FT8W;Crozet Island
+FT8X;Kerguelen Islands
+FT8Y;Antarktis
+FT8Z;Amsterdam & St. Paul Is.
+FT9E;Juan de Nova, Europa
+FT9G;Glorioso Islands
+FT9J;Juan de Nova, Europa
+FT9T;Tromelin Island
+HJ0M;Malpelo Island
+HK0M;Malpelo Island
+IW0U;Sardinien
+IW0V;Sardinien
+IW0W;Sardinien
+IW0X;Sardinien
+IW0Y;Sardinien
+IW0Z;Sardinien
+JD/M;Minami Torishima
+JD/O;Ogasawara
+KH7K;Kure Island
+KL9K;Sydkorea
+L20V;Argentina
+L20W;Argentina
+L20X;Argentina
+L20Y;Argentina
+L21V;Argentina
+L21W;Argentina
+L21X;Argentina
+L21Y;Argentina
+L22V;Argentina
+L22W;Argentina
+L22X;Argentina
+L22Y;Argentina
+L23V;Argentina
+L23W;Argentina
+L23X;Argentina
+L23Y;Argentina
+L24V;Argentina
+L24W;Argentina
+L24X;Argentina
+L24Y;Argentina
+L25V;Argentina
+L25W;Argentina
+L25X;Argentina
+L25Y;Argentina
+L26V;Argentina
+L26W;Argentina
+L26X;Argentina
+L26Y;Argentina
+L27V;Argentina
+L27W;Argentina
+L27X;Argentina
+L27Y;Argentina
+L28V;Argentina
+L28W;Argentina
+L28X;Argentina
+L28Y;Argentina
+L29V;Argentina
+L29W;Argentina
+L29X;Argentina
+L29Y;Argentina
+L30V;Argentina
+L30W;Argentina
+L30X;Argentina
+L30Y;Argentina
+L31V;Argentina
+L31W;Argentina
+L31X;Argentina
+L31Y;Argentina
+L32V;Argentina
+L32W;Argentina
+L32X;Argentina
+L32Y;Argentina
+L33V;Argentina
+L33W;Argentina
+L33X;Argentina
+L33Y;Argentina
+L34V;Argentina
+L34W;Argentina
+L34X;Argentina
+L34Y;Argentina
+L35V;Argentina
+L35W;Argentina
+L35X;Argentina
+L35Y;Argentina
+L36V;Argentina
+L36W;Argentina
+L36X;Argentina
+L36Y;Argentina
+L37V;Argentina
+L37W;Argentina
+L37X;Argentina
+L37Y;Argentina
+L38V;Argentina
+L38W;Argentina
+L38X;Argentina
+L38Y;Argentina
+L39V;Argentina
+L39W;Argentina
+L39X;Argentina
+L39Y;Argentina
+L40V;Argentina
+L40W;Argentina
+L40X;Argentina
+L40Y;Argentina
+L41V;Argentina
+L41W;Argentina
+L41X;Argentina
+L41Y;Argentina
+L42V;Argentina
+L42W;Argentina
+L42X;Argentina
+L42Y;Argentina
+L43V;Argentina
+L43W;Argentina
+L43X;Argentina
+L43Y;Argentina
+L44V;Argentina
+L44W;Argentina
+L44X;Argentina
+L44Y;Argentina
+L45V;Argentina
+L45W;Argentina
+L45X;Argentina
+L45Y;Argentina
+L46V;Argentina
+L46W;Argentina
+L46X;Argentina
+L46Y;Argentina
+L47V;Argentina
+L47W;Argentina
+L47X;Argentina
+L47Y;Argentina
+L48V;Argentina
+L48W;Argentina
+L48X;Argentina
+L48Y;Argentina
+L49V;Argentina
+L49W;Argentina
+L49X;Argentina
+L49Y;Argentina
+L50V;Argentina
+L50W;Argentina
+L50X;Argentina
+L50Y;Argentina
+L51V;Argentina
+L51W;Argentina
+L51X;Argentina
+L51Y;Argentina
+L52V;Argentina
+L52W;Argentina
+L52X;Argentina
+L52Y;Argentina
+L53V;Argentina
+L53W;Argentina
+L53X;Argentina
+L53Y;Argentina
+L54V;Argentina
+L54W;Argentina
+L54X;Argentina
+L54Y;Argentina
+L55V;Argentina
+L55W;Argentina
+L55X;Argentina
+L55Y;Argentina
+L56V;Argentina
+L56W;Argentina
+L56X;Argentina
+L56Y;Argentina
+L57V;Argentina
+L57W;Argentina
+L57X;Argentina
+L57Y;Argentina
+L58V;Argentina
+L58W;Argentina
+L58X;Argentina
+L58Y;Argentina
+L59V;Argentina
+L59W;Argentina
+L59X;Argentina
+L59Y;Argentina
+L60V;Argentina
+L60W;Argentina
+L60X;Argentina
+L60Y;Argentina
+L61V;Argentina
+L61W;Argentina
+L61X;Argentina
+L61Y;Argentina
+L62V;Argentina
+L62W;Argentina
+L62X;Argentina
+L62Y;Argentina
+L63V;Argentina
+L63W;Argentina
+L63X;Argentina
+L63Y;Argentina
+L64V;Argentina
+L64W;Argentina
+L64X;Argentina
+L64Y;Argentina
+L65V;Argentina
+L65W;Argentina
+L65X;Argentina
+L65Y;Argentina
+L66V;Argentina
+L66W;Argentina
+L66X;Argentina
+L66Y;Argentina
+L67V;Argentina
+L67W;Argentina
+L67X;Argentina
+L67Y;Argentina
+L68V;Argentina
+L68W;Argentina
+L68X;Argentina
+L68Y;Argentina
+L69V;Argentina
+L69W;Argentina
+L69X;Argentina
+L69Y;Argentina
+L70V;Argentina
+L70W;Argentina
+L70X;Argentina
+L70Y;Argentina
+L71V;Argentina
+L71W;Argentina
+L71X;Argentina
+L71Y;Argentina
+L72V;Argentina
+L72W;Argentina
+L72X;Argentina
+L72Y;Argentina
+L73V;Argentina
+L73W;Argentina
+L73X;Argentina
+L73Y;Argentina
+L74V;Argentina
+L74W;Argentina
+L74X;Argentina
+L74Y;Argentina
+L75V;Argentina
+L75W;Argentina
+L75X;Argentina
+L75Y;Argentina
+L76V;Argentina
+L76W;Argentina
+L76X;Argentina
+L76Y;Argentina
+L77V;Argentina
+L77W;Argentina
+L77X;Argentina
+L77Y;Argentina
+L78V;Argentina
+L78W;Argentina
+L78X;Argentina
+L78Y;Argentina
+L79V;Argentina
+L79W;Argentina
+L79X;Argentina
+L79Y;Argentina
+L80V;Argentina
+L80W;Argentina
+L80X;Argentina
+L80Y;Argentina
+L81V;Argentina
+L81W;Argentina
+L81X;Argentina
+L81Y;Argentina
+L82V;Argentina
+L82W;Argentina
+L82X;Argentina
+L82Y;Argentina
+L83V;Argentina
+L83W;Argentina
+L83X;Argentina
+L83Y;Argentina
+L84V;Argentina
+L84W;Argentina
+L84X;Argentina
+L84Y;Argentina
+L85V;Argentina
+L85W;Argentina
+L85X;Argentina
+L85Y;Argentina
+L86V;Argentina
+L86W;Argentina
+L86X;Argentina
+L86Y;Argentina
+L87V;Argentina
+L87W;Argentina
+L87X;Argentina
+L87Y;Argentina
+L88V;Argentina
+L88W;Argentina
+L88X;Argentina
+L88Y;Argentina
+L89V;Argentina
+L89W;Argentina
+L89X;Argentina
+L89Y;Argentina
+L90V;Argentina
+L90W;Argentina
+L90X;Argentina
+L90Y;Argentina
+L91V;Argentina
+L91W;Argentina
+L91X;Argentina
+L91Y;Argentina
+L92V;Argentina
+L92W;Argentina
+L92X;Argentina
+L92Y;Argentina
+L93V;Argentina
+L93W;Argentina
+L93X;Argentina
+L93Y;Argentina
+L94V;Argentina
+L94W;Argentina
+L94X;Argentina
+L94Y;Argentina
+L95V;Argentina
+L95W;Argentina
+L95X;Argentina
+L95Y;Argentina
+L96V;Argentina
+L96W;Argentina
+L96X;Argentina
+L96Y;Argentina
+L97V;Argentina
+L97W;Argentina
+L97X;Argentina
+L97Y;Argentina
+L98V;Argentina
+L98W;Argentina
+L98X;Argentina
+L98Y;Argentina
+L99V;Argentina
+L99W;Argentina
+L99X;Argentina
+L99Y;Argentina
+LO0V;Argentina
+LO0W;Argentina
+LO0X;Argentina
+LO0Y;Argentina
+LO1V;Argentina
+LO1W;Argentina
+LO1X;Argentina
+LO1Y;Argentina
+LO2V;Argentina
+LO2W;Argentina
+LO2X;Argentina
+LO2Y;Argentina
+LO3V;Argentina
+LO3W;Argentina
+LO3X;Argentina
+LO3Y;Argentina
+LO4V;Argentina
+LO4W;Argentina
+LO4X;Argentina
+LO4Y;Argentina
+LO5V;Argentina
+LO5W;Argentina
+LO5X;Argentina
+LO5Y;Argentina
+LO6V;Argentina
+LO6W;Argentina
+LO6X;Argentina
+LO6Y;Argentina
+LO7V;Argentina
+LO7W;Argentina
+LO7X;Argentina
+LO7Y;Argentina
+LO8V;Argentina
+LO8W;Argentina
+LO8X;Argentina
+LO8Y;Argentina
+LO9V;Argentina
+LO9W;Argentina
+LO9X;Argentina
+LO9Y;Argentina
+LP0V;Argentina
+LP0W;Argentina
+LP0X;Argentina
+LP0Y;Argentina
+LP1V;Argentina
+LP1W;Argentina
+LP1X;Argentina
+LP1Y;Argentina
+LP2V;Argentina
+LP2W;Argentina
+LP2X;Argentina
+LP2Y;Argentina
+LP3V;Argentina
+LP3W;Argentina
+LP3X;Argentina
+LP3Y;Argentina
+LP4V;Argentina
+LP4W;Argentina
+LP4X;Argentina
+LP4Y;Argentina
+LP5V;Argentina
+LP5W;Argentina
+LP5X;Argentina
+LP5Y;Argentina
+LP6V;Argentina
+LP6W;Argentina
+LP6X;Argentina
+LP6Y;Argentina
+LP7V;Argentina
+LP7W;Argentina
+LP7X;Argentina
+LP7Y;Argentina
+LP8V;Argentina
+LP8W;Argentina
+LP8X;Argentina
+LP8Y;Argentina
+LP9V;Argentina
+LP9W;Argentina
+LP9X;Argentina
+LP9Y;Argentina
+LQ0V;Argentina
+LQ0W;Argentina
+LQ0X;Argentina
+LQ0Y;Argentina
+LQ1V;Argentina
+LQ1W;Argentina
+LQ1X;Argentina
+LQ1Y;Argentina
+LQ2V;Argentina
+LQ2W;Argentina
+LQ2X;Argentina
+LQ2Y;Argentina
+LQ3V;Argentina
+LQ3W;Argentina
+LQ3X;Argentina
+LQ3Y;Argentina
+LQ4V;Argentina
+LQ4W;Argentina
+LQ4X;Argentina
+LQ4Y;Argentina
+LQ5V;Argentina
+LQ5W;Argentina
+LQ5X;Argentina
+LQ5Y;Argentina
+LQ6V;Argentina
+LQ6W;Argentina
+LQ6X;Argentina
+LQ6Y;Argentina
+LQ7V;Argentina
+LQ7W;Argentina
+LQ7X;Argentina
+LQ7Y;Argentina
+LQ8V;Argentina
+LQ8W;Argentina
+LQ8X;Argentina
+LQ8Y;Argentina
+LQ9V;Argentina
+LQ9W;Argentina
+LQ9X;Argentina
+LQ9Y;Argentina
+LR0V;Argentina
+LR0W;Argentina
+LR0X;Argentina
+LR0Y;Argentina
+LR1V;Argentina
+LR1W;Argentina
+LR1X;Argentina
+LR1Y;Argentina
+LR2V;Argentina
+LR2W;Argentina
+LR2X;Argentina
+LR2Y;Argentina
+LR3V;Argentina
+LR3W;Argentina
+LR3X;Argentina
+LR3Y;Argentina
+LR4V;Argentina
+LR4W;Argentina
+LR4X;Argentina
+LR4Y;Argentina
+LR5V;Argentina
+LR5W;Argentina
+LR5X;Argentina
+LR5Y;Argentina
+LR6V;Argentina
+LR6W;Argentina
+LR6X;Argentina
+LR6Y;Argentina
+LR7V;Argentina
+LR7W;Argentina
+LR7X;Argentina
+LR7Y;Argentina
+LR8V;Argentina
+LR8W;Argentina
+LR8X;Argentina
+LR8Y;Argentina
+LR9V;Argentina
+LR9W;Argentina
+LR9X;Argentina
+LR9Y;Argentina
+LS0V;Argentina
+LS0W;Argentina
+LS0X;Argentina
+LS0Y;Argentina
+LS1V;Argentina
+LS1W;Argentina
+LS1X;Argentina
+LS1Y;Argentina
+LS2V;Argentina
+LS2W;Argentina
+LS2X;Argentina
+LS2Y;Argentina
+LS3V;Argentina
+LS3W;Argentina
+LS3X;Argentina
+LS3Y;Argentina
+LS4V;Argentina
+LS4W;Argentina
+LS4X;Argentina
+LS4Y;Argentina
+LS5V;Argentina
+LS5W;Argentina
+LS5X;Argentina
+LS5Y;Argentina
+LS6V;Argentina
+LS6W;Argentina
+LS6X;Argentina
+LS6Y;Argentina
+LS7V;Argentina
+LS7W;Argentina
+LS7X;Argentina
+LS7Y;Argentina
+LS8V;Argentina
+LS8W;Argentina
+LS8X;Argentina
+LS8Y;Argentina
+LS9V;Argentina
+LS9W;Argentina
+LS9X;Argentina
+LS9Y;Argentina
+LT0V;Argentina
+LT0W;Argentina
+LT0X;Argentina
+LT0Y;Argentina
+LT1V;Argentina
+LT1W;Argentina
+LT1X;Argentina
+LT1Y;Argentina
+LT2V;Argentina
+LT2W;Argentina
+LT2X;Argentina
+LT2Y;Argentina
+LT3V;Argentina
+LT3W;Argentina
+LT3X;Argentina
+LT3Y;Argentina
+LT4V;Argentina
+LT4W;Argentina
+LT4X;Argentina
+LT4Y;Argentina
+LT5V;Argentina
+LT5W;Argentina
+LT5X;Argentina
+LT5Y;Argentina
+LT6V;Argentina
+LT6W;Argentina
+LT6X;Argentina
+LT6Y;Argentina
+LT7V;Argentina
+LT7W;Argentina
+LT7X;Argentina
+LT7Y;Argentina
+LT8V;Argentina
+LT8W;Argentina
+LT8X;Argentina
+LT8Y;Argentina
+LT9V;Argentina
+LT9W;Argentina
+LT9X;Argentina
+LT9Y;Argentina
+LU0V;Argentina
+LU0W;Argentina
+LU0X;Argentina
+LU0Y;Argentina
+LU1V;Argentina
+LU1W;Argentina
+LU1X;Argentina
+LU1Y;Argentina
+LU1Z;Antarktis
+LU2V;Argentina
+LU2W;Argentina
+LU2X;Argentina
+LU2Y;Argentina
+LU2Z;Antarktis
+LU3V;Argentina
+LU3W;Argentina
+LU3X;Argentina
+LU3Y;Argentina
+LU3Z;Antarktis
+LU4V;Argentina
+LU4W;Argentina
+LU4X;Argentina
+LU4Y;Argentina
+LU4Z;Antarktis
+LU5V;Argentina
+LU5W;Argentina
+LU5X;Argentina
+LU5Y;Argentina
+LU5Z;Antarktis
+LU6V;Argentina
+LU6W;Argentina
+LU6X;Argentina
+LU6Y;Argentina
+LU6Z;Antarktis
+LU7V;Argentina
+LU7W;Argentina
+LU7X;Argentina
+LU7Y;Argentina
+LU7Z;Antarktis
+LU8V;Argentina
+LU8W;Argentina
+LU8X;Argentina
+LU8Y;Argentina
+LU8Z;Antarktis
+LU9V;Argentina
+LU9W;Argentina
+LU9X;Argentina
+LU9Y;Argentina
+LU9Z;Antarktis
+LV0V;Argentina
+LV0W;Argentina
+LV0X;Argentina
+LV0Y;Argentina
+LV1V;Argentina
+LV1W;Argentina
+LV1X;Argentina
+LV1Y;Argentina
+LV2V;Argentina
+LV2W;Argentina
+LV2X;Argentina
+LV2Y;Argentina
+LV3V;Argentina
+LV3W;Argentina
+LV3X;Argentina
+LV3Y;Argentina
+LV4V;Argentina
+LV4W;Argentina
+LV4X;Argentina
+LV4Y;Argentina
+LV5V;Argentina
+LV5W;Argentina
+LV5X;Argentina
+LV5Y;Argentina
+LV6V;Argentina
+LV6W;Argentina
+LV6X;Argentina
+LV6Y;Argentina
+LV7V;Argentina
+LV7W;Argentina
+LV7X;Argentina
+LV7Y;Argentina
+LV8V;Argentina
+LV8W;Argentina
+LV8X;Argentina
+LV8Y;Argentina
+LV9V;Argentina
+LV9W;Argentina
+LV9X;Argentina
+LV9Y;Argentina
+LW0V;Argentina
+LW0W;Argentina
+LW0X;Argentina
+LW0Y;Argentina
+LW1V;Argentina
+LW1W;Argentina
+LW1X;Argentina
+LW1Y;Argentina
+LW2V;Argentina
+LW2W;Argentina
+LW2X;Argentina
+LW2Y;Argentina
+LW3V;Argentina
+LW3W;Argentina
+LW3X;Argentina
+LW3Y;Argentina
+LW4V;Argentina
+LW4W;Argentina
+LW4X;Argentina
+LW4Y;Argentina
+LW5V;Argentina
+LW5W;Argentina
+LW5X;Argentina
+LW5Y;Argentina
+LW6V;Argentina
+LW6W;Argentina
+LW6X;Argentina
+LW6Y;Argentina
+LW7V;Argentina
+LW7W;Argentina
+LW7X;Argentina
+LW7Y;Argentina
+LW8V;Argentina
+LW8W;Argentina
+LW8X;Argentina
+LW8Y;Argentina
+LW9V;Argentina
+LW9W;Argentina
+LW9X;Argentina
+LW9Y;Argentina
+NH7K;Kure Island
+PP0F;Fernando de Noronha
+PP0R;Fernando de Noronha
+PP0S;St. Peter & St. Paul
+PP0T;Trindade & Martim Vaz
+PQ0F;Fernando de Noronha
+PQ0R;Fernando de Noronha
+PQ0S;St. Peter & St. Paul
+PQ0T;Trindade & Martim Vaz
+PR0F;Fernando de Noronha
+PR0R;Fernando de Noronha
+PR0S;St. Peter & St. Paul
+PR0T;Trindade & Martim Vaz
+PS0F;Fernando de Noronha
+PS0R;Fernando de Noronha
+PS0S;St. Peter & St. Paul
+PS0T;Trindade & Martim Vaz
+PT0F;Fernando de Noronha
+PT0R;Fernando de Noronha
+PT0S;St. Peter & St. Paul
+PT0T;Trindade & Martim Vaz
+PU0F;Fernando de Noronha
+PU0R;Fernando de Noronha
+PU0S;St. Peter & St. Paul
+PU0T;Trindade & Martim Vaz
+PV0F;Fernando de Noronha
+PV0R;Fernando de Noronha
+PV0S;St. Peter & St. Paul
+PV0T;Trindade & Martim Vaz
+PW0F;Fernando de Noronha
+PW0R;Fernando de Noronha
+PW0S;St. Peter & St. Paul
+PW0T;Trindade & Martim Vaz
+PX0F;Fernando de Noronha
+PX0R;Fernando de Noronha
+PX0S;St. Peter & St. Paul
+PX0T;Trindade & Martim Vaz
+PY0F;Fernando de Noronha
+PY0R;Fernando de Noronha
+PY0S;St. Peter & St. Paul
+PY0T;Trindade & Martim Vaz
+PY0Z;Fernando de Noronha
+R1FJ;Franz Josef Land
+RA0T;Asiatiska Ryssland
+RA1I;Europeiska Ryssland
+RA1N;Europeiska Ryssland
+RA1O;Europeiska Ryssland
+RA1P;Europeiska Ryssland
+RA1Z;Europeiska Ryssland
+RA4H;Europeiska Ryssland
+RA4I;Europeiska Ryssland
+RA4W;Europeiska Ryssland
+RA8F;Europeiska Ryssland
+RA8G;Europeiska Ryssland
+RA8H;Asiatiska Ryssland
+RA8I;Asiatiska Ryssland
+RA8O;Asiatiska Ryssland
+RA8P;Asiatiska Ryssland
+RA8S;Asiatiska Ryssland
+RA8T;Asiatiska Ryssland
+RA8U;Asiatiska Ryssland
+RA8V;Asiatiska Ryssland
+RA8W;Asiatiska Ryssland
+RA8X;Europeiska Ryssland
+RA8Y;Asiatiska Ryssland
+RA8Z;Asiatiska Ryssland
+RA9F;Europeiska Ryssland
+RA9G;Europeiska Ryssland
+RA9I;Asiatiska Ryssland
+RA9M;Asiatiska Ryssland
+RA9P;Asiatiska Ryssland
+RA9S;Asiatiska Ryssland
+RA9T;Asiatiska Ryssland
+RA9V;Asiatiska Ryssland
+RA9W;Asiatiska Ryssland
+RA9X;Europeiska Ryssland
+RC0T;Asiatiska Ryssland
+RC1I;Europeiska Ryssland
+RC1N;Europeiska Ryssland
+RC1O;Europeiska Ryssland
+RC1P;Europeiska Ryssland
+RC1Z;Europeiska Ryssland
+RC2F;Kaliningrad
+RC2K;Kaliningrad
+RC4H;Europeiska Ryssland
+RC4I;Europeiska Ryssland
+RC4W;Europeiska Ryssland
+RC8F;Europeiska Ryssland
+RC8G;Europeiska Ryssland
+RC8H;Asiatiska Ryssland
+RC8I;Asiatiska Ryssland
+RC8O;Asiatiska Ryssland
+RC8P;Asiatiska Ryssland
+RC8S;Asiatiska Ryssland
+RC8T;Asiatiska Ryssland
+RC8U;Asiatiska Ryssland
+RC8V;Asiatiska Ryssland
+RC8W;Asiatiska Ryssland
+RC8X;Europeiska Ryssland
+RC8Y;Asiatiska Ryssland
+RC8Z;Asiatiska Ryssland
+RC9F;Europeiska Ryssland
+RC9G;Europeiska Ryssland
+RC9I;Asiatiska Ryssland
+RC9M;Asiatiska Ryssland
+RC9P;Asiatiska Ryssland
+RC9S;Asiatiska Ryssland
+RC9T;Asiatiska Ryssland
+RC9V;Asiatiska Ryssland
+RC9W;Asiatiska Ryssland
+RC9X;Europeiska Ryssland
+RD0T;Asiatiska Ryssland
+RD1I;Europeiska Ryssland
+RD1N;Europeiska Ryssland
+RD1O;Europeiska Ryssland
+RD1P;Europeiska Ryssland
+RD1Z;Europeiska Ryssland
+RD2F;Kaliningrad
+RD2K;Kaliningrad
+RD4H;Europeiska Ryssland
+RD4I;Europeiska Ryssland
+RD4W;Europeiska Ryssland
+RD8F;Europeiska Ryssland
+RD8G;Europeiska Ryssland
+RD8H;Asiatiska Ryssland
+RD8I;Asiatiska Ryssland
+RD8O;Asiatiska Ryssland
+RD8P;Asiatiska Ryssland
+RD8S;Asiatiska Ryssland
+RD8T;Asiatiska Ryssland
+RD8U;Asiatiska Ryssland
+RD8V;Asiatiska Ryssland
+RD8W;Asiatiska Ryssland
+RD8X;Europeiska Ryssland
+RD8Y;Asiatiska Ryssland
+RD8Z;Asiatiska Ryssland
+RD9F;Europeiska Ryssland
+RD9G;Europeiska Ryssland
+RD9I;Asiatiska Ryssland
+RD9M;Asiatiska Ryssland
+RD9P;Asiatiska Ryssland
+RD9S;Asiatiska Ryssland
+RD9T;Asiatiska Ryssland
+RD9V;Asiatiska Ryssland
+RD9W;Asiatiska Ryssland
+RD9X;Europeiska Ryssland
+RE0T;Asiatiska Ryssland
+RE1I;Europeiska Ryssland
+RE1N;Europeiska Ryssland
+RE1O;Europeiska Ryssland
+RE1P;Europeiska Ryssland
+RE1Z;Europeiska Ryssland
+RE2F;Kaliningrad
+RE2K;Kaliningrad
+RE4H;Europeiska Ryssland
+RE4I;Europeiska Ryssland
+RE4W;Europeiska Ryssland
+RE8F;Europeiska Ryssland
+RE8G;Europeiska Ryssland
+RE8H;Asiatiska Ryssland
+RE8I;Asiatiska Ryssland
+RE8O;Asiatiska Ryssland
+RE8P;Asiatiska Ryssland
+RE8S;Asiatiska Ryssland
+RE8T;Asiatiska Ryssland
+RE8U;Asiatiska Ryssland
+RE8V;Asiatiska Ryssland
+RE8W;Asiatiska Ryssland
+RE8X;Europeiska Ryssland
+RE8Y;Asiatiska Ryssland
+RE8Z;Asiatiska Ryssland
+RE9F;Europeiska Ryssland
+RE9G;Europeiska Ryssland
+RE9I;Asiatiska Ryssland
+RE9M;Asiatiska Ryssland
+RE9P;Asiatiska Ryssland
+RE9S;Asiatiska Ryssland
+RE9T;Asiatiska Ryssland
+RE9V;Asiatiska Ryssland
+RE9W;Asiatiska Ryssland
+RE9X;Europeiska Ryssland
+RF0T;Asiatiska Ryssland
+RF1I;Europeiska Ryssland
+RF1N;Europeiska Ryssland
+RF1O;Europeiska Ryssland
+RF1P;Europeiska Ryssland
+RF1Z;Europeiska Ryssland
+RF2F;Kaliningrad
+RF2K;Kaliningrad
+RF4H;Europeiska Ryssland
+RF4I;Europeiska Ryssland
+RF4W;Europeiska Ryssland
+RF8F;Europeiska Ryssland
+RF8G;Europeiska Ryssland
+RF8H;Asiatiska Ryssland
+RF8I;Asiatiska Ryssland
+RF8O;Asiatiska Ryssland
+RF8P;Asiatiska Ryssland
+RF8S;Asiatiska Ryssland
+RF8T;Asiatiska Ryssland
+RF8U;Asiatiska Ryssland
+RF8V;Asiatiska Ryssland
+RF8W;Asiatiska Ryssland
+RF8X;Europeiska Ryssland
+RF8Y;Asiatiska Ryssland
+RF8Z;Asiatiska Ryssland
+RF9F;Europeiska Ryssland
+RF9G;Europeiska Ryssland
+RF9I;Asiatiska Ryssland
+RF9M;Asiatiska Ryssland
+RF9P;Asiatiska Ryssland
+RF9S;Asiatiska Ryssland
+RF9T;Asiatiska Ryssland
+RF9V;Asiatiska Ryssland
+RF9W;Asiatiska Ryssland
+RF9X;Europeiska Ryssland
+RG0T;Asiatiska Ryssland
+RG1I;Europeiska Ryssland
+RG1N;Europeiska Ryssland
+RG1O;Europeiska Ryssland
+RG1P;Europeiska Ryssland
+RG1Z;Europeiska Ryssland
+RG2F;Kaliningrad
+RG2K;Kaliningrad
+RG4H;Europeiska Ryssland
+RG4I;Europeiska Ryssland
+RG4W;Europeiska Ryssland
+RG8F;Europeiska Ryssland
+RG8G;Europeiska Ryssland
+RG8H;Asiatiska Ryssland
+RG8I;Asiatiska Ryssland
+RG8O;Asiatiska Ryssland
+RG8P;Asiatiska Ryssland
+RG8S;Asiatiska Ryssland
+RG8T;Asiatiska Ryssland
+RG8U;Asiatiska Ryssland
+RG8V;Asiatiska Ryssland
+RG8W;Asiatiska Ryssland
+RG8X;Europeiska Ryssland
+RG8Y;Asiatiska Ryssland
+RG8Z;Asiatiska Ryssland
+RG9F;Europeiska Ryssland
+RG9G;Europeiska Ryssland
+RG9I;Asiatiska Ryssland
+RG9M;Asiatiska Ryssland
+RG9P;Asiatiska Ryssland
+RG9S;Asiatiska Ryssland
+RG9T;Asiatiska Ryssland
+RG9V;Asiatiska Ryssland
+RG9W;Asiatiska Ryssland
+RG9X;Europeiska Ryssland
+RI1F;Franz Josef Land
+RI8X;Europeiska Ryssland
+RI9X;Europeiska Ryssland
+RJ0T;Asiatiska Ryssland
+RJ1I;Europeiska Ryssland
+RJ1N;Europeiska Ryssland
+RJ1O;Europeiska Ryssland
+RJ1P;Europeiska Ryssland
+RJ1Z;Europeiska Ryssland
+RJ2F;Kaliningrad
+RJ2K;Kaliningrad
+RJ4H;Europeiska Ryssland
+RJ4I;Europeiska Ryssland
+RJ4W;Europeiska Ryssland
+RJ8F;Europeiska Ryssland
+RJ8G;Europeiska Ryssland
+RJ8H;Asiatiska Ryssland
+RJ8I;Asiatiska Ryssland
+RJ8O;Asiatiska Ryssland
+RJ8P;Asiatiska Ryssland
+RJ8S;Asiatiska Ryssland
+RJ8T;Asiatiska Ryssland
+RJ8U;Asiatiska Ryssland
+RJ8V;Asiatiska Ryssland
+RJ8W;Asiatiska Ryssland
+RJ8X;Europeiska Ryssland
+RJ8Y;Asiatiska Ryssland
+RJ8Z;Asiatiska Ryssland
+RJ9F;Europeiska Ryssland
+RJ9G;Europeiska Ryssland
+RJ9I;Asiatiska Ryssland
+RJ9M;Asiatiska Ryssland
+RJ9P;Asiatiska Ryssland
+RJ9S;Asiatiska Ryssland
+RJ9T;Asiatiska Ryssland
+RJ9V;Asiatiska Ryssland
+RJ9W;Asiatiska Ryssland
+RJ9X;Europeiska Ryssland
+RK0T;Asiatiska Ryssland
+RK1I;Europeiska Ryssland
+RK1N;Europeiska Ryssland
+RK1O;Europeiska Ryssland
+RK1P;Europeiska Ryssland
+RK1Z;Europeiska Ryssland
+RK2F;Kaliningrad
+RK2K;Kaliningrad
+RK4H;Europeiska Ryssland
+RK4I;Europeiska Ryssland
+RK4W;Europeiska Ryssland
+RK8F;Europeiska Ryssland
+RK8G;Europeiska Ryssland
+RK8H;Asiatiska Ryssland
+RK8I;Asiatiska Ryssland
+RK8O;Asiatiska Ryssland
+RK8P;Asiatiska Ryssland
+RK8S;Asiatiska Ryssland
+RK8T;Asiatiska Ryssland
+RK8U;Asiatiska Ryssland
+RK8V;Asiatiska Ryssland
+RK8W;Asiatiska Ryssland
+RK8X;Europeiska Ryssland
+RK8Y;Asiatiska Ryssland
+RK8Z;Asiatiska Ryssland
+RK9F;Europeiska Ryssland
+RK9G;Europeiska Ryssland
+RK9I;Asiatiska Ryssland
+RK9M;Asiatiska Ryssland
+RK9P;Asiatiska Ryssland
+RK9S;Asiatiska Ryssland
+RK9T;Asiatiska Ryssland
+RK9V;Asiatiska Ryssland
+RK9W;Asiatiska Ryssland
+RK9X;Europeiska Ryssland
+RL0T;Asiatiska Ryssland
+RL1I;Europeiska Ryssland
+RL1N;Europeiska Ryssland
+RL1O;Europeiska Ryssland
+RL1P;Europeiska Ryssland
+RL1Z;Europeiska Ryssland
+RL2F;Kaliningrad
+RL2K;Kaliningrad
+RL4H;Europeiska Ryssland
+RL4I;Europeiska Ryssland
+RL4W;Europeiska Ryssland
+RL8F;Europeiska Ryssland
+RL8G;Europeiska Ryssland
+RL8H;Asiatiska Ryssland
+RL8I;Asiatiska Ryssland
+RL8O;Asiatiska Ryssland
+RL8P;Asiatiska Ryssland
+RL8S;Asiatiska Ryssland
+RL8T;Asiatiska Ryssland
+RL8U;Asiatiska Ryssland
+RL8V;Asiatiska Ryssland
+RL8W;Asiatiska Ryssland
+RL8X;Europeiska Ryssland
+RL8Y;Asiatiska Ryssland
+RL8Z;Asiatiska Ryssland
+RL9F;Europeiska Ryssland
+RL9G;Europeiska Ryssland
+RL9I;Asiatiska Ryssland
+RL9M;Asiatiska Ryssland
+RL9P;Asiatiska Ryssland
+RL9S;Asiatiska Ryssland
+RL9T;Asiatiska Ryssland
+RL9V;Asiatiska Ryssland
+RL9W;Asiatiska Ryssland
+RL9X;Europeiska Ryssland
+RM0T;Asiatiska Ryssland
+RM1I;Europeiska Ryssland
+RM1N;Europeiska Ryssland
+RM1O;Europeiska Ryssland
+RM1P;Europeiska Ryssland
+RM1Z;Europeiska Ryssland
+RM2F;Kaliningrad
+RM2K;Kaliningrad
+RM4H;Europeiska Ryssland
+RM4I;Europeiska Ryssland
+RM4W;Europeiska Ryssland
+RM8F;Europeiska Ryssland
+RM8G;Europeiska Ryssland
+RM8H;Asiatiska Ryssland
+RM8I;Asiatiska Ryssland
+RM8O;Asiatiska Ryssland
+RM8P;Asiatiska Ryssland
+RM8S;Asiatiska Ryssland
+RM8T;Asiatiska Ryssland
+RM8U;Asiatiska Ryssland
+RM8V;Asiatiska Ryssland
+RM8W;Asiatiska Ryssland
+RM8X;Europeiska Ryssland
+RM8Y;Asiatiska Ryssland
+RM8Z;Asiatiska Ryssland
+RM9F;Europeiska Ryssland
+RM9G;Europeiska Ryssland
+RM9I;Asiatiska Ryssland
+RM9M;Asiatiska Ryssland
+RM9P;Asiatiska Ryssland
+RM9S;Asiatiska Ryssland
+RM9T;Asiatiska Ryssland
+RM9V;Asiatiska Ryssland
+RM9W;Asiatiska Ryssland
+RM9X;Europeiska Ryssland
+RN0T;Asiatiska Ryssland
+RN1I;Europeiska Ryssland
+RN1N;Europeiska Ryssland
+RN1O;Europeiska Ryssland
+RN1P;Europeiska Ryssland
+RN1Z;Europeiska Ryssland
+RN2F;Kaliningrad
+RN2K;Kaliningrad
+RN4H;Europeiska Ryssland
+RN4I;Europeiska Ryssland
+RN4W;Europeiska Ryssland
+RN8F;Europeiska Ryssland
+RN8G;Europeiska Ryssland
+RN8H;Asiatiska Ryssland
+RN8I;Asiatiska Ryssland
+RN8O;Asiatiska Ryssland
+RN8P;Asiatiska Ryssland
+RN8S;Asiatiska Ryssland
+RN8T;Asiatiska Ryssland
+RN8U;Asiatiska Ryssland
+RN8V;Asiatiska Ryssland
+RN8W;Asiatiska Ryssland
+RN8X;Europeiska Ryssland
+RN8Y;Asiatiska Ryssland
+RN8Z;Asiatiska Ryssland
+RN9F;Europeiska Ryssland
+RN9G;Europeiska Ryssland
+RN9I;Asiatiska Ryssland
+RN9M;Asiatiska Ryssland
+RN9P;Asiatiska Ryssland
+RN9S;Asiatiska Ryssland
+RN9T;Asiatiska Ryssland
+RN9V;Asiatiska Ryssland
+RN9W;Asiatiska Ryssland
+RN9X;Europeiska Ryssland
+RO0T;Asiatiska Ryssland
+RO1I;Europeiska Ryssland
+RO1N;Europeiska Ryssland
+RO1O;Europeiska Ryssland
+RO1P;Europeiska Ryssland
+RO1Z;Europeiska Ryssland
+RO2F;Kaliningrad
+RO2K;Kaliningrad
+RO4H;Europeiska Ryssland
+RO4I;Europeiska Ryssland
+RO4W;Europeiska Ryssland
+RO8F;Europeiska Ryssland
+RO8G;Europeiska Ryssland
+RO8H;Asiatiska Ryssland
+RO8I;Asiatiska Ryssland
+RO8O;Asiatiska Ryssland
+RO8P;Asiatiska Ryssland
+RO8S;Asiatiska Ryssland
+RO8T;Asiatiska Ryssland
+RO8U;Asiatiska Ryssland
+RO8V;Asiatiska Ryssland
+RO8W;Asiatiska Ryssland
+RO8X;Europeiska Ryssland
+RO8Y;Asiatiska Ryssland
+RO8Z;Asiatiska Ryssland
+RO9F;Europeiska Ryssland
+RO9G;Europeiska Ryssland
+RO9I;Asiatiska Ryssland
+RO9M;Asiatiska Ryssland
+RO9P;Asiatiska Ryssland
+RO9S;Asiatiska Ryssland
+RO9T;Asiatiska Ryssland
+RO9V;Asiatiska Ryssland
+RO9W;Asiatiska Ryssland
+RO9X;Europeiska Ryssland
+RQ0T;Asiatiska Ryssland
+RQ1I;Europeiska Ryssland
+RQ1N;Europeiska Ryssland
+RQ1O;Europeiska Ryssland
+RQ1P;Europeiska Ryssland
+RQ1Z;Europeiska Ryssland
+RQ2F;Kaliningrad
+RQ2K;Kaliningrad
+RQ4H;Europeiska Ryssland
+RQ4I;Europeiska Ryssland
+RQ4W;Europeiska Ryssland
+RQ8F;Europeiska Ryssland
+RQ8G;Europeiska Ryssland
+RQ8H;Asiatiska Ryssland
+RQ8I;Asiatiska Ryssland
+RQ8O;Asiatiska Ryssland
+RQ8P;Asiatiska Ryssland
+RQ8S;Asiatiska Ryssland
+RQ8T;Asiatiska Ryssland
+RQ8U;Asiatiska Ryssland
+RQ8V;Asiatiska Ryssland
+RQ8W;Asiatiska Ryssland
+RQ8X;Europeiska Ryssland
+RQ8Y;Asiatiska Ryssland
+RQ8Z;Asiatiska Ryssland
+RQ9F;Europeiska Ryssland
+RQ9G;Europeiska Ryssland
+RQ9I;Asiatiska Ryssland
+RQ9M;Asiatiska Ryssland
+RQ9P;Asiatiska Ryssland
+RQ9S;Asiatiska Ryssland
+RQ9T;Asiatiska Ryssland
+RQ9V;Asiatiska Ryssland
+RQ9W;Asiatiska Ryssland
+RQ9X;Europeiska Ryssland
+RT0T;Asiatiska Ryssland
+RT1I;Europeiska Ryssland
+RT1N;Europeiska Ryssland
+RT1O;Europeiska Ryssland
+RT1P;Europeiska Ryssland
+RT1Z;Europeiska Ryssland
+RT2F;Kaliningrad
+RT2K;Kaliningrad
+RT4H;Europeiska Ryssland
+RT4I;Europeiska Ryssland
+RT4W;Europeiska Ryssland
+RT8F;Europeiska Ryssland
+RT8G;Europeiska Ryssland
+RT8H;Asiatiska Ryssland
+RT8I;Asiatiska Ryssland
+RT8O;Asiatiska Ryssland
+RT8P;Asiatiska Ryssland
+RT8S;Asiatiska Ryssland
+RT8T;Asiatiska Ryssland
+RT8U;Asiatiska Ryssland
+RT8V;Asiatiska Ryssland
+RT8W;Asiatiska Ryssland
+RT8X;Europeiska Ryssland
+RT8Y;Asiatiska Ryssland
+RT8Z;Asiatiska Ryssland
+RT9F;Europeiska Ryssland
+RT9G;Europeiska Ryssland
+RT9I;Asiatiska Ryssland
+RT9M;Asiatiska Ryssland
+RT9P;Asiatiska Ryssland
+RT9S;Asiatiska Ryssland
+RT9T;Asiatiska Ryssland
+RT9V;Asiatiska Ryssland
+RT9W;Asiatiska Ryssland
+RT9X;Europeiska Ryssland
+RU0T;Asiatiska Ryssland
+RU1I;Europeiska Ryssland
+RU1N;Europeiska Ryssland
+RU1O;Europeiska Ryssland
+RU1P;Europeiska Ryssland
+RU1Z;Europeiska Ryssland
+RU2F;Kaliningrad
+RU2K;Kaliningrad
+RU4H;Europeiska Ryssland
+RU4I;Europeiska Ryssland
+RU4W;Europeiska Ryssland
+RU8F;Europeiska Ryssland
+RU8G;Europeiska Ryssland
+RU8H;Asiatiska Ryssland
+RU8I;Asiatiska Ryssland
+RU8O;Asiatiska Ryssland
+RU8P;Asiatiska Ryssland
+RU8S;Asiatiska Ryssland
+RU8T;Asiatiska Ryssland
+RU8U;Asiatiska Ryssland
+RU8V;Asiatiska Ryssland
+RU8W;Asiatiska Ryssland
+RU8X;Europeiska Ryssland
+RU8Y;Asiatiska Ryssland
+RU8Z;Asiatiska Ryssland
+RU9F;Europeiska Ryssland
+RU9G;Europeiska Ryssland
+RU9I;Asiatiska Ryssland
+RU9M;Asiatiska Ryssland
+RU9P;Asiatiska Ryssland
+RU9S;Asiatiska Ryssland
+RU9T;Asiatiska Ryssland
+RU9V;Asiatiska Ryssland
+RU9W;Asiatiska Ryssland
+RU9X;Europeiska Ryssland
+RV0T;Asiatiska Ryssland
+RV1I;Europeiska Ryssland
+RV1N;Europeiska Ryssland
+RV1O;Europeiska Ryssland
+RV1P;Europeiska Ryssland
+RV1Z;Europeiska Ryssland
+RV2F;Kaliningrad
+RV2K;Kaliningrad
+RV4H;Europeiska Ryssland
+RV4I;Europeiska Ryssland
+RV4W;Europeiska Ryssland
+RV8F;Europeiska Ryssland
+RV8G;Europeiska Ryssland
+RV8H;Asiatiska Ryssland
+RV8I;Asiatiska Ryssland
+RV8O;Asiatiska Ryssland
+RV8P;Asiatiska Ryssland
+RV8S;Asiatiska Ryssland
+RV8T;Asiatiska Ryssland
+RV8U;Asiatiska Ryssland
+RV8V;Asiatiska Ryssland
+RV8W;Asiatiska Ryssland
+RV8X;Europeiska Ryssland
+RV8Y;Asiatiska Ryssland
+RV8Z;Asiatiska Ryssland
+RV9F;Europeiska Ryssland
+RV9G;Europeiska Ryssland
+RV9I;Asiatiska Ryssland
+RV9M;Asiatiska Ryssland
+RV9P;Asiatiska Ryssland
+RV9S;Asiatiska Ryssland
+RV9T;Asiatiska Ryssland
+RV9V;Asiatiska Ryssland
+RV9W;Asiatiska Ryssland
+RV9X;Europeiska Ryssland
+RW0T;Asiatiska Ryssland
+RW1I;Europeiska Ryssland
+RW1N;Europeiska Ryssland
+RW1O;Europeiska Ryssland
+RW1P;Europeiska Ryssland
+RW1Z;Europeiska Ryssland
+RW2F;Kaliningrad
+RW2K;Kaliningrad
+RW4H;Europeiska Ryssland
+RW4I;Europeiska Ryssland
+RW4W;Europeiska Ryssland
+RW8F;Europeiska Ryssland
+RW8G;Europeiska Ryssland
+RW8H;Asiatiska Ryssland
+RW8I;Asiatiska Ryssland
+RW8O;Asiatiska Ryssland
+RW8P;Asiatiska Ryssland
+RW8S;Asiatiska Ryssland
+RW8T;Asiatiska Ryssland
+RW8U;Asiatiska Ryssland
+RW8V;Asiatiska Ryssland
+RW8W;Asiatiska Ryssland
+RW8X;Europeiska Ryssland
+RW8Y;Asiatiska Ryssland
+RW8Z;Asiatiska Ryssland
+RW9F;Europeiska Ryssland
+RW9G;Europeiska Ryssland
+RW9I;Asiatiska Ryssland
+RW9M;Asiatiska Ryssland
+RW9P;Asiatiska Ryssland
+RW9S;Asiatiska Ryssland
+RW9T;Asiatiska Ryssland
+RW9V;Asiatiska Ryssland
+RW9W;Asiatiska Ryssland
+RW9X;Europeiska Ryssland
+RX0T;Asiatiska Ryssland
+RX1I;Europeiska Ryssland
+RX1N;Europeiska Ryssland
+RX1O;Europeiska Ryssland
+RX1P;Europeiska Ryssland
+RX1Z;Europeiska Ryssland
+RX2F;Kaliningrad
+RX2K;Kaliningrad
+RX4H;Europeiska Ryssland
+RX4I;Europeiska Ryssland
+RX4W;Europeiska Ryssland
+RX8F;Europeiska Ryssland
+RX8G;Europeiska Ryssland
+RX8H;Asiatiska Ryssland
+RX8I;Asiatiska Ryssland
+RX8O;Asiatiska Ryssland
+RX8P;Asiatiska Ryssland
+RX8S;Asiatiska Ryssland
+RX8T;Asiatiska Ryssland
+RX8U;Asiatiska Ryssland
+RX8V;Asiatiska Ryssland
+RX8W;Asiatiska Ryssland
+RX8X;Europeiska Ryssland
+RX8Y;Asiatiska Ryssland
+RX8Z;Asiatiska Ryssland
+RX9F;Europeiska Ryssland
+RX9G;Europeiska Ryssland
+RX9I;Asiatiska Ryssland
+RX9M;Asiatiska Ryssland
+RX9P;Asiatiska Ryssland
+RX9S;Asiatiska Ryssland
+RX9T;Asiatiska Ryssland
+RX9V;Asiatiska Ryssland
+RX9W;Asiatiska Ryssland
+RX9X;Europeiska Ryssland
+RY0T;Asiatiska Ryssland
+RY1I;Europeiska Ryssland
+RY1N;Europeiska Ryssland
+RY1O;Europeiska Ryssland
+RY1P;Europeiska Ryssland
+RY1Z;Europeiska Ryssland
+RY2F;Kaliningrad
+RY2K;Kaliningrad
+RY4H;Europeiska Ryssland
+RY4I;Europeiska Ryssland
+RY4W;Europeiska Ryssland
+RY8F;Europeiska Ryssland
+RY8G;Europeiska Ryssland
+RY8H;Asiatiska Ryssland
+RY8I;Asiatiska Ryssland
+RY8O;Asiatiska Ryssland
+RY8P;Asiatiska Ryssland
+RY8S;Asiatiska Ryssland
+RY8T;Asiatiska Ryssland
+RY8U;Asiatiska Ryssland
+RY8V;Asiatiska Ryssland
+RY8W;Asiatiska Ryssland
+RY8X;Europeiska Ryssland
+RY8Y;Asiatiska Ryssland
+RY8Z;Asiatiska Ryssland
+RY9F;Europeiska Ryssland
+RY9G;Europeiska Ryssland
+RY9I;Asiatiska Ryssland
+RY9M;Asiatiska Ryssland
+RY9P;Asiatiska Ryssland
+RY9S;Asiatiska Ryssland
+RY9T;Asiatiska Ryssland
+RY9V;Asiatiska Ryssland
+RY9W;Asiatiska Ryssland
+RY9X;Europeiska Ryssland
+RZ0T;Asiatiska Ryssland
+RZ1I;Europeiska Ryssland
+RZ1N;Europeiska Ryssland
+RZ1O;Europeiska Ryssland
+RZ1P;Europeiska Ryssland
+RZ1Z;Europeiska Ryssland
+RZ2F;Kaliningrad
+RZ2K;Kaliningrad
+RZ4H;Europeiska Ryssland
+RZ4I;Europeiska Ryssland
+RZ4W;Europeiska Ryssland
+RZ8F;Europeiska Ryssland
+RZ8G;Europeiska Ryssland
+RZ8H;Asiatiska Ryssland
+RZ8I;Asiatiska Ryssland
+RZ8O;Asiatiska Ryssland
+RZ8P;Asiatiska Ryssland
+RZ8S;Asiatiska Ryssland
+RZ8T;Asiatiska Ryssland
+RZ8U;Asiatiska Ryssland
+RZ8V;Asiatiska Ryssland
+RZ8W;Asiatiska Ryssland
+RZ8X;Europeiska Ryssland
+RZ8Y;Asiatiska Ryssland
+RZ8Z;Asiatiska Ryssland
+RZ9F;Europeiska Ryssland
+RZ9G;Europeiska Ryssland
+RZ9I;Asiatiska Ryssland
+RZ9M;Asiatiska Ryssland
+RZ9P;Asiatiska Ryssland
+RZ9S;Asiatiska Ryssland
+RZ9T;Asiatiska Ryssland
+RZ9V;Asiatiska Ryssland
+RZ9W;Asiatiska Ryssland
+RZ9X;Europeiska Ryssland
+SV/A;Athos
+UA0T;Asiatiska Ryssland
+UA1I;Europeiska Ryssland
+UA1N;Europeiska Ryssland
+UA1O;Europeiska Ryssland
+UA1P;Europeiska Ryssland
+UA1Z;Europeiska Ryssland
+UA4H;Europeiska Ryssland
+UA4I;Europeiska Ryssland
+UA4W;Europeiska Ryssland
+UA8F;Europeiska Ryssland
+UA8G;Europeiska Ryssland
+UA8H;Asiatiska Ryssland
+UA8I;Asiatiska Ryssland
+UA8O;Asiatiska Ryssland
+UA8P;Asiatiska Ryssland
+UA8S;Asiatiska Ryssland
+UA8T;Asiatiska Ryssland
+UA8U;Asiatiska Ryssland
+UA8V;Asiatiska Ryssland
+UA8W;Asiatiska Ryssland
+UA8X;Europeiska Ryssland
+UA8Y;Asiatiska Ryssland
+UA8Z;Asiatiska Ryssland
+UA9F;Europeiska Ryssland
+UA9G;Europeiska Ryssland
+UA9I;Asiatiska Ryssland
+UA9M;Asiatiska Ryssland
+UA9P;Asiatiska Ryssland
+UA9S;Asiatiska Ryssland
+UA9T;Asiatiska Ryssland
+UA9V;Asiatiska Ryssland
+UA9W;Asiatiska Ryssland
+UA9X;Europeiska Ryssland
+UB0T;Asiatiska Ryssland
+UB1I;Europeiska Ryssland
+UB1N;Europeiska Ryssland
+UB1O;Europeiska Ryssland
+UB1P;Europeiska Ryssland
+UB1Z;Europeiska Ryssland
+UB4H;Europeiska Ryssland
+UB4I;Europeiska Ryssland
+UB4W;Europeiska Ryssland
+UB8F;Europeiska Ryssland
+UB8G;Europeiska Ryssland
+UB8H;Asiatiska Ryssland
+UB8I;Asiatiska Ryssland
+UB8O;Asiatiska Ryssland
+UB8P;Asiatiska Ryssland
+UB8S;Asiatiska Ryssland
+UB8T;Asiatiska Ryssland
+UB8U;Asiatiska Ryssland
+UB8V;Asiatiska Ryssland
+UB8W;Asiatiska Ryssland
+UB8X;Europeiska Ryssland
+UB8Y;Asiatiska Ryssland
+UB8Z;Asiatiska Ryssland
+UB9F;Europeiska Ryssland
+UB9G;Europeiska Ryssland
+UB9I;Asiatiska Ryssland
+UB9M;Asiatiska Ryssland
+UB9P;Asiatiska Ryssland
+UB9S;Asiatiska Ryssland
+UB9T;Asiatiska Ryssland
+UB9V;Asiatiska Ryssland
+UB9W;Asiatiska Ryssland
+UB9X;Europeiska Ryssland
+UC0T;Asiatiska Ryssland
+UC1I;Europeiska Ryssland
+UC1N;Europeiska Ryssland
+UC1O;Europeiska Ryssland
+UC1P;Europeiska Ryssland
+UC1Z;Europeiska Ryssland
+UC4H;Europeiska Ryssland
+UC4I;Europeiska Ryssland
+UC4W;Europeiska Ryssland
+UC8F;Europeiska Ryssland
+UC8G;Europeiska Ryssland
+UC8H;Asiatiska Ryssland
+UC8I;Asiatiska Ryssland
+UC8O;Asiatiska Ryssland
+UC8P;Asiatiska Ryssland
+UC8S;Asiatiska Ryssland
+UC8T;Asiatiska Ryssland
+UC8U;Asiatiska Ryssland
+UC8V;Asiatiska Ryssland
+UC8W;Asiatiska Ryssland
+UC8X;Europeiska Ryssland
+UC8Y;Asiatiska Ryssland
+UC8Z;Asiatiska Ryssland
+UC9F;Europeiska Ryssland
+UC9G;Europeiska Ryssland
+UC9I;Asiatiska Ryssland
+UC9M;Asiatiska Ryssland
+UC9P;Asiatiska Ryssland
+UC9S;Asiatiska Ryssland
+UC9T;Asiatiska Ryssland
+UC9V;Asiatiska Ryssland
+UC9W;Asiatiska Ryssland
+UC9X;Europeiska Ryssland
+UD0T;Asiatiska Ryssland
+UD1I;Europeiska Ryssland
+UD1N;Europeiska Ryssland
+UD1O;Europeiska Ryssland
+UD1P;Europeiska Ryssland
+UD1Z;Europeiska Ryssland
+UD4H;Europeiska Ryssland
+UD4I;Europeiska Ryssland
+UD4W;Europeiska Ryssland
+UD8F;Europeiska Ryssland
+UD8G;Europeiska Ryssland
+UD8H;Asiatiska Ryssland
+UD8I;Asiatiska Ryssland
+UD8O;Asiatiska Ryssland
+UD8P;Asiatiska Ryssland
+UD8S;Asiatiska Ryssland
+UD8T;Asiatiska Ryssland
+UD8U;Asiatiska Ryssland
+UD8V;Asiatiska Ryssland
+UD8W;Asiatiska Ryssland
+UD8X;Europeiska Ryssland
+UD8Y;Asiatiska Ryssland
+UD8Z;Asiatiska Ryssland
+UD9F;Europeiska Ryssland
+UD9G;Europeiska Ryssland
+UD9I;Asiatiska Ryssland
+UD9M;Asiatiska Ryssland
+UD9P;Asiatiska Ryssland
+UD9S;Asiatiska Ryssland
+UD9T;Asiatiska Ryssland
+UD9V;Asiatiska Ryssland
+UD9W;Asiatiska Ryssland
+UD9X;Europeiska Ryssland
+UE0T;Asiatiska Ryssland
+UE1I;Europeiska Ryssland
+UE1N;Europeiska Ryssland
+UE1O;Europeiska Ryssland
+UE1P;Europeiska Ryssland
+UE1Z;Europeiska Ryssland
+UE4H;Europeiska Ryssland
+UE4I;Europeiska Ryssland
+UE4W;Europeiska Ryssland
+UE8F;Europeiska Ryssland
+UE8G;Europeiska Ryssland
+UE8H;Asiatiska Ryssland
+UE8I;Asiatiska Ryssland
+UE8O;Asiatiska Ryssland
+UE8P;Asiatiska Ryssland
+UE8S;Asiatiska Ryssland
+UE8T;Asiatiska Ryssland
+UE8U;Asiatiska Ryssland
+UE8V;Asiatiska Ryssland
+UE8W;Asiatiska Ryssland
+UE8X;Europeiska Ryssland
+UE8Y;Asiatiska Ryssland
+UE8Z;Asiatiska Ryssland
+UE9F;Europeiska Ryssland
+UE9G;Europeiska Ryssland
+UE9I;Asiatiska Ryssland
+UE9M;Asiatiska Ryssland
+UE9P;Asiatiska Ryssland
+UE9S;Asiatiska Ryssland
+UE9T;Asiatiska Ryssland
+UE9V;Asiatiska Ryssland
+UE9W;Asiatiska Ryssland
+UE9X;Europeiska Ryssland
+UF0T;Asiatiska Ryssland
+UF1I;Europeiska Ryssland
+UF1N;Europeiska Ryssland
+UF1O;Europeiska Ryssland
+UF1P;Europeiska Ryssland
+UF1Z;Europeiska Ryssland
+UF4H;Europeiska Ryssland
+UF4I;Europeiska Ryssland
+UF4W;Europeiska Ryssland
+UF8F;Europeiska Ryssland
+UF8G;Europeiska Ryssland
+UF8H;Asiatiska Ryssland
+UF8I;Asiatiska Ryssland
+UF8O;Asiatiska Ryssland
+UF8P;Asiatiska Ryssland
+UF8S;Asiatiska Ryssland
+UF8T;Asiatiska Ryssland
+UF8U;Asiatiska Ryssland
+UF8V;Asiatiska Ryssland
+UF8W;Asiatiska Ryssland
+UF8X;Europeiska Ryssland
+UF8Y;Asiatiska Ryssland
+UF8Z;Asiatiska Ryssland
+UF9F;Europeiska Ryssland
+UF9G;Europeiska Ryssland
+UF9I;Asiatiska Ryssland
+UF9M;Asiatiska Ryssland
+UF9P;Asiatiska Ryssland
+UF9S;Asiatiska Ryssland
+UF9T;Asiatiska Ryssland
+UF9V;Asiatiska Ryssland
+UF9W;Asiatiska Ryssland
+UF9X;Europeiska Ryssland
+UG0T;Asiatiska Ryssland
+UG1I;Europeiska Ryssland
+UG1N;Europeiska Ryssland
+UG1O;Europeiska Ryssland
+UG1P;Europeiska Ryssland
+UG1Z;Europeiska Ryssland
+UG4H;Europeiska Ryssland
+UG4I;Europeiska Ryssland
+UG4W;Europeiska Ryssland
+UG8F;Europeiska Ryssland
+UG8G;Europeiska Ryssland
+UG8H;Asiatiska Ryssland
+UG8I;Asiatiska Ryssland
+UG8O;Asiatiska Ryssland
+UG8P;Asiatiska Ryssland
+UG8S;Asiatiska Ryssland
+UG8T;Asiatiska Ryssland
+UG8U;Asiatiska Ryssland
+UG8V;Asiatiska Ryssland
+UG8W;Asiatiska Ryssland
+UG8X;Europeiska Ryssland
+UG8Y;Asiatiska Ryssland
+UG8Z;Asiatiska Ryssland
+UG9F;Europeiska Ryssland
+UG9G;Europeiska Ryssland
+UG9I;Asiatiska Ryssland
+UG9M;Asiatiska Ryssland
+UG9P;Asiatiska Ryssland
+UG9S;Asiatiska Ryssland
+UG9T;Asiatiska Ryssland
+UG9V;Asiatiska Ryssland
+UG9W;Asiatiska Ryssland
+UG9X;Europeiska Ryssland
+UH0T;Asiatiska Ryssland
+UH1I;Europeiska Ryssland
+UH1N;Europeiska Ryssland
+UH1O;Europeiska Ryssland
+UH1P;Europeiska Ryssland
+UH1Z;Europeiska Ryssland
+UH4H;Europeiska Ryssland
+UH4I;Europeiska Ryssland
+UH4W;Europeiska Ryssland
+UH8F;Europeiska Ryssland
+UH8G;Europeiska Ryssland
+UH8H;Asiatiska Ryssland
+UH8I;Asiatiska Ryssland
+UH8O;Asiatiska Ryssland
+UH8P;Asiatiska Ryssland
+UH8S;Asiatiska Ryssland
+UH8T;Asiatiska Ryssland
+UH8U;Asiatiska Ryssland
+UH8V;Asiatiska Ryssland
+UH8W;Asiatiska Ryssland
+UH8X;Europeiska Ryssland
+UH8Y;Asiatiska Ryssland
+UH8Z;Asiatiska Ryssland
+UH9F;Europeiska Ryssland
+UH9G;Europeiska Ryssland
+UH9I;Asiatiska Ryssland
+UH9M;Asiatiska Ryssland
+UH9P;Asiatiska Ryssland
+UH9S;Asiatiska Ryssland
+UH9T;Asiatiska Ryssland
+UH9V;Asiatiska Ryssland
+UH9W;Asiatiska Ryssland
+UH9X;Europeiska Ryssland
+UI0T;Asiatiska Ryssland
+UI1I;Europeiska Ryssland
+UI1N;Europeiska Ryssland
+UI1O;Europeiska Ryssland
+UI1P;Europeiska Ryssland
+UI1Z;Europeiska Ryssland
+UI4H;Europeiska Ryssland
+UI4I;Europeiska Ryssland
+UI4W;Europeiska Ryssland
+UI8F;Europeiska Ryssland
+UI8G;Europeiska Ryssland
+UI8H;Asiatiska Ryssland
+UI8I;Asiatiska Ryssland
+UI8O;Asiatiska Ryssland
+UI8P;Asiatiska Ryssland
+UI8S;Asiatiska Ryssland
+UI8T;Asiatiska Ryssland
+UI8U;Asiatiska Ryssland
+UI8V;Asiatiska Ryssland
+UI8W;Asiatiska Ryssland
+UI8X;Europeiska Ryssland
+UI8Y;Asiatiska Ryssland
+UI8Z;Asiatiska Ryssland
+UI9F;Europeiska Ryssland
+UI9G;Europeiska Ryssland
+UI9I;Asiatiska Ryssland
+UI9M;Asiatiska Ryssland
+UI9P;Asiatiska Ryssland
+UI9S;Asiatiska Ryssland
+UI9T;Asiatiska Ryssland
+UI9V;Asiatiska Ryssland
+UI9W;Asiatiska Ryssland
+UI9X;Europeiska Ryssland
+UN0F;Kazakstan
+UN0G;Kazakstan
+UN0J;Kazakstan
+UN0Q;Kazakstan
+UN1F;Kazakstan
+UN1G;Kazakstan
+UN1J;Kazakstan
+UN1Q;Kazakstan
+UN2F;Kazakstan
+UN2G;Kazakstan
+UN2J;Kazakstan
+UN2Q;Kazakstan
+UN3F;Kazakstan
+UN3G;Kazakstan
+UN3J;Kazakstan
+UN3Q;Kazakstan
+UN4F;Kazakstan
+UN4G;Kazakstan
+UN4J;Kazakstan
+UN4Q;Kazakstan
+UN5F;Kazakstan
+UN5G;Kazakstan
+UN5J;Kazakstan
+UN5Q;Kazakstan
+UN6F;Kazakstan
+UN6G;Kazakstan
+UN6J;Kazakstan
+UN6Q;Kazakstan
+UN7F;Kazakstan
+UN7G;Kazakstan
+UN7J;Kazakstan
+UN7Q;Kazakstan
+UN8F;Kazakstan
+UN8G;Kazakstan
+UN8J;Kazakstan
+UN8Q;Kazakstan
+UN9F;Kazakstan
+UN9G;Kazakstan
+UN9J;Kazakstan
+UN9Q;Kazakstan
+UO0F;Kazakstan
+UO0G;Kazakstan
+UO0J;Kazakstan
+UO0Q;Kazakstan
+UO1F;Kazakstan
+UO1G;Kazakstan
+UO1J;Kazakstan
+UO1Q;Kazakstan
+UO2F;Kazakstan
+UO2G;Kazakstan
+UO2J;Kazakstan
+UO2Q;Kazakstan
+UO3F;Kazakstan
+UO3G;Kazakstan
+UO3J;Kazakstan
+UO3Q;Kazakstan
+UO4F;Kazakstan
+UO4G;Kazakstan
+UO4J;Kazakstan
+UO4Q;Kazakstan
+UO5F;Kazakstan
+UO5G;Kazakstan
+UO5J;Kazakstan
+UO5Q;Kazakstan
+UO6F;Kazakstan
+UO6G;Kazakstan
+UO6J;Kazakstan
+UO6Q;Kazakstan
+UO7F;Kazakstan
+UO7G;Kazakstan
+UO7J;Kazakstan
+UO7Q;Kazakstan
+UO8F;Kazakstan
+UO8G;Kazakstan
+UO8J;Kazakstan
+UO8Q;Kazakstan
+UO9F;Kazakstan
+UO9G;Kazakstan
+UO9J;Kazakstan
+UO9Q;Kazakstan
+UP0F;Kazakstan
+UP0G;Kazakstan
+UP0J;Kazakstan
+UP0Q;Kazakstan
+UP1F;Kazakstan
+UP1G;Kazakstan
+UP1J;Kazakstan
+UP1Q;Kazakstan
+UP2F;Kazakstan
+UP2G;Kazakstan
+UP2J;Kazakstan
+UP2Q;Kazakstan
+UP3F;Kazakstan
+UP3G;Kazakstan
+UP3J;Kazakstan
+UP3Q;Kazakstan
+UP4F;Kazakstan
+UP4G;Kazakstan
+UP4J;Kazakstan
+UP4Q;Kazakstan
+UP5F;Kazakstan
+UP5G;Kazakstan
+UP5J;Kazakstan
+UP5Q;Kazakstan
+UP6F;Kazakstan
+UP6G;Kazakstan
+UP6J;Kazakstan
+UP6Q;Kazakstan
+UP7F;Kazakstan
+UP7G;Kazakstan
+UP7J;Kazakstan
+UP7Q;Kazakstan
+UP8F;Kazakstan
+UP8G;Kazakstan
+UP8J;Kazakstan
+UP8Q;Kazakstan
+UP9F;Kazakstan
+UP9G;Kazakstan
+UP9J;Kazakstan
+UP9Q;Kazakstan
+UQ0F;Kazakstan
+UQ0G;Kazakstan
+UQ0J;Kazakstan
+UQ0Q;Kazakstan
+UQ1F;Kazakstan
+UQ1G;Kazakstan
+UQ1J;Kazakstan
+UQ1Q;Kazakstan
+UQ2F;Kazakstan
+UQ2G;Kazakstan
+UQ2J;Kazakstan
+UQ2Q;Kazakstan
+UQ3F;Kazakstan
+UQ3G;Kazakstan
+UQ3J;Kazakstan
+UQ3Q;Kazakstan
+UQ4F;Kazakstan
+UQ4G;Kazakstan
+UQ4J;Kazakstan
+UQ4Q;Kazakstan
+UQ5F;Kazakstan
+UQ5G;Kazakstan
+UQ5J;Kazakstan
+UQ5Q;Kazakstan
+UQ6F;Kazakstan
+UQ6G;Kazakstan
+UQ6J;Kazakstan
+UQ6Q;Kazakstan
+UQ7F;Kazakstan
+UQ7G;Kazakstan
+UQ7J;Kazakstan
+UQ7Q;Kazakstan
+UQ8F;Kazakstan
+UQ8G;Kazakstan
+UQ8J;Kazakstan
+UQ8Q;Kazakstan
+UQ9F;Kazakstan
+UQ9G;Kazakstan
+UQ9J;Kazakstan
+UQ9Q;Kazakstan
+VI9C;Cocos (Keeling) Islands
+VI9M;Mellish Reef
+VI9W;Willis Island
+VI9X;Christmas Island
+VI9Y;Cocos (Keeling) Islands
+VI9Z;Willis Island
+VK0H;Heard Island
+VK0M;Macquarie Island
+VK9C;Cocos (Keeling) Islands
+VK9L;Lord Howe Island
+VK9M;Mellish Reef
+VK9N;Norfolk Island
+VK9W;Willis Island
+VK9X;Christmas Island
+VK9Y;Cocos (Keeling) Islands
+VK9Z;Willis Island
+VP0G;Sydgeorgien
+VP0S;Sydsandwichöarna
+VP2E;Anguilla
+VP2M;Montserrat
+VP2V;British Virgin Islands
+VZ9M;Mellish Reef
+VZ9W;Willis Island
+VZ9X;Christmas Island
+VZ9Y;Cocos (Keeling) Islands
+WH7K;Kure Island
+XQ0X;San Felix & San Ambrosio
+XQ0Z;Juan Fernández
+XR0X;San Felix & San Ambrosio
+XR0Z;Juan Fernández
+ZL50;Nya Zeeland
+ZV0F;Fernando de Noronha
+ZV0R;Fernando de Noronha
+ZV0S;St. Peter & St. Paul
+ZV0T;Trindade & Martim Vaz
+ZW0F;Fernando de Noronha
+ZW0R;Fernando de Noronha
+ZW0S;St. Peter & St. Paul
+ZW0T;Trindade & Martim Vaz
+ZX0F;Fernando de Noronha
+ZX0R;Fernando de Noronha
+ZX0S;St. Peter & St. Paul
+ZX0T;Trindade & Martim Vaz
+ZY0F;Fernando de Noronha
+ZY0R;Fernando de Noronha
+ZY0S;St. Peter & St. Paul
+ZY0T;Trindade & Martim Vaz
+ZY0Z;Fernando de Noronha
+ZZ0F;Fernando de Noronha
+ZZ0R;Fernando de Noronha
+ZZ0S;St. Peter & St. Paul
+ZZ0T;Trindade & Martim Vaz
+3B6;Agalega & St. Brandon
+3B7;Agalega & St. Brandon
+3B8;Mauritius
+3B9;Rodriguez Island
+3C0;Annobon Island
+3D2;Fiji
+3DA;Eswatini
+3G0;Påskön
+3G7;Chile
+3G8;Chile
+3H0;Kina
+3H9;Kina
+3I0;Kina
+3I9;Kina
+3J0;Kina
+3J9;Kina
+3K0;Kina
+3K9;Kina
+3L0;Kina
+3L9;Kina
+3M0;Kina
+3M9;Kina
+3N0;Kina
+3N9;Kina
+3O0;Kina
+3O9;Kina
+3P0;Kina
+3P9;Kina
+3Q0;Kina
+3Q9;Kina
+3R0;Kina
+3R9;Kina
+3S0;Kina
+3S9;Kina
+3T0;Kina
+3T9;Kina
+3U0;Kina
+3U9;Kina
+4A4;Revillagigedo
+4B4;Revillagigedo
+4C4;Revillagigedo
+4M0;Aves Island
+5J0;San Andres & Providencia
+5K0;San Andres & Providencia
+6D4;Revillagigedo
+6E4;Revillagigedo
+6F4;Revillagigedo
+6G4;Revillagigedo
+6H4;Revillagigedo
+6I4;Revillagigedo
+6J4;Revillagigedo
+9M0;Spratlyöarna
+9M2;Västmalaysia
+9M6;Östmalaysia
+9M8;Östmalaysia
+9W6;Östmalaysia
+9W8;Östmalaysia
+AH0;Mariana Islands
+AH1;Baker & Howland Islands
+AH2;Guam
+AH3;Johnston Island
+AH4;Midway Island
+AH5;Palmyra & Jarvis Islands
+AH6;Hawaii
+AH7;Hawaii
+AH8;Amerikanska Samoa
+AH9;Wake Island
+AM6;Balearerna
+AM8;Kanarieöarna
+AM9;Ceuta & Melilla
+AN6;Balearerna
+AN8;Kanarieöarna
+AN9;Ceuta & Melilla
+AO6;Balearerna
+AO8;Kanarieöarna
+AO9;Ceuta & Melilla
+AX0;Antarktis
+AX4;Australien
+AX9;Norfolk Island
+B2A;Kina
+B2B;Kina
+B2C;Kina
+B2D;Kina
+B2E;Kina
+B2F;Kina
+B2G;Kina
+B2H;Kina
+B2I;Kina
+B2J;Kina
+B2K;Kina
+B2L;Kina
+B2M;Kina
+B2N;Kina
+B2O;Kina
+B2P;Kina
+B3G;Kina
+B3H;Kina
+B3I;Kina
+B3J;Kina
+B3K;Kina
+B3L;Kina
+B6Q;Kina
+B6R;Kina
+B6S;Kina
+B6T;Kina
+B6U;Kina
+B6V;Kina
+B6W;Kina
+B6X;Kina
+B7A;Kina
+B7B;Kina
+B7C;Kina
+B7D;Kina
+B7E;Kina
+B7F;Kina
+B7G;Kina
+B7H;Kina
+B7Q;Kina
+B7R;Kina
+B7S;Kina
+B7T;Kina
+B7U;Kina
+B7V;Kina
+B7W;Kina
+B7X;Kina
+B8A;Kina
+B8B;Kina
+B8C;Kina
+B8D;Kina
+B8E;Kina
+B8F;Kina
+B8G;Kina
+B8H;Kina
+B8I;Kina
+B8J;Kina
+B8K;Kina
+B8L;Kina
+B8M;Kina
+B8N;Kina
+B8O;Kina
+B8P;Kina
+B8Q;Kina
+B8R;Kina
+B8S;Kina
+B8T;Kina
+B8U;Kina
+B8V;Kina
+B8W;Kina
+B8X;Kina
+B9A;Kina
+B9B;Kina
+B9C;Kina
+B9D;Kina
+B9E;Kina
+B9F;Kina
+B9S;Kina
+B9T;Kina
+B9U;Kina
+B9V;Kina
+B9W;Kina
+B9X;Kina
+BA0;Kina
+BA9;Kina
+BB0;Kina
+BB9;Kina
+BC0;Kina
+BC9;Kina
+BD0;Kina
+BD9;Kina
+BE0;Kina
+BE9;Kina
+BF0;Kina
+BF9;Kina
+BG0;Kina
+BG9;Kina
+BH0;Kina
+BH9;Kina
+BI0;Kina
+BI9;Kina
+BK0;Kina
+BK9;Kina
+BL0;Kina
+BL9;Kina
+BS7;Scarborough Reef
+BT0;Kina
+BT9;Kina
+BY0;Kina
+BY9;Kina
+BZ0;Kina
+BZ9;Kina
+CA0;Påskön
+CA7;Chile
+CA8;Chile
+CB0;Påskön
+CB7;Chile
+CB8;Chile
+CC0;Påskön
+CC7;Chile
+CC8;Chile
+CD0;Påskön
+CD7;Chile
+CD8;Chile
+CE0;Påskön
+CE7;Chile
+CE8;Chile
+CE9;Sydshetlandsöarna
+CF2;Kanada
+CG2;Kanada
+CH1;Kanada
+CH2;Kanada
+CI0;Kanada
+CI1;Kanada
+CI2;Kanada
+CJ2;Kanada
+CK2;Kanada
+CP2;Bolivia
+CP3;Bolivia
+CP4;Bolivia
+CP5;Bolivia
+CP6;Bolivia
+CP7;Bolivia
+CQ1;Azorerna
+CQ2;Madeira
+CQ3;Madeira
+CQ8;Azorerna
+CQ9;Madeira
+CR1;Azorerna
+CR2;Azorerna
+CR3;Madeira
+CR8;Azorerna
+CR9;Madeira
+CS3;Madeira
+CS4;Azorerna
+CS8;Azorerna
+CS9;Madeira
+CT3;Madeira
+CT8;Azorerna
+CT9;Madeira
+CY0;Sable Island
+CY1;Kanada
+CY2;Kanada
+CY9;St. Paul Island
+CZ0;Kanada
+CZ1;Kanada
+CZ2;Kanada
+EA6;Balearerna
+EA8;Kanarieöarna
+EA9;Ceuta & Melilla
+EB6;Balearerna
+EB8;Kanarieöarna
+EB9;Ceuta & Melilla
+EC6;Balearerna
+EC8;Kanarieöarna
+EC9;Ceuta & Melilla
+ED6;Balearerna
+ED8;Kanarieöarna
+ED9;Ceuta & Melilla
+EE6;Balearerna
+EE8;Kanarieöarna
+EE9;Ceuta & Melilla
+EF6;Balearerna
+EF8;Kanarieöarna
+EF9;Ceuta & Melilla
+EG6;Balearerna
+EG8;Kanarieöarna
+EG9;Ceuta & Melilla
+EH6;Balearerna
+EH8;Kanarieöarna
+EH9;Ceuta & Melilla
+H40;Temotu Province
+HB0;Liechtenstein
+HC8;Galápagos
+HD8;Galápagos
+HE0;Liechtenstein
+HJ0;San Andres & Providencia
+HK0;San Andres & Providencia
+IM0;Sardinien
+IS0;Sardinien
+J45;Dodekaneserna
+J49;Kreta
+JD1;Ogasawara
+JT2;Mongoliet
+JT3;Mongoliet
+JU2;Mongoliet
+JU3;Mongoliet
+JV2;Mongoliet
+JV3;Mongoliet
+KG4;Guantanamo Bay
+KH0;Mariana Islands
+KH1;Baker & Howland Islands
+KH2;Guam
+KH3;Johnston Island
+KH4;Midway Island
+KH5;Palmyra & Jarvis Islands
+KH6;Hawaii
+KH7;Hawaii
+KH8;Amerikanska Samoa
+KH9;Wake Island
+KP1;Navassa Island
+KP2;US Virgin Islands
+KP3;Puerto Rico
+KP4;Puerto Rico
+KP5;Desecheo Island
+NH0;Mariana Islands
+NH1;Baker & Howland Islands
+NH2;Guam
+NH3;Johnston Island
+NH4;Midway Island
+NH5;Palmyra & Jarvis Islands
+NH6;Hawaii
+NH7;Hawaii
+NH8;Amerikanska Samoa
+NH9;Wake Island
+NLD;Kuwait
+NP1;Navassa Island
+NP2;US Virgin Islands
+NP3;Puerto Rico
+NP4;Puerto Rico
+NP5;Desecheo Island
+OF0;Åland
+OG0;Åland
+OH0;Åland
+OI0;Åland
+OJ0;Märket
+PJ0;Sint Maarten
+PJ2;Curacao
+PJ4;Bonaire
+PJ5;Saba & St. Eustatius
+PJ6;Saba & St. Eustatius
+PJ7;Sint Maarten
+PJ8;Sint Maarten
+PP6;Brasilien
+PP7;Brasilien
+PP8;Brasilien
+PP9;Brasilien
+PQ2;Brasilien
+PQ6;Brasilien
+PQ7;Brasilien
+PQ8;Brasilien
+PQ9;Brasilien
+PR6;Brasilien
+PR7;Brasilien
+PR8;Brasilien
+PR9;Brasilien
+PS6;Brasilien
+PS7;Brasilien
+PS8;Brasilien
+PS9;Brasilien
+PT2;Brasilien
+PT6;Brasilien
+PT7;Brasilien
+PT8;Brasilien
+PU6;Brasilien
+PU7;Brasilien
+PU8;Brasilien
+PU9;Brasilien
+PV6;Brasilien
+PV7;Brasilien
+PV8;Brasilien
+PV9;Brasilien
+PW6;Brasilien
+PW7;Brasilien
+PW8;Brasilien
+PW9;Brasilien
+PX6;Brasilien
+PX7;Brasilien
+PX8;Brasilien
+PX9;Brasilien
+PY6;Brasilien
+PY7;Brasilien
+PY8;Brasilien
+PY9;Brasilien
+R0T;Asiatiska Ryssland
+R1I;Europeiska Ryssland
+R1N;Europeiska Ryssland
+R1O;Europeiska Ryssland
+R1P;Europeiska Ryssland
+R1Z;Europeiska Ryssland
+R2F;Kaliningrad
+R2K;Kaliningrad
+R4H;Europeiska Ryssland
+R4I;Europeiska Ryssland
+R4W;Europeiska Ryssland
+R8F;Europeiska Ryssland
+R8G;Europeiska Ryssland
+R8H;Asiatiska Ryssland
+R8I;Asiatiska Ryssland
+R8O;Asiatiska Ryssland
+R8P;Asiatiska Ryssland
+R8S;Asiatiska Ryssland
+R8T;Asiatiska Ryssland
+R8U;Asiatiska Ryssland
+R8V;Asiatiska Ryssland
+R8W;Asiatiska Ryssland
+R8X;Europeiska Ryssland
+R8Y;Asiatiska Ryssland
+R8Z;Asiatiska Ryssland
+R9F;Europeiska Ryssland
+R9G;Europeiska Ryssland
+R9I;Asiatiska Ryssland
+R9M;Asiatiska Ryssland
+R9P;Asiatiska Ryssland
+R9S;Asiatiska Ryssland
+R9T;Asiatiska Ryssland
+R9V;Asiatiska Ryssland
+R9W;Asiatiska Ryssland
+R9X;Europeiska Ryssland
+RA0;Asiatiska Ryssland
+RA2;Kaliningrad
+RA8;Asiatiska Ryssland
+RA9;Asiatiska Ryssland
+RC0;Asiatiska Ryssland
+RC8;Asiatiska Ryssland
+RC9;Asiatiska Ryssland
+RD0;Asiatiska Ryssland
+RD8;Asiatiska Ryssland
+RD9;Asiatiska Ryssland
+RE0;Asiatiska Ryssland
+RE8;Asiatiska Ryssland
+RE9;Asiatiska Ryssland
+RF0;Asiatiska Ryssland
+RF8;Asiatiska Ryssland
+RF9;Asiatiska Ryssland
+RG0;Asiatiska Ryssland
+RG8;Asiatiska Ryssland
+RG9;Asiatiska Ryssland
+RI0;Asiatiska Ryssland
+RI8;Asiatiska Ryssland
+RI9;Asiatiska Ryssland
+RJ0;Asiatiska Ryssland
+RJ8;Asiatiska Ryssland
+RJ9;Asiatiska Ryssland
+RK0;Asiatiska Ryssland
+RK8;Asiatiska Ryssland
+RK9;Asiatiska Ryssland
+RL0;Asiatiska Ryssland
+RL8;Asiatiska Ryssland
+RL9;Asiatiska Ryssland
+RM0;Asiatiska Ryssland
+RM8;Asiatiska Ryssland
+RM9;Asiatiska Ryssland
+RN0;Asiatiska Ryssland
+RN8;Asiatiska Ryssland
+RN9;Asiatiska Ryssland
+RO0;Asiatiska Ryssland
+RO8;Asiatiska Ryssland
+RO9;Asiatiska Ryssland
+RQ0;Asiatiska Ryssland
+RQ8;Asiatiska Ryssland
+RQ9;Asiatiska Ryssland
+RT0;Asiatiska Ryssland
+RT8;Asiatiska Ryssland
+RT9;Asiatiska Ryssland
+RU0;Asiatiska Ryssland
+RU8;Asiatiska Ryssland
+RU9;Asiatiska Ryssland
+RV0;Asiatiska Ryssland
+RV8;Asiatiska Ryssland
+RV9;Asiatiska Ryssland
+RW0;Asiatiska Ryssland
+RW8;Asiatiska Ryssland
+RW9;Asiatiska Ryssland
+RX0;Asiatiska Ryssland
+RX8;Asiatiska Ryssland
+RX9;Asiatiska Ryssland
+RY0;Asiatiska Ryssland
+RY8;Asiatiska Ryssland
+RY9;Asiatiska Ryssland
+RZ0;Asiatiska Ryssland
+RZ8;Asiatiska Ryssland
+RZ9;Asiatiska Ryssland
+SV5;Dodekaneserna
+SV9;Kreta
+SW5;Dodekaneserna
+SW9;Kreta
+SX5;Dodekaneserna
+SX9;Kreta
+SY5;Dodekaneserna
+SY9;Kreta
+SZ5;Dodekaneserna
+SZ9;Kreta
+T30;Western Kiribati
+T31;Central Kiribati
+T32;Eastern Kiribati
+T33;Banaba Island
+TE9;Cocos Island
+TI9;Cocos Island
+U0T;Asiatiska Ryssland
+U1I;Europeiska Ryssland
+U1N;Europeiska Ryssland
+U1O;Europeiska Ryssland
+U1P;Europeiska Ryssland
+U1Z;Europeiska Ryssland
+U2F;Kaliningrad
+U2K;Kaliningrad
+U4H;Europeiska Ryssland
+U4I;Europeiska Ryssland
+U4W;Europeiska Ryssland
+U8F;Europeiska Ryssland
+U8G;Europeiska Ryssland
+U8H;Asiatiska Ryssland
+U8I;Asiatiska Ryssland
+U8O;Asiatiska Ryssland
+U8P;Asiatiska Ryssland
+U8S;Asiatiska Ryssland
+U8T;Asiatiska Ryssland
+U8U;Asiatiska Ryssland
+U8V;Asiatiska Ryssland
+U8W;Asiatiska Ryssland
+U8X;Europeiska Ryssland
+U8Y;Asiatiska Ryssland
+U8Z;Asiatiska Ryssland
+U9F;Europeiska Ryssland
+U9G;Europeiska Ryssland
+U9I;Asiatiska Ryssland
+U9M;Asiatiska Ryssland
+U9P;Asiatiska Ryssland
+U9S;Asiatiska Ryssland
+U9T;Asiatiska Ryssland
+U9V;Asiatiska Ryssland
+U9W;Asiatiska Ryssland
+U9X;Europeiska Ryssland
+UA0;Asiatiska Ryssland
+UA2;Kaliningrad
+UA8;Asiatiska Ryssland
+UA9;Asiatiska Ryssland
+UB0;Asiatiska Ryssland
+UB2;Kaliningrad
+UB8;Asiatiska Ryssland
+UB9;Asiatiska Ryssland
+UC0;Asiatiska Ryssland
+UC2;Kaliningrad
+UC8;Asiatiska Ryssland
+UC9;Asiatiska Ryssland
+UD0;Asiatiska Ryssland
+UD2;Kaliningrad
+UD8;Asiatiska Ryssland
+UD9;Asiatiska Ryssland
+UE0;Asiatiska Ryssland
+UE2;Kaliningrad
+UE8;Asiatiska Ryssland
+UE9;Asiatiska Ryssland
+UF0;Asiatiska Ryssland
+UF2;Kaliningrad
+UF8;Asiatiska Ryssland
+UF9;Asiatiska Ryssland
+UG0;Asiatiska Ryssland
+UG2;Kaliningrad
+UG8;Asiatiska Ryssland
+UG9;Asiatiska Ryssland
+UH0;Asiatiska Ryssland
+UH2;Kaliningrad
+UH8;Asiatiska Ryssland
+UH9;Asiatiska Ryssland
+UI0;Asiatiska Ryssland
+UI2;Kaliningrad
+UI8;Asiatiska Ryssland
+UI9;Asiatiska Ryssland
+VA2;Kanada
+VB2;Kanada
+VC2;Kanada
+VD1;Kanada
+VD2;Kanada
+VE2;Kanada
+VF1;Kanada
+VF2;Kanada
+VG2;Kanada
+VI0;Antarktis
+VI4;Australien
+VI9;Norfolk Island
+VJ4;Australien
+VK0;Antarktis
+VK4;Australien
+VK9;Norfolk Island
+VL4;Australien
+VO1;Kanada
+VO2;Kanada
+VP5;Turks & Caicos Islands
+VP6;Pitcairn Island
+VP8;Falklandsöarna
+VP9;Bermuda
+VQ5;Turks & Caicos Islands
+VQ9;Chagos Islands
+VU4;Andaman & Nicobar Is.
+VU7;Lakshadweep Islands
+VX2;Kanada
+VY0;Kanada
+VY1;Kanada
+VY2;Kanada
+VY9;Kanada
+WH0;Mariana Islands
+WH1;Baker & Howland Islands
+WH2;Guam
+WH3;Johnston Island
+WH4;Midway Island
+WH5;Palmyra & Jarvis Islands
+WH6;Hawaii
+WH7;Hawaii
+WH8;Amerikanska Samoa
+WH9;Wake Island
+WP1;Navassa Island
+WP2;US Virgin Islands
+WP3;Puerto Rico
+WP4;Puerto Rico
+WP5;Desecheo Island
+XA4;Revillagigedo
+XB4;Revillagigedo
+XC4;Revillagigedo
+XD4;Revillagigedo
+XE4;Revillagigedo
+XF4;Revillagigedo
+XG4;Revillagigedo
+XH4;Revillagigedo
+XI4;Revillagigedo
+XJ1;Kanada
+XJ2;Kanada
+XK0;Kanada
+XK1;Kanada
+XK2;Kanada
+XL2;Kanada
+XM2;Kanada
+XN1;Kanada
+XN2;Kanada
+XO0;Kanada
+XO1;Kanada
+XO2;Kanada
+XQ0;Påskön
+XQ7;Chile
+XQ8;Chile
+XR0;Påskön
+XR7;Chile
+XR8;Chile
+XR9;Sydshetlandsöarna
+XS0;Kina
+XS9;Kina
+XX9;Macao
+YV0;Aves Island
+YW0;Aves Island
+YX0;Aves Island
+YY0;Aves Island
+ZC4;UK Base Areas on Cyprus
+ZD7;St. Helena
+ZD8;Ascension Island
+ZD9;Tristan da Cunha & Gough
+ZK3;Tokelau Islands
+ZL5;Antarktis
+ZL7;Chatham Islands
+ZL8;Kermadec Islands
+ZL9;N.Z. Subantarctic Is.
+ZM5;Antarktis
+ZM7;Chatham Islands
+ZM8;Kermadec Islands
+ZR8;Pr. Edward & Marion Is.
+ZS7;Antarktis
+ZS8;Pr. Edward & Marion Is.
+ZT8;Pr. Edward & Marion Is.
+ZU8;Pr. Edward & Marion Is.
+ZV6;Brasilien
+ZV7;Brasilien
+ZV8;Brasilien
+ZV9;Brasilien
+ZW6;Brasilien
+ZW7;Brasilien
+ZW8;Brasilien
+ZW9;Brasilien
+ZX6;Brasilien
+ZX7;Brasilien
+ZX8;Brasilien
+ZX9;Brasilien
+ZY6;Brasilien
+ZY7;Brasilien
+ZY8;Brasilien
+ZY9;Brasilien
+ZZ6;Brasilien
+ZZ7;Brasilien
+ZZ8;Brasilien
+ZZ9;Brasilien
+1A;Malteserorden
+1S;Spratlyöarna
+2A;Skottland
+2D;Isle of Man
+2E;England
+2I;Nordirland
+2J;Jersey
+2M;Skottland
+2U;Guernsey
+2W;Wales
+3A;Monaco
+3C;Equatorial Guinea
+3E;Panama
+3F;Panama
+3G;Chile
+3H;Kina
+3I;Kina
+3J;Kina
+3K;Kina
+3L;Kina
+3M;Kina
+3N;Kina
+3O;Kina
+3P;Kina
+3Q;Kina
+3R;Kina
+3S;Kina
+3T;Kina
+3U;Kina
+3V;Tunisien
+3W;Vietnam
+3X;Guinea
+3Y;Antarktis
+3Z;Polen
+4A;Mexiko
+4B;Mexiko
+4C;Mexiko
+4D;Filippinerna
+4E;Filippinerna
+4F;Filippinerna
+4G;Filippinerna
+4H;Filippinerna
+4I;Filippinerna
+4J;Azerbajdzjan
+4K;Azerbajdzjan
+4L;Georgien
+4M;Venezuela
+4O;Montenegro
+4P;Sri Lanka
+4Q;Sri Lanka
+4R;Sri Lanka
+4S;Sri Lanka
+4T;Peru
+4U;Italien
+4V;Haiti
+4W;Timor - Leste
+4X;Israel
+4Z;Israel
+5A;Libyen
+5B;Cypern
+5C;Marocko
+5D;Marocko
+5E;Marocko
+5F;Marocko
+5G;Marocko
+5H;Tanzania
+5I;Tanzania
+5J;Colombia
+5K;Colombia
+5L;Liberia
+5M;Liberia
+5N;Nigeria
+5O;Nigeria
+5P;Danmark
+5Q;Danmark
+5R;Madagascar
+5S;Madagascar
+5T;Mauritania
+5U;Niger
+5V;Togo
+5W;Samoa
+5X;Uganda
+5Y;Kenya
+5Z;Kenya
+6A;Egypten
+6B;Egypten
+6C;Syrien
+6D;Mexiko
+6E;Mexiko
+6F;Mexiko
+6G;Mexiko
+6H;Mexiko
+6I;Mexiko
+6J;Mexiko
+6K;Sydkorea
+6L;Sydkorea
+6M;Sydkorea
+6N;Sydkorea
+6O;Somalia
+6P;Pakistan
+6Q;Pakistan
+6R;Pakistan
+6S;Pakistan
+6T;Sudan
+6U;Sudan
+6V;Senegal
+6W;Senegal
+6X;Madagascar
+6Y;Jamaica
+6Z;Liberia
+7A;Indonesien
+7B;Indonesien
+7C;Indonesien
+7D;Indonesien
+7E;Indonesien
+7F;Indonesien
+7G;Indonesien
+7H;Indonesien
+7I;Indonesien
+7J;Japan
+7K;Japan
+7L;Japan
+7M;Japan
+7N;Japan
+7O;Jemen
+7P;Lesotho
+7Q;Malawi
+7R;Algeriet
+7S;Sverige
+7T;Algeriet
+7U;Algeriet
+7V;Algeriet
+7W;Algeriet
+7X;Algeriet
+7Y;Algeriet
+7Z;Saudiarabien
+8A;Indonesien
+8B;Indonesien
+8C;Indonesien
+8D;Indonesien
+8E;Indonesien
+8F;Indonesien
+8G;Indonesien
+8H;Indonesien
+8I;Indonesien
+8J;Japan
+8K;Japan
+8L;Japan
+8M;Japan
+8N;Japan
+8O;Botswana
+8P;Barbados
+8Q;Maldiverna
+8R;Guyana
+8S;Sverige
+8T;Indien
+8U;Indien
+8V;Indien
+8W;Indien
+8X;Indien
+8Y;Indien
+8Z;Saudiarabien
+9A;Kroatien
+9B;Iran
+9C;Iran
+9D;Iran
+9E;Ethiopia
+9F;Ethiopia
+9G;Ghana
+9H;Malta
+9I;Zambia
+9J;Zambia
+9K;Kuwait
+9L;Sierra Leone
+9M;Västmalaysia
+9N;Nepal
+9O;Dem. Rep. of the Congo
+9P;Dem. Rep. of the Congo
+9Q;Dem. Rep. of the Congo
+9R;Dem. Rep. of the Congo
+9S;Dem. Rep. of the Congo
+9T;Dem. Rep. of the Congo
+9U;Burundi
+9V;Singapore
+9W;Västmalaysia
+9X;Rwanda
+9Y;Trinidad & Tobago
+9Z;Trinidad & Tobago
+A2;Botswana
+A3;Tonga
+A4;Oman
+A5;Bhutan
+A6;Förenade Arabemiraten
+A7;Qatar
+A8;Liberia
+A9;Bahrain
+AA;USA
+AB;USA
+AC;USA
+AD;USA
+AE;USA
+AF;USA
+AG;USA
+AI;USA
+AJ;USA
+AK;USA
+AL;Alaska
+AM;Spanien
+AN;Spanien
+AO;Spanien
+AP;Pakistan
+AQ;Pakistan
+AR;Pakistan
+AS;Pakistan
+AT;Indien
+AU;Indien
+AV;Indien
+AW;Indien
+AX;Australien
+AY;Argentina
+AZ;Argentina
+B0;Kina
+B1;Kina
+B2;Kina
+B3;Kina
+B4;Kina
+B5;Kina
+B6;Kina
+B7;Kina
+B8;Kina
+B9;Kina
+BA;Kina
+BB;Kina
+BC;Kina
+BD;Kina
+BE;Kina
+BF;Kina
+BG;Kina
+BH;Kina
+BI;Kina
+BJ;Kina
+BK;Kina
+BL;Kina
+BM;Taiwan
+BN;Taiwan
+BO;Taiwan
+BP;Taiwan
+BQ;Taiwan
+BT;Kina
+BU;Taiwan
+BV;Taiwan
+BW;Taiwan
+BX;Taiwan
+BY;Kina
+BZ;Kina
+C2;Nauru
+C3;Andorra
+C4;Cypern
+C5;The Gambia
+C6;Bahamas
+C8;Mozambique
+C9;Mozambique
+CA;Chile
+CB;Chile
+CC;Chile
+CD;Chile
+CE;Chile
+CF;Kanada
+CG;Kanada
+CJ;Kanada
+CK;Kanada
+CL;Kuba
+CM;Kuba
+CN;Marocko
+CO;Kuba
+CP;Bolivia
+CQ;Portugal
+CR;Portugal
+CS;Portugal
+CT;Portugal
+CU;Azorerna
+CV;Uruguay
+CW;Uruguay
+CX;Uruguay
+D2;Angola
+D3;Angola
+D4;Cabo Verde
+D5;Liberia
+D6;Comoros
+D7;Sydkorea
+D8;Sydkorea
+D9;Sydkorea
+DA;Tyskland
+DB;Tyskland
+DC;Tyskland
+DD;Tyskland
+DE;Tyskland
+DF;Tyskland
+DG;Tyskland
+DH;Tyskland
+DI;Tyskland
+DJ;Tyskland
+DK;Tyskland
+DL;Tyskland
+DM;Tyskland
+DN;Tyskland
+DO;Tyskland
+DP;Tyskland
+DQ;Tyskland
+DR;Tyskland
+DS;Sydkorea
+DT;Sydkorea
+DU;Filippinerna
+DV;Filippinerna
+DW;Filippinerna
+DX;Filippinerna
+DY;Filippinerna
+DZ;Filippinerna
+E2;Thailand
+E3;Eritrea
+E4;Palestine
+E5;South Cook Islands
+E6;Niue
+E7;Bosnien-Hercegovina
+EA;Spanien
+EB;Spanien
+EC;Spanien
+ED;Spanien
+EE;Spanien
+EF;Spanien
+EG;Spanien
+EH;Spanien
+EI;Irland
+EJ;Irland
+EK;Armenien
+EL;Liberia
+EM;Ukraina
+EN;Ukraina
+EO;Ukraina
+EP;Iran
+EQ;Iran
+ER;Moldavien
+ES;Estland
+ET;Ethiopia
+EU;Vitryssland
+EV;Vitryssland
+EW;Vitryssland
+EX;Kirgizistan
+EY;Tadzjikistan
+EZ;Turkmenistan
+FG;Guadeloupe
+FH;Mayotte
+FJ;St. Barthelemy
+FK;Nya Kaledonien
+FM;Martinique
+FO;Franska Polynesien
+FP;St. Pierre & Miquelon
+FR;Réunion
+FS;St. Martin
+FW;Wallis & Futuna Islands
+FY;French Guiana
+GC;Wales
+GD;Isle of Man
+GH;Jersey
+GI;Nordirland
+GJ;Jersey
+GM;Skottland
+GN;Nordirland
+GP;Guernsey
+GS;Skottland
+GT;Isle of Man
+GU;Guernsey
+GW;Wales
+H2;Cypern
+H3;Panama
+H4;Solomon Islands
+H5;Sydafrika
+H6;Nicaragua
+H7;Nicaragua
+H8;Panama
+H9;Panama
+HA;Ungern
+HB;Schweiz
+HC;Ecuador
+HD;Ecuador
+HE;Schweiz
+HF;Polen
+HG;Ungern
+HH;Haiti
+HI;Dominikanska republiken
+HJ;Colombia
+HK;Colombia
+HL;Sydkorea
+HN;Irak
+HO;Panama
+HP;Panama
+HQ;Honduras
+HR;Honduras
+HS;Thailand
+HT;Nicaragua
+HU;El Salvador
+HV;Vatican City
+HW;Frankrike
+HX;Frankrike
+HY;Frankrike
+HZ;Saudiarabien
+IA;Italien
+IB;Italien
+IC;Italien
+ID;Italien
+IE;Italien
+IF;Italien
+IG;Italien
+IH;Italien
+II;Italien
+IJ;Italien
+IK;Italien
+IL;Italien
+IM;Italien
+IN;Italien
+IO;Italien
+IP;Italien
+IQ;Italien
+IR;Italien
+IS;Sardinien
+IT;Italien
+IU;Italien
+IV;Italien
+IW;Italien
+IX;Italien
+IY;Italien
+IZ;Italien
+J2;Djibouti
+J3;Grenada
+J4;Grekland
+J5;Guinea-Bissau
+J6;St. Lucia
+J7;Dominica
+J8;St. Vincent
+JA;Japan
+JE;Japan
+JF;Japan
+JG;Japan
+JH;Japan
+JI;Japan
+JJ;Japan
+JK;Japan
+JL;Japan
+JM;Japan
+JN;Japan
+JO;Japan
+JP;Japan
+JQ;Japan
+JR;Japan
+JS;Japan
+JT;Mongoliet
+JU;Mongoliet
+JV;Mongoliet
+JW;Svalbard
+JX;Jan Mayen
+JY;Jordanien
+KL;Alaska
+L1;Argentina
+L2;Argentina
+L3;Argentina
+L4;Argentina
+L5;Argentina
+L6;Argentina
+L7;Argentina
+L8;Argentina
+L9;Argentina
+LA;Norge
+LB;Norge
+LC;Norge
+LD;Norge
+LE;Norge
+LF;Norge
+LG;Norge
+LH;Norge
+LI;Norge
+LJ;Norge
+LK;Norge
+LL;Norge
+LM;Norge
+LN;Norge
+LO;Argentina
+LP;Argentina
+LQ;Argentina
+LR;Argentina
+LS;Argentina
+LT;Argentina
+LU;Argentina
+LV;Argentina
+LW;Argentina
+LX;Luxemburg
+LY;Litauen
+LZ;Bulgarien
+MA;Skottland
+MC;Wales
+MD;Isle of Man
+MH;Jersey
+MI;Nordirland
+MJ;Jersey
+MM;Skottland
+MN;Nordirland
+MP;Guernsey
+MS;Skottland
+MT;Isle of Man
+MU;Guernsey
+MW;Wales
+NL;Alaska
+OA;Peru
+OB;Peru
+OC;Peru
+OD;Libanon
+OE;Österrike
+OF;Finland
+OG;Finland
+OH;Finland
+OI;Finland
+OJ;Finland
+OK;Tjeckien
+OL;Tjeckien
+OM;Slovakien
+ON;Belgien
+OO;Belgien
+OP;Belgien
+OQ;Belgien
+OR;Belgien
+OS;Belgien
+OT;Belgien
+OU;Danmark
+OV;Danmark
+OW;Färöarna
+OX;Grönland
+OY;Färöarna
+OZ;Danmark
+P2;Papua New Guinea
+P3;Cypern
+P4;Aruba
+P5;DPR of Korea
+P6;DPR of Korea
+P7;DPR of Korea
+P8;DPR of Korea
+P9;DPR of Korea
+PA;Nederländerna
+PB;Nederländerna
+PC;Nederländerna
+PD;Nederländerna
+PE;Nederländerna
+PF;Nederländerna
+PG;Nederländerna
+PH;Nederländerna
+PI;Nederländerna
+PK;Indonesien
+PL;Indonesien
+PM;Indonesien
+PN;Indonesien
+PO;Indonesien
+PP;Brasilien
+PQ;Brasilien
+PR;Brasilien
+PS;Brasilien
+PT;Brasilien
+PU;Brasilien
+PV;Brasilien
+PW;Brasilien
+PX;Brasilien
+PY;Brasilien
+PZ;Suriname
+R0;Asiatiska Ryssland
+R8;Asiatiska Ryssland
+R9;Asiatiska Ryssland
+S0;Västsahara
+S2;Bangladesh
+S3;Bangladesh
+S4;Sydafrika
+S5;Slovenien
+S6;Singapore
+S7;Seychelles
+S8;Sydafrika
+S9;Sao Tome & Principe
+SA;Sverige
+SB;Sverige
+SC;Sverige
+SD;Sverige
+SE;Sverige
+SF;Sverige
+SG;Sverige
+SH;Sverige
+SI;Sverige
+SJ;Sverige
+SK;Sverige
+SL;Sverige
+SM;Sverige
+SN;Polen
+SO;Polen
+SP;Polen
+SQ;Polen
+SR;Polen
+SS;Egypten
+ST;Sudan
+SU;Egypten
+SV;Grekland
+SW;Grekland
+SX;Grekland
+SY;Grekland
+SZ;Grekland
+T2;Tuvalu
+T4;Kuba
+T5;Somalia
+T6;Afghanistan
+T7;San Marino
+T8;Palau
+TA;Asiatiska Turkiet
+TB;Asiatiska Turkiet
+TC;Asiatiska Turkiet
+TD;Guatemala
+TE;Costa Rica
+TF;Island
+TG;Guatemala
+TH;Frankrike
+TI;Costa Rica
+TJ;Cameroon
+TK;Korsika
+TL;Central African Republic
+TM;Frankrike
+TN;Republic of the Congo
+TO;Frankrike
+TP;Frankrike
+TQ;Frankrike
+TR;Gabon
+TS;Tunisien
+TT;Chad
+TU;Cote d'Ivoire
+TV;Frankrike
+TW;Wallis & Futuna Islands
+TX;Frankrike
+TY;Benin
+TZ;Mali
+U0;Asiatiska Ryssland
+U5;Ukraina
+U8;Asiatiska Ryssland
+U9;Asiatiska Ryssland
+UA;Europeiska Ryssland
+UJ;Uzbekistan
+UK;Uzbekistan
+UL;Uzbekistan
+UM;Uzbekistan
+UN;Kazakstan
+UO;Kazakstan
+UP;Kazakstan
+UQ;Kazakstan
+UR;Ukraina
+US;Ukraina
+UT;Ukraina
+UU;Ukraina
+UV;Ukraina
+UW;Ukraina
+UX;Ukraina
+UY;Ukraina
+UZ;Ukraina
+V2;Antigua & Barbuda
+V3;Belize
+V4;St. Kitts & Nevis
+V5;Namibia
+V6;Micronesia
+V7;Marshall Islands
+V8;Brunei Darussalam
+V9;Sydafrika
+VA;Kanada
+VB;Kanada
+VC;Kanada
+VE;Kanada
+VG;Kanada
+VI;Australien
+VJ;Australien
+VK;Australien
+VL;Australien
+VR;Hongkong
+VT;Indien
+VU;Indien
+VV;Indien
+VW;Indien
+VX;Kanada
+WL;Alaska
+XA;Mexiko
+XB;Mexiko
+XC;Mexiko
+XD;Mexiko
+XE;Mexiko
+XF;Mexiko
+XG;Mexiko
+XH;Mexiko
+XI;Mexiko
+XL;Kanada
+XM;Kanada
+XP;Grönland
+XQ;Chile
+XR;Chile
+XS;Kina
+XT;Burkina Faso
+XU;Kambodja
+XV;Vietnam
+XW;Laos
+XY;Myanmar
+XZ;Myanmar
+Y2;Tyskland
+Y3;Tyskland
+Y4;Tyskland
+Y5;Tyskland
+Y6;Tyskland
+Y7;Tyskland
+Y8;Tyskland
+Y9;Tyskland
+YA;Afghanistan
+YB;Indonesien
+YC;Indonesien
+YD;Indonesien
+YE;Indonesien
+YF;Indonesien
+YG;Indonesien
+YH;Indonesien
+YI;Irak
+YJ;Vanuatu
+YK;Syrien
+YL;Lettland
+YM;Asiatiska Turkiet
+YN;Nicaragua
+YO;Rumänien
+YP;Rumänien
+YQ;Rumänien
+YR;Rumänien
+YS;El Salvador
+YT;Serbien
+YU;Serbien
+YV;Venezuela
+YW;Venezuela
+YX;Venezuela
+YY;Venezuela
+Z2;Zimbabwe
+Z3;Nordmakedonien
+Z6;Kosovo
+Z8;Republic of South Sudan
+ZA;Albanien
+ZB;Gibraltar
+ZF;Caymanöarna
+ZG;Gibraltar
+ZK;Nya Zeeland
+ZL;Nya Zeeland
+ZM;Nya Zeeland
+ZP;Paraguay
+ZR;Sydafrika
+ZS;Sydafrika
+ZT;Sydafrika
+ZU;Sydafrika
+ZV;Brasilien
+ZW;Brasilien
+ZX;Brasilien
+ZY;Brasilien
+ZZ;Brasilien
+F;Frankrike
+G;England
+I;Italien
+K;USA
+M;England
+N;USA
+R;Europeiska Ryssland
+U;Europeiska Ryssland
+W;USA
+=3D2CCC;Conway Reef
+=3D2RI;Rotuma
+=3Y/LB5SH;Bouvet
+=3Y0X;Peter I
+=4U0IARU;Österrike
+=4U0ITU;ITU HQ
+=4U0R;Österrike
+=4U1A;Österrike
+=4U1VIC;Österrike
+=4U1WB;USA
+=4U1WRC;ITU HQ
+=4U2U;Österrike
+=4UNR;Österrike
+=4Y1A;Österrike
+=8J1RL;Antarktis
+=9M26MQ;Östmalaysia
+=9M26MS;Östmalaysia
+=9M4CHQ;Östmalaysia
+=9M4CKR;Östmalaysia
+=9M4GKS;Östmalaysia
+=9M4LHD;Östmalaysia
+=AG7XY;Hawaii
+=AH0U;USA
+=AH2O;USA
+=AH2S;USA
+=AH2U;Mariana Islands
+=AH6EZ;USA
+=AH6FF;USA
+=AH6FX;USA
+=AH6JS;USA
+=AH6LE;USA
+=AH6SU;USA
+=AH7T;USA
+=AK6VK;Alaska
+=AL1VE;USA
+=AL3X;USA
+=AL4U;USA
+=AL5M;USA
+=AL5P;USA
+=AL7BA;USA
+=AL7BA/8;USA
+=AL7BX;USA
+=AL7CR;USA
+=AL7R;USA
+=AL7RF;USA
+=AL7RT;USA
+=AL7T;USA
+=AO90A;Spanien
+=C7A;Österrike
+=DP0GVN;Antarktis
+=DP1POL;Antarktis
+=E51PT;North Cook Islands
+=E51WL;North Cook Islands
+=EA3HJO/6;Balearerna
+=EA5IYX/P;Balearerna
+=EA6SA/7;Spanien
+=EA6XQ/P;Spanien
+=EA9ADD;Spanien
+=EA9HU;Spanien
+=EG90GL;Spanien
+=EG9FMS;Spanien
+=EH95E;Spanien
+=FO5QS;Marquesas Islands
+=G0HCQ;Skottland
+=G0JCE;Skottland
+=G0X;Wales
+=G1R;Skottland
+=G1T;Skottland
+=G4WZG;Skottland
+=G4X;Skottland
+=G5DXR;Wales
+=G5MUT;Wales
+=G5RDX;Skottland
+=G5RRR;Skottland
+=G6ICR;Isle of Man
+=G8ERJ;USA
+=GB0CSL;Skottland
+=GB0CTK;Wales
+=GB0FW;Skottland
+=GB0KLP;Skottland
+=GB0NHL;Skottland
+=GB0NWR;Wales
+=GB0STJ;Wales
+=GB0TNL;Skottland
+=GB0WIM;Skottland
+=GB0WLH;Wales
+=GB1BPL;Wales
+=GB1DAA;Skottland
+=GB1OL;Skottland
+=GB1RP;Nordirland
+=GB1TMH;Skottland
+=GB2CCN;Skottland
+=GB2CCS;Skottland
+=GB2CG;Skottland
+=GB2EL;Nordirland
+=GB2ELH;Skottland
+=GB2IMD;Wales
+=GB2JCM;Skottland
+=GB2KLI;Skottland
+=GB2LG;Skottland
+=GB2MOP;Wales
+=GB2MUC;Skottland
+=GB2SAA;Skottland
+=GB2SLH;Skottland
+=GB2TAY;Skottland
+=GB2TD;Wales
+=GB2THL;Skottland
+=GB2TNL;Skottland
+=GB2TPL;Skottland
+=GB2VK;Wales
+=GB2WL;Nordirland
+=GB3ANG;Skottland
+=GB3LER;Skottland
+=GB3LER/B;Skottland
+=GB4BCP;Wales
+=GB4LER;Skottland
+=GB4SDD;Wales
+=GB4SPD;Nordirland
+=GB5BL;Nordirland
+=GB5NCL;Nordirland
+=GB64MOD;Wales
+=GB8VJ;Skottland
+=HC8M/5;Ecuador
+=HD5MW/8;Galápagos
+=HF0PAS;Sydshetlandsöarna
+=HK0TU;Malpelo Island
+=IA5KRO/4;Italien
+=II0CDS;Sardinien
+=II0D;Sardinien
+=II0ICH;Sardinien
+=II0ICV;Sardinien
+=II0IDP;Sardinien
+=II0M;Sardinien
+=IP0A;Sardinien
+=IP0Y;Sardinien
+=IQ0AAI;Sardinien
+=IQ0AG;Sardinien
+=IQ0AH;Sardinien
+=IQ0AI;Sardinien
+=IQ0AK;Sardinien
+=IQ0AK/P;Sardinien
+=IQ0AL;Sardinien
+=IQ0AM;Sardinien
+=IQ0EH;Sardinien
+=IQ0HO;Sardinien
+=IQ0ID;Sardinien
+=IQ0NU;Sardinien
+=IQ0OG;Sardinien
+=IQ0PM;Sardinien
+=IQ0QP;Sardinien
+=IQ0SS;Sardinien
+=IR0A;Sardinien
+=IR0IADU;Sardinien
+=IR0IDP;Sardinien
+=IT9CLY/4;Italien
+=IT9ELM/0;Italien
+=IY0GA;Sardinien
+=JD1BPS/1;Japan
+=JD1YBJ;Minami Torishima
+=JG8NQJ/JD1;Minami Torishima
+=K1LH;Alaska
+=K1PT;Puerto Rico
+=K2GT;Hawaii
+=K2IDA;Puerto Rico
+=K4A;Puerto Rico
+=K4JWO;US Virgin Islands
+=K4VIC;Puerto Rico
+=K4XV;Hawaii
+=K6KO;Hawaii
+=K7D;Puerto Rico
+=K7HFU;Alaska
+=K7ZAP;Alaska
+=K7ZVZ;Alaska
+=K9CS/KH8S;Swains Island
+=K9RH;Alaska
+=K9VV;US Virgin Islands
+=KA0AZS;USA
+=KA0KVW;USA
+=KA0RGT;Hawaii
+=KA0WAS;USA
+=KA0WWT;USA
+=KA0ZPP;USA
+=KA1LDD;USA
+=KA1NCN;Alaska
+=KA1RUE;USA
+=KA2MLH;USA
+=KA2ZSD;Alaska
+=KA3DRR;USA
+=KA3MTT;USA
+=KA3NAM;USA
+=KA4BVG;USA
+=KA4J;USA
+=KA4OTB;USA
+=KA4R;USA
+=KA5USN;USA
+=KA5WMF;USA
+=KA5WSS;USA
+=KA6U;USA
+=KA6Y;USA
+=KA7PNH;USA
+=KA8HDE;USA
+=KA8MMI;USA
+=KA8P;USA
+=KA8Q;USA
+=KA9A;USA
+=KA9DNO;USA
+=KA9FCB;USA
+=KA9FOX;USA
+=KA9MDP;USA
+=KA9OZP;USA
+=KA9VVQ;USA
+=KB0VKF;Hawaii
+=KB1OHI;Alaska
+=KB2FSK;USA
+=KB2S;USA
+=KB2UQS;USA
+=KB2YLE;Puerto Rico
+=KB3HF;USA
+=KB4EKK;USA
+=KB4IRR;USA
+=KB4LA;USA
+=KB4QZH;USA
+=KB4TLH;USA
+=KB5ZYC;USA
+=KB6B;USA
+=KB6EGA;Hawaii
+=KB6KSD;Alaska
+=KB6OJE;USA
+=KB6QPI;USA
+=KB7MLK;USA
+=KB7PF;USA
+=KB7Q;USA
+=KB8DX;USA
+=KB8FLI;USA
+=KB8KMH;USA
+=KB8PKC;USA
+=KB8UFP;USA
+=KB8V;USA
+=KB9DFE;USA
+=KB9LEB;USA
+=KB9RUG;USA
+=KB9S;USA
+=KB9TBB;USA
+=KB9TVR;USA
+=KB9TYC;USA
+=KC0IYT;USA
+=KC0VKN;USA
+=KC0WEA;USA
+=KC1BB;USA
+=KC1DWP;USA
+=KC1EGP;Hawaii
+=KC1EGQ;Hawaii
+=KC1EO;USA
+=KC1RFK;USA
+=KC2DWG;USA
+=KC2LM;USA
+=KC2LMZ;US Virgin Islands
+=KC3JPP;USA
+=KC3MAL;USA
+=KC3QND;USA
+=KC3SJ;USA
+=KC3WNX;USA
+=KC4AAA;Antarktis
+=KC4AAC;Antarktis
+=KC4BB;USA
+=KC4CR;USA
+=KC4HAR;USA
+=KC4HW;USA
+=KC4KS;USA
+=KC4LE;USA
+=KC4NX;USA
+=KC4OBX;USA
+=KC4RNF;USA
+=KC4TNQ;USA
+=KC4USB;Antarktis
+=KC4USV;Antarktis
+=KC4WQ;USA
+=KC4YDJ;USA
+=KC4ZMB;USA
+=KC5ATJ;USA
+=KC5CMX;USA
+=KC5FTM;Alaska
+=KC5RFU;USA
+=KC5SGK;Alaska
+=KC5ZAP;USA
+=KC6CJY;USA
+=KC6R;USA
+=KC6T;USA
+=KC7JCV;USA
+=KC7QY;USA
+=KC7TY;USA
+=KC8DIO;Alaska
+=KC8FDU;USA
+=KC8GCR;USA
+=KC8GZK;USA
+=KC8J;USA
+=KC8NFN;USA
+=KC8OPV;USA
+=KC8YEK;USA
+=KC8YRK;USA
+=KC9C;USA
+=KC9DGP;USA
+=KC9EI;USA
+=KC9GMO;Alaska
+=KC9K;USA
+=KC9UHI;USA
+=KD0BTO;USA
+=KD0EE;USA
+=KD1RX;USA
+=KD2BK;Puerto Rico
+=KD2FSH;USA
+=KD2GBT;Alaska
+=KD2GQL;Puerto Rico
+=KD2KW;USA
+=KD2RPX;USA
+=KD4ADC;USA
+=KD4BWM;USA
+=KD4CDL;US Virgin Islands
+=KD4EE;USA
+=KD4LT;USA
+=KD4SN;USA
+=KD4ULD;USA
+=KD4ULW;USA
+=KD4Y;USA
+=KD4YHE;USA
+=KD5AJC;USA
+=KD5DD;USA
+=KD5M;USA
+=KD5PCK;USA
+=KD5USA;USA
+=KD5UVV;USA
+=KD6AF;USA
+=KD6HWF;USA
+=KD6MCX;USA
+=KD7ACB;USA
+=KD7MT;USA
+=KD7RF;Alaska
+=KD8HE;USA
+=KD8TF;USA
+=KD9ERP;USA
+=KD9LTN;USA
+=KD9QS;USA
+=KD9RBY;USA
+=KD9ZUN;USA
+=KE0G;USA
+=KE0GHY;USA
+=KE0GUV;Alaska
+=KE0HMK;Alaska
+=KE0JTC;Hawaii
+=KE0L;USA
+=KE0YI;USA
+=KE1B;USA
+=KE2BBI;Hawaii
+=KE2EYU;Guam
+=KE2VB;USA
+=KE3K;USA
+=KE4GOI;USA
+=KE4KMG;USA
+=KE4KY;USA
+=KE4VAM;USA
+=KE4WKH;USA
+=KE4WVK;USA
+=KE4XT;USA
+=KE5MIS;USA
+=KE5NJ;USA
+=KE6FQC;USA
+=KE6FZD;Hawaii
+=KE7IIJ;Alaska
+=KE7LBB;USA
+=KE8AE;USA
+=KE8FT;USA
+=KE8KMX;USA
+=KE8NN;USA
+=KE8QZC;USA
+=KE8UN;USA
+=KE8WEQ;Alaska
+=KE8WIC;USA
+=KE8YIK;USA
+=KE8ZZH;USA
+=KF0CT;USA
+=KF0FMQ;Hawaii
+=KF0IWN;USA
+=KF4AV;USA
+=KF4DUN;Hawaii
+=KF4FMQ;USA
+=KF4TY;USA
+=KF5BA;USA
+=KF5MU;USA
+=KF6AST;Hawaii
+=KF6HDJ;USA
+=KF6HI;USA
+=KF7CG;USA
+=KF7EB;USA
+=KF7MD;USA
+=KF7MMO;Alaska
+=KF7RO;USA
+=KF7ROC;Alaska
+=KF7Z;USA
+=KF7ZLU;USA
+=KF8ENL;Alaska
+=KF8EXX;USA
+=KF8N;USA
+=KF9LI;USA
+=KF9MT;USA
+=KG1D;USA
+=KG2E;USA
+=KG2MD;USA
+=KG4BIG;USA
+=KG4HZF;Alaska
+=KG4STL;USA
+=KG4V;USA
+=KG5EG;USA
+=KG5GCC;USA
+=KG5MAF;Guam
+=KG5NSU;US Virgin Islands
+=KG5OA;USA
+=KG5TA;USA
+=KG5XR;USA
+=KG6CIH;USA
+=KG6DX;Guam
+=KG6EMQ;Alaska
+=KG6JDX;Guam
+=KG7TLW;Alaska
+=KG7VQ;USA
+=KG7WCF;Hawaii
+=KG8ZY;USA
+=KG9V;USA
+=KH0WJ;Hawaii
+=KH2AR;USA
+=KH2BR;USA
+=KH2GM;USA
+=KH2PM;USA
+=KH2SR;USA
+=KH2TJ;USA
+=KH3AE;Hawaii
+=KH6CT;USA
+=KH6EE/7;USA
+=KH6GK;USA
+=KH6HU;USA
+=KH6M;USA
+=KH6ND;USA
+=KH6VM;USA
+=KH6WI;Alaska
+=KH7DA/4;USA
+=KH7T;USA
+=KH7X;USA
+=KH7XS/4;USA
+=KI0E;USA
+=KI0EB;USA
+=KI4EZC;USA
+=KI4JFX;USA
+=KI4KWR;USA
+=KI4NG;USA
+=KI4PHE;USA
+=KI5HVD;USA
+=KI5LTT;Alaska
+=KI5UXN;USA
+=KI5VNB;USA
+=KI5ZQZ;USA
+=KI6AMI;Hawaii
+=KI6AMJ;Hawaii
+=KI6DY;USA
+=KI6HQT;USA
+=KI6KGC;USA
+=KI6QDH;USA
+=KI6T;USA
+=KI7ID;USA
+=KI7LPT;USA
+=KI7MJU;USA
+=KI7WX;USA
+=KI8I;USA
+=KJ4AOM;USA
+=KJ4BIX;USA
+=KJ4JPV;USA
+=KJ4KVC;USA
+=KJ4LTA;USA
+=KJ4M;USA
+=KJ4MES;USA
+=KJ4ND;USA
+=KJ4OOR;USA
+=KJ4QIS;USA
+=KJ4UGO;USA
+=KJ4YLR;USA
+=KJ6DQ;USA
+=KJ6GHN;USA
+=KJ6SVE;USA
+=KJ6XC;USA
+=KJ6YXI;USA
+=KJ7IEZ;Alaska
+=KJ9C;USA
+=KJ9D;USA
+=KK0L;USA
+=KK0NIG;USA
+=KK2A;USA
+=KK4ADQ;USA
+=KK4JW;USA
+=KK4NAW;USA
+=KK4OMJ;USA
+=KK4OVW;USA
+=KK4XA;USA
+=KK5OQ;USA
+=KK6L;USA
+=KK6MC;USA
+=KK6OKU;USA
+=KK6SPK;USA
+=KK6WJY;Alaska
+=KK7BWQ;USA
+=KK7CJV;USA
+=KK7FAU;Guam
+=KK7FVU;Alaska
+=KK7JVV;Alaska
+=KK7LRD;USA
+=KK7RSM;Amerikanska Samoa
+=KK7TZP;USA
+=KK7VXK;USA
+=KK8C;USA
+=KK9A;USA
+=KK9MHZ;USA
+=KK9O;USA
+=KL0D;USA
+=KL0S;USA
+=KL0SS;USA
+=KL1A;USA
+=KL2A/7;USA
+=KL2YE;USA
+=KL3KZ;USA
+=KL4QZ;USA
+=KL5MM;USA
+=KL5NL;USA
+=KL7AF;USA
+=KL7DJ;USA
+=KL7FDQ;USA
+=KL7HQR;USA
+=KL7IKV;USA
+=KL7NL;USA
+=KL7NL/4;USA
+=KL7NW;USA
+=KL7OF;USA
+=KL7OF/7;USA
+=KL7QW;USA
+=KL7SK;USA
+=KL7YK;USA
+=KM1Z;USA
+=KM4CH;USA
+=KM4CVQ;Alaska
+=KM4DR;USA
+=KM4FO;USA
+=KM4FOC;USA
+=KM4HQE;USA
+=KM4IYW;USA
+=KM4JAD;USA
+=KM4RO;USA
+=KM4RT;USA
+=KM4ZBQ;Alaska
+=KM5AT;USA
+=KM5E;USA
+=KM6EJL;Alaska
+=KM6UH;USA
+=KM7AFF;USA
+=KM7AXV;USA
+=KM7BNX;Hawaii
+=KM7CT;USA
+=KM7FTJ;Hawaii
+=KM7SAD;USA
+=KM7W;USA
+=KM8L;USA
+=KM9R;USA
+=KN0A;USA
+=KN0BLE;USA
+=KN0W;USA
+=KN1MT;USA
+=KN4ABF;USA
+=KN4AL;USA
+=KN4CG;USA
+=KN4CNU;USA
+=KN4DUA;USA
+=KN4ICW;Alaska
+=KN4IWO;USA
+=KN4IXT;USA
+=KN4JGH;USA
+=KN4LIU;USA
+=KN4OK;USA
+=KN4RD;USA
+=KN4Y;USA
+=KN4YAQ;USA
+=KN6BU;USA
+=KN6DV;USA
+=KN6PHX;Alaska
+=KN8U;USA
+=KN9K;USA
+=KO1H;USA
+=KO1Z;USA
+=KO2Y;USA
+=KO4AWC;USA
+=KO4BJA;Alaska
+=KO4CAA;USA
+=KO4DCD;USA
+=KO4DWB;USA
+=KO4EKW;Puerto Rico
+=KO4EVC;USA
+=KO4FSZ;USA
+=KO4FX;USA
+=KO4IDC;USA
+=KO4LFZ;USA
+=KO4MAO;USA
+=KO4OL;USA
+=KO4PZX;USA
+=KO4TFE;USA
+=KO4TUP;USA
+=KO4UFD;USA
+=KO4UOJ;USA
+=KO4VJN;USA
+=KO4WFR;USA
+=KO4XJ;USA
+=KO4YIN;USA
+=KO4Z;USA
+=KO6BEN;USA
+=KO6JPQ;Mariana Islands
+=KO8SCA;USA
+=KO8V;USA
+=KO9V;USA
+=KP2BH;USA
+=KP2BH/4;USA
+=KP2X;USA
+=KP2XX;USA
+=KP2Z;Puerto Rico
+=KP3J;USA
+=KP3U;USA
+=KP4EOP;USA
+=KP4MD;USA
+=KP4PW;USA
+=KP4WW;USA
+=KQ0J;USA
+=KQ4AHO;USA
+=KQ4DUX;USA
+=KQ4ETC;USA
+=KQ4EWC;Alaska
+=KQ4FIP;USA
+=KQ4HNN;USA
+=KQ4JEQ;USA
+=KQ4MYC;USA
+=KQ4NOM;USA
+=KQ4PLS;USA
+=KQ4RLN;USA
+=KQ4SMI;USA
+=KQ4TPD;USA
+=KQ4TTY;USA
+=KQ4UJG;USA
+=KQ4VPZ;USA
+=KQ4VT;USA
+=KQ4VVQ;USA
+=KQ4YGJ;USA
+=KQ9J;USA
+=KR2E;USA
+=KR3PS;USA
+=KR4ABR;USA
+=KR4AUX;USA
+=KR4BEL;USA
+=KR4CNM;Alaska
+=KR4DDW;USA
+=KR4F;USA
+=KR4FQG;USA
+=KR4HIE;USA
+=KR4HPQ;USA
+=KR4IDJ;USA
+=KR4KCP;USA
+=KR5X;USA
+=KR7C;USA
+=KR8KEN;Alaska
+=KS0T;USA
+=KS3CKC;USA
+=KS4L;USA
+=KS4NL;USA
+=KS4VIN;Alaska
+=KS4VOL;USA
+=KS4X;USA
+=KS5A;USA
+=KS7T;USA
+=KS9A;USA
+=KT0P;USA
+=KT0V;USA
+=KT1I;USA
+=KT3M;USA
+=KT3R;USA
+=KT3X;USA
+=KT4O;USA
+=KT4RH;USA
+=KT4XA;USA
+=KT6D;USA
+=KT9T;USA
+=KT9X;USA
+=KU0D;USA
+=KU1CW;USA
+=KU4A;USA
+=KU4UK;USA
+=KU8E;USA
+=KU8V;USA
+=KV0K;USA
+=KV1E;USA
+=KV1I;USA
+=KV2M;USA
+=KV3T;USA
+=KV4T;USA
+=KV6O;USA
+=KV8S;USA
+=KW0A;USA
+=KW4J;USA
+=KW4LU;USA
+=KW4OV;USA
+=KW4SW;USA
+=KW4YA;USA
+=KW7D;USA
+=KW7EET;USA
+=KW7Q;USA
+=KW9A;USA
+=KX2P;USA
+=KX3H;USA
+=KX4AV;USA
+=KX4BI;USA
+=KX4X;USA
+=KY0Q;USA
+=KY0W;USA
+=KY4DMD;USA
+=KY4G;USA
+=KY4HV;USA
+=KY4KD;USA
+=KY4KY;USA
+=KY4NA;USA
+=KY4XX;USA
+=KY6AA;USA
+=KZ1W;USA
+=KZ2T;USA
+=KZ2V;USA
+=KZ4BE;USA
+=KZ4KG;USA
+=KZ4ML;USA
+=KZ4WJ;USA
+=KZ5DX;USA
+=KZ5ED;USA
+=KZ7A;USA
+=KZ7Y;USA
+=KZ9O;USA
+=KZ9V;USA
+=LU1DMZ/Z;Sydorkneyöarna
+=LU1ZA;Sydorkneyöarna
+=M0KWG;Wales
+=M3I;Skottland
+=M7HPC;Skottland
+=M8CYE;Wales
+=M8DOI;Skottland
+=M8ENA;Wales
+=M8FBB;Wales
+=M8HZR;Skottland
+=M8IYV;Skottland
+=M8LAO;Skottland
+=M8NEG;Skottland
+=M8PVZ;Wales
+=M8RBW;Wales
+=M8SNT;Skottland
+=M8TSH;Nordirland
+=M8UAT;Skottland
+=M8XZA;Skottland
+=M9LPZ;Wales
+=M9MMB;Wales
+=M9MWZ;Wales
+=M9SAE;Wales
+=M9SMC;Nordirland
+=M9SNW;Skottland
+=M9SRU;Skottland
+=M9STM;Skottland
+=M9TGX;Wales
+=M9WGP;Nordirland
+=N1TX;Alaska
+=N2HNQ;Hawaii
+=N4GN;Puerto Rico
+=N4IJB;Alaska
+=N4ZSU;Hawaii
+=N5MRJ;Hawaii
+=N5UC;Alaska
+=N6AZU;Hawaii
+=N6KB;Hawaii
+=N6QEK;Alaska
+=N7BPT;Puerto Rico
+=N7CGC;Alaska
+=N8USA;Hawaii
+=NA1KW;USA
+=NA1LZ;USA
+=NA2CC;USA
+=NA2U;USA
+=NA4A;USA
+=NA4C;USA
+=NA4DX;USA
+=NA4M;USA
+=NA4MM;USA
+=NA4W;USA
+=NA5NN;USA
+=NA7L;USA
+=NA9J;USA
+=NA9RB;USA
+=NB0O;USA
+=NB1T;USA
+=NB3C;USA
+=NB4M;USA
+=NB5E;USA
+=NB9G;Mariana Islands
+=NC0O;USA
+=NC6K;USA
+=NC8N;USA
+=ND0L;USA
+=ND1A;Hawaii
+=ND2T;USA
+=ND3N;USA
+=ND4U;USA
+=ND4X;USA
+=ND4Y;USA
+=ND7J;USA
+=ND8L;USA
+=ND8N;USA
+=ND9M;USA
+=NE1LA;USA
+=NE2I;USA
+=NE4AA;USA
+=NE4M;USA
+=NE4TN;USA
+=NE5BO;USA
+=NE5W;USA
+=NE7DX;USA
+=NE8P;USA
+=NE9U;USA
+=NF1R;USA
+=NF4J;USA
+=NF5KF;USA
+=NF6P;USA
+=NF7D;USA
+=NG2G;USA
+=NG2S;USA
+=NG3Q;USA
+=NG4V;USA
+=NG6X;USA
+=NG7A;USA
+=NG7IL;USA
+=NG9B;USA
+=NG9T;USA
+=NH2B;Mariana Islands
+=NH6L;USA
+=NH6PK;USA
+=NH6T;USA
+=NH6Z;USA
+=NH7C;USA
+=NH7CY;USA
+=NH7TV;USA
+=NH8S;USA
+=NI0C;USA
+=NI2M;USA
+=NI5L;USA
+=NI7R;USA
+=NJ0U;USA
+=NJ4P;USA
+=NJ8G;USA
+=NJ8J;USA
+=NJ8M;USA
+=NK3L;USA
+=NK4I;USA
+=NK4P;USA
+=NK7U;USA
+=NK9I;USA
+=NL7CO;USA
+=NL7CQ;USA
+=NL7D;USA
+=NL7WA;USA
+=NL7XM;USA
+=NL7XM/B;USA
+=NL7XT;USA
+=NM4M;USA
+=NM7W;USA
+=NN3U;USA
+=NN4DX;USA
+=NN4MM;USA
+=NN4NT;USA
+=NN4SA;USA
+=NN5O;USA
+=NN5SS;USA
+=NN6TT;USA
+=NN7A;USA
+=NN7CW;USA
+=NN7V;USA
+=NN9DD;USA
+=NO2D;USA
+=NO2R;USA
+=NO3OO;USA
+=NO9E;USA
+=NP2GG;USA
+=NP2R/4;Puerto Rico
+=NP3FB;USA
+=NP3K;USA
+=NP3LY;USA
+=NP3XP;USA
+=NP4IW;USA
+=NP4Z/2;USA
+=NQ4U;USA
+=NQ4Y;USA
+=NQ8C;USA
+=NR4L;USA
+=NR5NN;USA
+=NR5W;USA
+=NR7DX;USA
+=NR7E;USA
+=NR8Z;USA
+=NR9Q;USA
+=NS0I;USA
+=NS2X;USA
+=NS3Q;USA
+=NS4X;USA
+=NT0K;USA
+=NT3S;USA
+=NT4H;USA
+=NT4J;USA
+=NT4TN;USA
+=NT4W;USA
+=NU0L;USA
+=NU4B;USA
+=NU4N;USA
+=NV4B;USA
+=NV4G;USA
+=NV9L;USA
+=NW8U;USA
+=NX1P;USA
+=NX7W;USA
+=NX9T;USA
+=NY1V;USA
+=NY4JB;USA
+=NY5E;USA
+=NY6DX;USA
+=NY9H;USA
+=NZ2S;USA
+=NZ6T;USA
+=NZ7Q;USA
+=NZ9Y;USA
+=R0IAH/6;Europeiska Ryssland
+=R0QBB/3;Europeiska Ryssland
+=R1996A;Asiatiska Ryssland
+=R2ET/9;Asiatiska Ryssland
+=R2MWO;Kaliningrad
+=R440L;Asiatiska Ryssland
+=R4HMS/0;Asiatiska Ryssland
+=R4HMS/9;Asiatiska Ryssland
+=R4WAN/P;Asiatiska Ryssland
+=R8LBI/3;Europeiska Ryssland
+=R8MB/1;Europeiska Ryssland
+=R9CS/P;Europeiska Ryssland
+=R9JAW/6;Europeiska Ryssland
+=R9JQ/6;Europeiska Ryssland
+=R9LAR/3;Europeiska Ryssland
+=RA2FA/0;Asiatiska Ryssland
+=RA3X/1;Europeiska Ryssland
+=RA4M/P;Europeiska Ryssland
+=RA4NCC;Europeiska Ryssland
+=RD9M/3;Europeiska Ryssland
+=RI0SP;Europeiska Ryssland
+=RK4PA/9;Asiatiska Ryssland
+=RT25HA;Asiatiska Ryssland
+=RT25HK;Asiatiska Ryssland
+=RT4Q;Europeiska Ryssland
+=RU1AC;Europeiska Ryssland
+=RU5D/0;Asiatiska Ryssland
+=RV3DSA/0;Asiatiska Ryssland
+=RV7B/9;Asiatiska Ryssland
+=RW3RN/0;Asiatiska Ryssland
+=RW8T/1;Europeiska Ryssland
+=RY2FAP/3;Europeiska Ryssland
+=RZ4PXP;Europeiska Ryssland
+=SV0XAZ;Kreta
+=SV2RSG/A;Athos
+=TO1A;French Guiana
+=TO4A;Martinique
+=TO5A;Martinique
+=TO5M;St. Martin
+=TO5T;St. Martin
+=TO7A;Martinique
+=TO7K;Réunion
+=TX3X;Chesterfield Islands
+=TX5EU;Austral Islands
+=TX5S;Clipperton Island
+=UA4HAZ/P;Asiatiska Ryssland
+=UB4CLH/0;Asiatiska Ryssland
+=UB5O/P;Europeiska Ryssland
+=UD6AOP/0;Asiatiska Ryssland
+=UG4I/P;Asiatiska Ryssland
+=UG4P;Europeiska Ryssland
+=VER20260906;Kanada
+=VERSION;Papua New Guinea
+=VI9POL;Australien
+=VK0EK;Heard Island
+=VK9AFP;Christmas Island
+=VK9BSA;Cocos (Keeling) Islands
+=VK9DEE;Cocos (Keeling) Islands
+=VK9FISH;Cocos (Keeling) Islands
+=VP6A;Ducie Island
+=W1TJW;Alaska
+=W3ALF;Alaska
+=W4LIS;US Virgin Islands
+=W5MFH;Alaska
+=W7CB;Alaska
+=WA0CIE;USA
+=WA0KDS;USA
+=WA0PFC;USA
+=WA0RMW;USA
+=WA0WWW;USA
+=WA0YPC;USA
+=WA1EXZ;Alaska
+=WA1FCN;USA
+=WA1FMM;USA
+=WA1TYB;USA
+=WA1X;USA
+=WA2DHG;USA
+=WA2DLN;USA
+=WA2EDJ;USA
+=WA2JQZ;USA
+=WA2PCN;USA
+=WA2USA;USA
+=WA2VAM;USA
+=WA2VJL;USA
+=WA2VOI;USA
+=WA2VYA;USA
+=WA3C;USA
+=WA3JAT;USA
+=WA4CAX;USA
+=WA4CB;USA
+=WA4CQG;USA
+=WA4ELK;USA
+=WA4GGK;USA
+=WA4GNL;USA
+=WA4HEI;USA
+=WA4III;USA
+=WA4JA;USA
+=WA4JQS;USA
+=WA4MIT;USA
+=WA4TTK;USA
+=WA4TTP;USA
+=WA4USA;USA
+=WA4VEK;USA
+=WA4VGZ;USA
+=WA4WZR;USA
+=WA4ZXV;USA
+=WA5POK;USA
+=WA5VGI;USA
+=WA6MM;USA
+=WA6TUX;Alaska
+=WA6VZN;USA
+=WA7AFV;USA
+=WA7NPX;USA
+=WA8AHZ;USA
+=WA8KAN;USA
+=WA8NLX;USA
+=WA8OJR;USA
+=WA8YVF;USA
+=WA8ZBT;USA
+=WA8ZID;USA
+=WA9AFM;USA
+=WA9JBR;USA
+=WA9KIA;USA
+=WA9LT;USA
+=WA9TTC;USA
+=WA9Z;USA
+=WB0CJB;USA
+=WB0KWJ;USA
+=WB0NDY;USA
+=WB1BWQ;USA
+=WB2GDD;USA
+=WB2JEP;USA
+=WB2MFU;USA
+=WB3JFS;USA
+=WB3JKQ;USA
+=WB4CS;USA
+=WB4E;USA
+=WB4GHZ;USA
+=WB4IT;USA
+=WB4JTT;Hawaii
+=WB4KDI;USA
+=WB4VAM;USA
+=WB4WXE;USA
+=WB4YDL;USA
+=WB4YDY;USA
+=WB4ZBI;USA
+=WB4ZUT;USA
+=WB5NHL;USA
+=WB5SKM;USA
+=WB5WAH;USA
+=WB5WAJ;USA
+=WB6RAB;USA
+=WB6UIA;USA
+=WB7BNE;USA
+=WB7BWZ;USA
+=WB7GR;USA
+=WB7N;Hawaii
+=WB7PMP;USA
+=WB7RAV;USA
+=WB7S;USA
+=WB7UOF;USA
+=WB8BPU;USA
+=WB8CQV;USA
+=WB8EJN;USA
+=WB8EKG;USA
+=WB8FVB;USA
+=WB8IMY;USA
+=WB8LYJ;USA
+=WB8QZM;USA
+=WB8YQJ;USA
+=WB8YYY;USA
+=WB9EWM;USA
+=WB9G;USA
+=WB9LUR;USA
+=WB9RRU;USA
+=WB9YLZ;USA
+=WB9Z;USA
+=WC0W;USA
+=WC4D;USA
+=WC7S;USA
+=WC8L;USA
+=WC9B;USA
+=WC9D;USA
+=WD0ETG;USA
+=WD0FYV;USA
+=WD4CFN;USA
+=WD4IXD;USA
+=WD4KTF;USA
+=WD4MRI;USA
+=WD4OHD;USA
+=WD4PTJ;USA
+=WD4XA;USA
+=WD5CCA;USA
+=WD5FCA;USA
+=WD6BNY;USA
+=WD8DSV;USA
+=WD8RYV;USA
+=WD9GMK;USA
+=WD9IGL;USA
+=WE2DX;USA
+=WE4BY;USA
+=WE4DX;USA
+=WE6EZ;USA
+=WE8R;USA
+=WE8RV;USA
+=WE8USN;USA
+=WE9N;USA
+=WF1A;USA
+=WF3H;USA
+=WF3T;USA
+=WF4U;USA
+=WF5K;USA
+=WF7I;USA
+=WF7T;USA
+=WF8D;USA
+=WF8E;USA
+=WF9A;USA
+=WG4M;USA
+=WG8Y;USA
+=WH0AI;USA
+=WH2T;USA
+=WH2X;USA
+=WH6A;USA
+=WH6AQ;USA
+=WH6FAM;USA
+=WH6LE;USA
+=WH6VL;USA
+=WH7R;USA
+=WI4T;USA
+=WJ8L;USA
+=WJ9B;USA
+=WL7E;USA
+=WL7OU;USA
+=WM0G;USA
+=WM4Q;USA
+=WM5DX;USA
+=WM9X;USA
+=WN2E;USA
+=WN4AAA;USA
+=WN4AT;USA
+=WN7S;USA
+=WN7Y;USA
+=WN8KXY;USA
+=WN8R;USA
+=WO1S;USA
+=WO3X;USA
+=WO7U;USA
+=WP3ME;USA
+=WP4NIB;USA
+=WP4OUE;USA
+=WQ0RVO;USA
+=WQ3U;USA
+=WQ5L;USA
+=WQ5O;USA
+=WQ9T;USA
+=WR3O;USA
+=WR4F;USA
+=WR4T;USA
+=WR5J;USA
+=WR7AY;USA
+=WR8AA;USA
+=WS0I;USA
+=WS5H;USA
+=WS6K;USA
+=WS6X;USA
+=WS7X;USA
+=WS9M;USA
+=WT1L;USA
+=WT2P;USA
+=WT4DX;USA
+=WT4R;USA
+=WT5A;USA
+=WT5L;USA
+=WT5R;USA
+=WT7TT;USA
+=WT8P;USA
+=WT8V;USA
+=WT9Q;USA
+=WU0B;USA
+=WU5E;USA
+=WU6W;USA
+=WU8T;USA
+=WU9B;USA
+=WV0T;USA
+=WV1K;USA
+=WV4E;USA
+=WV4P;USA
+=WV5JW;USA
+=WV6K;Hawaii
+=WV7MS;USA
+=WV8TG;USA
+=WW0WWW;USA
+=WW3K;USA
+=WW4DD;USA
+=WW4R;USA
+=WW5M;USA
+=WW5X;USA
+=WW6W;USA
+=WW8RR;USA
+=WW8RT;USA
+=WW8USA;USA
+=WX4HP;USA
+=WX4ICE;Alaska
+=WX4W;USA
+=WX4WKY;USA
+=WX5S;USA
+=WX7AA;USA
+=WX7B;USA
+=WX7MB;USA
+=WX7P;USA
+=WX7T;USA
+=WX7V;USA
+=WX8C;USA
+=WY4Y;USA
+=WY5I;USA
+=WY6K;USA
+=WY7AA;USA
+=WY7DT;USA
+=WY7FD;USA
+=WY7I;USA
+=WY7KY;USA
+=WY7M;USA
+=WZ4F;USA
+=WZ7I;USA
+=WZ8T;USA
+=XR90RG;Chile
