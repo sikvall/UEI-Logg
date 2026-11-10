@@ -2138,13 +2138,13 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
     } btns_main[] = {
         {"F1/Esc", "Nytt"},
         {"Enter",  focus_mode == FOCUS_LOG ? "Redigera" : "Logga"},
-        {"F4",     focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
         {"F3",     (search_filter && search_filter[0]) ? "Sök*" : "Sök"},
+        {"F4",     focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
         {"Ins",    focus_mode == FOCUS_LOG ? "Märk" : NULL},
         {"F8",     focus_mode == FOCUS_LOG ? "Radera" : NULL},
         {"F9",     "Hjälp"},
-        {"F12",    "Inställn."},
-        {"F10",    "Avsluta"}
+        {"F10",    "Avsluta"},
+        {"F12",    "Inställn."}
     };
 
     struct {
@@ -2524,15 +2524,15 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(5,  4, "Vänster / Höger   : Hoppa till föregående / nästa fält");
         mvprintw(6,  4, "Pil upp / Pil ned : Gå till närmaste fält över eller under aktivt fält");
         mvprintw(7,  4, "Enter på Band     : Aktivera bandval (byt med pilar, Enter bekräftar)");
-        mvprintw(8,  4, "Enter / F2        : Logga QSO direkt med ifyllda uppgifter");
-        mvprintw(9,  4, "Esc / F1          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
-        mvprintw(10, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
-        mvprintw(11, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
-        mvprintw(12, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
-        mvprintw(13, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
+        mvprintw(8,  4, "F1 / Esc          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
+        mvprintw(9,  4, "F2 / Enter        : Logga QSO direkt med ifyllda uppgifter");
+        mvprintw(10, 4, "F3 / Ctrl-F       : Sök/filtrera på anropssignal bland loggraderna");
+        mvprintw(11, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
+        mvprintw(12, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
+        mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
         mvprintw(14, 4, "F9                : Visa denna hjälpsida");
-        mvprintw(15, 4, "F12               : Inställningar (Station, Färgschema, SM Callbook, Auto RST)");
-        mvprintw(16, 4, "F10 / Ctrl-Q      : Avsluta programmet");
+        mvprintw(15, 4, "F10 / Ctrl-Q      : Avsluta programmet");
+        mvprintw(16, 4, "F12               : Inställningar (Station, Färgschema, SM Callbook, Auto RST)");
 
         if (LINES >= 22) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -3269,11 +3269,20 @@ int main(void) {
         idle_ticks_on_qth = 0;
         idle_ticks_on_grid = 0;
 
-        /* Globala funktionstangenter, ESC och F4 */
-        if (ch == KEY_F(10) || ch == 17) { /* F10 eller Ctrl+Q: Avsluta */
-            break;
-        } else if (ch == KEY_F(9)) { /* F9: Hjälp */
-            run_help_modal(&station);
+        /* Globala funktionstangenter och ESC */
+        if (ch == KEY_F(1) || ch == 27) {
+            /* F1 eller ESC: Rensa inmatningsfältet och låt UTC-klockan ticka igen */
+            focus_mode = FOCUS_INPUT;
+            band_selecting = 0;
+            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            preferred_col = 0;
+            copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
+            continue;
+        } else if (ch == KEY_F(3) || ch == 6) { /* F3 eller Ctrl+F: Sök */
+            band_selecting = 0;
+            run_search_bar(&station, search_filter, sizeof(search_filter));
+            selected_log_pos = 0;
+            log_scroll_offset = 0;
             continue;
         } else if (ch == KEY_F(4) || ch == 15) { /* F4 (eller Ctrl-O): Växla mellan inmatning och loggrader */
             band_selecting = 0;
@@ -3298,26 +3307,17 @@ int main(void) {
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
             }
             continue;
-        } else if (ch == KEY_F(1) || ch == 27) {
-            /* F1 eller ESC: Rensa inmatningsfältet och låt UTC-klockan ticka igen */
-            focus_mode = FOCUS_INPUT;
-            band_selecting = 0;
-            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
-            preferred_col = 0;
-            copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
+        } else if (ch == KEY_F(9)) { /* F9: Hjälp */
+            run_help_modal(&station);
             continue;
+        } else if (ch == KEY_F(10) || ch == 17) { /* F10 eller Ctrl+Q: Avsluta */
+            break;
         } else if (ch == KEY_F(12)) { /* F12: Ändra inställningar */
             band_selecting = 0;
             run_settings_modal(&station, &current_qso, editing_index, &log_list,
                                &selected_log_pos, &log_scroll_offset,
                                status_msg, sizeof(status_msg));
             compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-            continue;
-        } else if (ch == KEY_F(3) || ch == 6) { /* F3 eller Ctrl+F: Sök */
-            band_selecting = 0;
-            run_search_bar(&station, search_filter, sizeof(search_filter));
-            selected_log_pos = 0;
-            log_scroll_offset = 0;
             continue;
         }
 
@@ -3388,7 +3388,7 @@ int main(void) {
                         selected_log_pos = new_fcnt - 1;
                     }
                 }
-            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2)) {
                 if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
                     current_qso = log_list.items[orig_idx];
