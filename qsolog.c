@@ -120,8 +120,8 @@ typedef struct {
  * 2: RST Sänt      (Rad 2, Kol 3)
  * 3: RST Mott.     (Rad 2, Kol 4)
  * 4: QTH           (Rad 3, Kol 1)
- * 5: DXCC          (Rad 3, Kol 2)
- * 6: Lokator       (Rad 3, Kol 3)
+ * 5: Lokator       (Rad 3, Kol 2)
+ * 6: DXCC          (Rad 3, Kol 3)
  * 7: Datum         (Rad 4, Kol 1)
  * 8: UTC           (Rad 4, Kol 2)
  * 9: Frekvens      (Rad 5, Kol 1)
@@ -135,8 +135,8 @@ enum {
     FLD_RSTS = 2,
     FLD_RSTR = 3,
     FLD_QTH  = 4,
-    FLD_DXCC = 5,
-    FLD_GRID = 6,
+    FLD_GRID = 5,
+    FLD_DXCC = 6,
     FLD_DATE = 7,
     FLD_TIME = 8,
     FLD_FREQ = 9,
@@ -1628,16 +1628,16 @@ static char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len) {
     switch (idx) {
         case FLD_CALL: *max_len = sizeof(qso->call);       return qso->call;
         case FLD_NAME: *max_len = sizeof(qso->name);       return qso->name;
-        case FLD_DATE: *max_len = sizeof(qso->date);       return qso->date;
-        case FLD_TIME: *max_len = sizeof(qso->time_utc);   return qso->time_utc;
-        case FLD_GRID: *max_len = sizeof(qso->gridsquare); return qso->gridsquare;
-        case FLD_FREQ: *max_len = sizeof(qso->freq);       return qso->freq;
-        case FLD_BAND: *max_len = sizeof(qso->band);       return qso->band;
-        case FLD_MODE: *max_len = sizeof(qso->mode);       return qso->mode;
         case FLD_RSTS: *max_len = sizeof(qso->rst_sent);   return qso->rst_sent;
         case FLD_RSTR: *max_len = sizeof(qso->rst_rcvd);   return qso->rst_rcvd;
         case FLD_QTH:  *max_len = sizeof(qso->qth);        return qso->qth;
+        case FLD_GRID: *max_len = sizeof(qso->gridsquare); return qso->gridsquare;
         case FLD_DXCC: *max_len = sizeof(qso->dxcc);       return qso->dxcc;
+        case FLD_DATE: *max_len = sizeof(qso->date);       return qso->date;
+        case FLD_TIME: *max_len = sizeof(qso->time_utc);   return qso->time_utc;
+        case FLD_FREQ: *max_len = sizeof(qso->freq);       return qso->freq;
+        case FLD_BAND: *max_len = sizeof(qso->band);       return qso->band;
+        case FLD_MODE: *max_len = sizeof(qso->mode);       return qso->mode;
         case FLD_COMM: *max_len = sizeof(qso->comment);    return qso->comment;
         default:       *max_len = 0;                       return NULL;
     }
@@ -1659,12 +1659,12 @@ static int field_default_col(int fld) {
         case FLD_COMM:
             return 0;
         case FLD_NAME:
-        case FLD_DXCC:
+        case FLD_GRID:
         case FLD_TIME:
         case FLD_BAND:
             return 1;
         case FLD_RSTS:
-        case FLD_GRID:
+        case FLD_DXCC:
         case FLD_MODE:
             return 2;
         case FLD_RSTR:
@@ -1683,8 +1683,8 @@ static int field_row_index(int fld) {
         case FLD_RSTR:
             return 0;
         case FLD_QTH:
-        case FLD_DXCC:
         case FLD_GRID:
+        case FLD_DXCC:
             return 1;
         case FLD_DATE:
         case FLD_TIME:
@@ -1713,8 +1713,8 @@ static int step_field_vertical(int current_field, int dir, int pref_col) {
             return FLD_RSTR;
         case 1:
             if (pref_col == 0) return FLD_QTH;
-            if (pref_col == 1) return FLD_DXCC;
-            return FLD_GRID;
+            if (pref_col == 1) return FLD_GRID;
+            return FLD_DXCC;
         case 2:
             if (pref_col == 0) return FLD_DATE;
             return FLD_TIME;
