@@ -1,184 +1,22 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#define _POSIX_C_SOURCE 200809L
-#include <ctype.h>
+#include "qsolog.h"
+#include "tui.h"
 #include <curl/curl.h>
-#include <dirent.h>
-#include <limits.h>
-#include <locale.h>
-#include <ncurses.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
-#include <math.h>
 #include <pthread.h>
 #include <wchar.h>
 #include <wctype.h>
-
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
-#ifndef LOG_FILE
-#define LOG_FILE "qsolog.adi"
-#endif
-#ifndef CONFIG_FILE
-#define CONFIG_FILE "station.conf"
-#endif
-#ifndef DXCC_FILE
-#define DXCC_FILE "dxcc.txt"
-#endif
-
-#define MIN_COLS 60
-#define MIN_LINES 20
-#define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 12
-
-#ifndef KEY_CTRL_HOME
-#define KEY_CTRL_HOME 2001
-#endif
-#ifndef KEY_CTRL_END
-#define KEY_CTRL_END 2002
-#endif
+#include <math.h>
 
 /* Tillåtna band i bandlistan samt standardfrekvens (MHz) med 3 decimaler */
-static const char * const BAND_OPTIONS[] = {
+const char * const BAND_OPTIONS[] = {
     "160 m", "80 m", "60 m", "40 m", "30 m", "20 m",
     "17 m",  "15 m", "12 m", "10 m", "6 m",  "2 m",
     "70 cm", "23 cm"
 };
-static const char * const BAND_DEFAULT_FREQ[] = {
+const char * const BAND_DEFAULT_FREQ[] = {
     "1.900",   "3.600",   "5.400",   "7.100",   "10.100",  "14.200",
     "18.100",  "21.200",  "24.900",  "28.800",  "51.000",  "145.000",
     "432.200", "1296.200"
 };
-#define BAND_OPTION_COUNT ((int)(sizeof(BAND_OPTIONS) / sizeof(BAND_OPTIONS[0])))
-
-/* Färgscheman inspirerade av Borland Turbo Pascal och Midnight Commander (mc) */
-static const char * const THEME_NAMES[] = {
-    "Turbo Pascal (MC Default)",
-    "MC Darkfar (Svart/Blå)",
-    "MC Gotar (Svart/Gul)",
-    "MC Sand (Ljusgrå/Blå)",
-    "MC Matrix (Fosforgrön)",
-    "Ljust (Grå/Orange/Blå)"
-};
-#define THEME_COUNT ((int)(sizeof(THEME_NAMES) / sizeof(THEME_NAMES[0])))
-
-/* Fokusläge (F4 växlar mellan inmatning och loggrader) */
-typedef enum {
-    FOCUS_INPUT = 0,
-    FOCUS_LOG   = 1
-} FocusMode;
-
-/* Färgpar för ncurses TUI */
-enum {
-    CP_MAIN_BG = 1,
-    CP_TOPBAR,
-    CP_TOPBAR_ACCENT,
-    CP_BORDER,
-    CP_BORDER_ACTIVE,
-    CP_TITLE,
-    CP_LABEL,
-    CP_FIELD_INACTIVE,
-    CP_FIELD_ACTIVE,
-    CP_FROZEN_BADGE,
-    CP_LIVE_BADGE,
-    CP_EDIT_BADGE,
-    CP_TABLE_HEADER,
-    CP_LOG_ROW,
-    CP_LOG_SELECTED,
-    CP_LOG_MARKED,
-    CP_FKEY_NUM,
-    CP_FKEY_LABEL,
-    CP_STATUS_OK,
-    CP_STATUS_WARN,
-    CP_FLAG_NEW,
-    CP_FLAG_HANDLED,
-    CP_FLAG_NEW_SEL,
-    CP_FLAG_HANDLED_SEL,
-    CP_FLAG_NEW_MRK,
-    CP_FLAG_HANDLED_MRK
-};
-
-/* Inställningar för egen station */
-typedef struct {
-    char call[32];       /* ADIF: STATION_CALLSIGN - Egen anropssignal */
-    char name[64];       /* ADIF: MY_NAME          - Eget namn */
-    char qth[64];        /* ADIF: MY_CITY          - Eget QTH */
-    char gridsquare[16]; /* ADIF: MY_GRIDSQUARE    - Egen lokator */
-    char timezone[32];   /* Lokal tidszon (t.ex. UTC+1, CET) */
-    int  theme;          /* Valt färgschema (0..THEME_COUNT-1) */
-    int  smcb_enabled;   /* Slå upp svenska signaler via SM Callbook (0=Av, 1=På) */
-    int  auto_rst_59;    /* Fyll i 59 / 59 automatiskt i RST vid nytt QSO (0=Av, 1=På) */
-    int  filter_log;     /* Filtrera loggrader efter anropssignal vid inmatning (0=Av, 1=På) */
-    char last_freq[32];  /* Senast använda frekvens (sparas i station.conf) */
-    char last_band[16];  /* Senast använda band (sparas i station.conf) */
-    char last_mode[16];  /* Senast använda trafikslag (sparas i station.conf) */
-} StationSettings;
-
-/* Data för ett QSO */
-typedef struct {
-    char call[32];       /* ADIF: CALL       - Anropssignal */
-    char name[64];       /* ADIF: NAME       - Namn */
-    char date[16];       /* ADIF: QSO_DATE   - Datum (YYYY-MM-DD) */
-    char time_utc[16];   /* ADIF: TIME_ON    - Tid UTC (HH:MM) */
-    char gridsquare[16]; /* ADIF: GRIDSQUARE - Lokator */
-    char freq[32];       /* ADIF: FREQ       - Frekvens (MHz) */
-    char band[16];       /* ADIF: BAND       - Band (160m..2m) */
-    char mode[16];       /* ADIF: MODE       - Trafiksätt (t.ex. SSB, CW) */
-    char rst_sent[16];   /* ADIF: RST_SENT   - RST Sänt */
-    char rst_rcvd[16];   /* ADIF: RST_RCVD   - RST Mott. */
-    char qth[64];        /* ADIF: QTH        - QTH */
-    char dxcc[64];       /* ADIF: COUNTRY    - DXCC */
-    char comment[256];   /* ADIF: COMMENT    - Kommentar */
-    char distance[16];   /* ADIF: DISTANCE   - Avstånd i km */
-    int  handled;        /* ADIF: APP_QSOLOG_HANDLED - 0 = ny, 1 = hanterad */
-    int  marked;         /* 1 om markerad i logglistan */
-} QSO;
-
-/* Fältindex i visnings- och Tab/Pil-ordning:
- * 0: Signal        (Rad 2, Kol 1)
- * 1: Namn          (Rad 2, Kol 2)
- * 2: RST Sänt      (Rad 2, Kol 3)
- * 3: RST Mott.     (Rad 2, Kol 4)
- * 4: QTH           (Rad 3, Kol 1)
- * 5: Lokator       (Rad 3, Kol 2)
- * 6: DXCC          (Rad 3, Kol 3)
- * 7: Datum         (Rad 4, Kol 1)
- * 8: UTC           (Rad 4, Kol 2)
- * 9: Frekvens      (Rad 5, Kol 1)
- * 10: Band         (Rad 5, Kol 2)
- * 11: Trafiksätt   (Rad 5, Kol 3)
- * 12: Kommentar    (Rad 6, Kol 1)
- */
-enum {
-    FLD_CALL = 0,
-    FLD_NAME = 1,
-    FLD_RSTS = 2,
-    FLD_RSTR = 3,
-    FLD_QTH  = 4,
-    FLD_GRID = 5,
-    FLD_DXCC = 6,
-    FLD_DATE = 7,
-    FLD_TIME = 8,
-    FLD_FREQ = 9,
-    FLD_BAND = 10,
-    FLD_MODE = 11,
-    FLD_COMM = 12
-};
-
-/* Dynamisk lista av tidigare loggade QSO ("Loggrader") */
-typedef struct {
-    QSO *items;
-    size_t count;
-    size_t capacity;
-} QSOList;
 
 /* Post i DXCC-tabellen som läses in från dxcc.txt vid start */
 typedef struct {
@@ -198,7 +36,7 @@ typedef struct {
 static DxccDatabase g_dxcc_db = {NULL, 0, 0, NULL, 0, 0};
 
 /* Säker strängkopiering med garanterad nollterminering */
-static void copy_str(char *dest, size_t dest_size, const char *src) {
+void copy_str(char *dest, size_t dest_size, const char *src) {
     if (dest_size == 0) return;
     size_t len = strlen(src);
     if (len >= dest_size) {
@@ -209,15 +47,34 @@ static void copy_str(char *dest, size_t dest_size, const char *src) {
 }
 
 /* Trimma radbrytningar och mellanslag i slutet av en sträng */
-static void trim_newline(char *str) {
+void trim_newline(char *str) {
     size_t len = strlen(str);
     while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' || str[len - 1] == ' ')) {
         str[--len] = '\0';
     }
 }
 
+/* Rensa bort inledande och avslutande mellanslag/tabbar */
+void trim_str(char *str) {
+    if (str == NULL) return;
+    char *start = str;
+    while (*start == ' ' || *start == '\t') start++;
+    if (*start == '\0') {
+        str[0] = '\0';
+        return;
+    }
+    char *end = start + strlen(start) - 1;
+    while (end > start && (*end == ' ' || *end == '\t')) {
+        *end = '\0';
+        end--;
+    }
+    if (start > str) {
+        memmove(str, start, strlen(start) + 1);
+    }
+}
+
 /* Beräkna antalet UTF-8-tecken (synliga tecken) i en sträng */
-static int utf8_display_width(const char *str) {
+int utf8_display_width(const char *str) {
     int width = 0;
     for (const unsigned char *p = (const unsigned char *)str; *p != '\0'; ++p) {
         if ((*p & 0xC0) != 0x80) {
@@ -228,7 +85,7 @@ static int utf8_display_width(const char *str) {
 }
 
 /* Översätt teckenposition (0..utf8_display_width) till byte-offset i en UTF-8-sträng */
-static size_t utf8_char_to_byte(const char *str, int char_pos) {
+size_t utf8_char_to_byte(const char *str, int char_pos) {
     size_t byte_idx = 0;
     int cur_char = 0;
     while (str[byte_idx] != '\0' && cur_char < char_pos) {
@@ -242,7 +99,7 @@ static size_t utf8_char_to_byte(const char *str, int char_pos) {
 }
 
 /* Ta bort ett UTF-8-tecken före markörpositionen (Backspace) */
-static void utf8_backspace_at(char *str, int *char_pos) {
+void utf8_backspace_at(char *str, int *char_pos) {
     int total_chars = utf8_display_width(str);
     if (*char_pos > total_chars) *char_pos = total_chars;
     if (*char_pos <= 0) return;
@@ -255,7 +112,7 @@ static void utf8_backspace_at(char *str, int *char_pos) {
 }
 
 /* Ta bort ett UTF-8-tecken vid markörpositionen (Delete) */
-static void utf8_delete_at(char *str, int char_pos) {
+void utf8_delete_at(char *str, int char_pos) {
     int total_chars = utf8_display_width(str);
     if (char_pos < 0 || char_pos >= total_chars) return;
 
@@ -266,7 +123,7 @@ static void utf8_delete_at(char *str, int char_pos) {
 }
 
 /* Infoga en byte vid markörpositionen i en UTF-8-sträng */
-static void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch) {
+void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch) {
     size_t len = strlen(str);
     if (len + 1 >= max_size) return;
 
@@ -287,12 +144,48 @@ static void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char 
 }
 
 /* Gör ASCII-bokstäver i en sträng till versaler */
-static void to_upper_str(char *str) {
+void to_upper_str(char *str) {
     for (; *str; ++str) {
         if ((unsigned char)*str < 128) {
             *str = (char)toupper((unsigned char)*str);
         }
     }
+}
+
+/* Skiftlägesokänslig delsökning som hanterar både ASCII och UTF-8 (t.ex. å, ä, ö) */
+int utf8_contains_ci(const char *haystack, const char *needle) {
+    if (needle == NULL || needle[0] == '\0') return 1;
+    if (haystack == NULL || haystack[0] == '\0') return 0;
+
+    size_t h_len = strlen(haystack);
+    size_t n_len = strlen(needle);
+
+    wchar_t stack_h[128];
+    wchar_t stack_n[64];
+    wchar_t *w_haystack = (h_len < 128) ? stack_h : malloc((h_len + 1) * sizeof(wchar_t));
+    wchar_t *w_needle   = (n_len < 64)  ? stack_n : malloc((n_len + 1) * sizeof(wchar_t));
+
+    int found = 0;
+    if (w_haystack != NULL && w_needle != NULL) {
+        size_t h_res = mbstowcs(w_haystack, haystack, h_len + 1);
+        size_t n_res = mbstowcs(w_needle, needle, n_len + 1);
+        if (h_res != (size_t)-1 && n_res != (size_t)-1) {
+            for (size_t i = 0; i < h_res; ++i) {
+                w_haystack[i] = towupper(w_haystack[i]);
+            }
+            for (size_t i = 0; i < n_res; ++i) {
+                w_needle[i] = towupper(w_needle[i]);
+            }
+            found = (wcsstr(w_haystack, w_needle) != NULL);
+            if (w_haystack != stack_h) free(w_haystack);
+            if (w_needle != stack_n) free(w_needle);
+            return found;
+        }
+    }
+    if (w_haystack && w_haystack != stack_h) free(w_haystack);
+    if (w_needle && w_needle != stack_n) free(w_needle);
+
+    return (strcasestr(haystack, needle) != NULL);
 }
 
 /* Sorteringsfunktion för DXCC-prefix: längsta prefix först, sedan alfabetiskt */
@@ -1086,7 +979,7 @@ static void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso,
 }
 
 /* Tolka och normalisera frekvensinmatning till MHz med 3 decimaler (punkt som decimaltecken). */
-static double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
+double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
     if (in == NULL) {
         if (norm_out && out_sz > 0) norm_out[0] = '\0';
         return 0.0;
@@ -1162,7 +1055,7 @@ static double parse_and_normalize_freq(const char *in, char *norm_out, size_t ou
 }
 
 /* Föreslå amatörradioband (ur listan 160 m..23 cm) utifrån frekvens */
-static const char *guess_band_from_freq(const char *freq_str) {
+const char *guess_band_from_freq(const char *freq_str) {
     if (freq_str == NULL || freq_str[0] == '\0') return "";
     double f = parse_and_normalize_freq(freq_str, NULL, 0);
     if (f >= 1.8 && f <= 2.0)       return "160 m";
@@ -1185,7 +1078,7 @@ static const char *guess_band_from_freq(const char *freq_str) {
 /* Bestäm band utifrån frekvens:
  * Om frekvensen tillhör något av amatörradiobanden används det bandet.
  * Annars beräknas metervärdet enligt 300 / f avrundat till närmaste heltal (t.ex. "75 m", "11 m"). */
-static void resolve_band_from_freq(const char *freq_str, char *band_out, size_t out_sz) {
+void resolve_band_from_freq(const char *freq_str, char *band_out, size_t out_sz) {
     if (band_out == NULL || out_sz == 0) return;
     band_out[0] = '\0';
     if (freq_str == NULL || freq_str[0] == '\0') return;
@@ -1205,7 +1098,7 @@ static void resolve_band_from_freq(const char *freq_str, char *band_out, size_t 
     }
 }
 
-static int find_band_index(const char *band_str) {
+int find_band_index(const char *band_str) {
     if (band_str == NULL || band_str[0] == '\0') return -1;
     char norm[16];
     size_t j = 0;
@@ -1239,7 +1132,7 @@ static int find_band_index(const char *band_str) {
 }
 
 /* Formatera bandnamn för användargränssnittet med mellanslag (t.ex. "80 m", "70 cm") */
-static void format_band_display(const char *in, char *out, size_t out_sz) {
+void format_band_display(const char *in, char *out, size_t out_sz) {
     if (in == NULL || out == NULL || out_sz == 0) return;
     int idx = find_band_index(in);
     if (idx >= 0) {
@@ -1311,7 +1204,7 @@ static void normalize_time_adif(const char *in, char *out, size_t out_sz) {
     }
 }
 
-static void format_date_yyyy_mm_dd(const char *raw, char *out, size_t out_sz) {
+void format_date_yyyy_mm_dd(const char *raw, char *out, size_t out_sz) {
     char digits[16];
     normalize_date_adif(raw, digits, sizeof(digits));
     if (strlen(digits) == 8) {
@@ -1321,7 +1214,7 @@ static void format_date_yyyy_mm_dd(const char *raw, char *out, size_t out_sz) {
     }
 }
 
-static void format_time_hh_mm(const char *raw, char *out, size_t out_sz) {
+void format_time_hh_mm(const char *raw, char *out, size_t out_sz) {
     char digits[16];
     normalize_time_adif(raw, digits, sizeof(digits));
     if (strlen(digits) >= 4) {
@@ -1332,7 +1225,7 @@ static void format_time_hh_mm(const char *raw, char *out, size_t out_sz) {
 }
 
 /* Läs in stationsinställningar från station.conf (SMCB är default 0 = avstängd) */
-static void load_station_settings(const char *filename, StationSettings *st) {
+void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
     copy_str(st->last_band, sizeof(st->last_band), "20 m");
@@ -1386,7 +1279,7 @@ static void load_station_settings(const char *filename, StationSettings *st) {
     fclose(fp);
 }
 
-static int save_station_settings(const char *filename, const StationSettings *st) {
+int save_station_settings(const char *filename, const StationSettings *st) {
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) return -1;
     fprintf(fp, "CALL=%s\n", st->call);
@@ -1755,14 +1648,14 @@ static int cmp_qso_chronological(const void *a_ptr, const void *b_ptr) {
     return strcmp(a->time_utc, b->time_utc);
 }
 
-static const char *get_path_basename(const char *path) {
+const char *get_path_basename(const char *path) {
     if (path == NULL) return "";
     const char *slash = strrchr(path, '/');
     return slash ? slash + 1 : path;
 }
 
 /* Importera och slå samman ADIF-poster från en annan fil till log_list */
-static int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st) {
+int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st) {
     if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
     FILE *fp = fopen(filename, "r");
     if (fp == NULL) return -1;
@@ -1860,13 +1753,6 @@ static int import_qsos_from_adif(const char *filename, QSOList *list, const Stat
     return imported_count;
 }
 
-/* Exportläge för ADIF-export */
-enum {
-    EXPORT_MODE_ALL = 0,
-    EXPORT_MODE_MARKED = 1,
-    EXPORT_MODE_ONLY_NEW = 2
-};
-
 /* Exportera QSO till en extern ADIF-fil.
  * export_mode:
  *   EXPORT_MODE_ALL (0)      = alla QSO i listan
@@ -1874,7 +1760,7 @@ enum {
  *   EXPORT_MODE_ONLY_NEW (2) = endast nya poster (handled == 0)
  * Rader som exporteras markeras som hanterade (handled = 1).
  * Returnerar antal exporterade QSO, eller -1 vid filfel. */
-static int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode) {
+int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode) {
     if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) return -1;
@@ -1909,113 +1795,9 @@ static int export_qsos_adif(const char *filename, QSOList *list, const StationSe
     return count;
 }
 
-static char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len) {
-    switch (idx) {
-        case FLD_CALL: *max_len = sizeof(qso->call);       return qso->call;
-        case FLD_NAME: *max_len = sizeof(qso->name);       return qso->name;
-        case FLD_RSTS: *max_len = sizeof(qso->rst_sent);   return qso->rst_sent;
-        case FLD_RSTR: *max_len = sizeof(qso->rst_rcvd);   return qso->rst_rcvd;
-        case FLD_QTH:  *max_len = sizeof(qso->qth);        return qso->qth;
-        case FLD_GRID: *max_len = sizeof(qso->gridsquare); return qso->gridsquare;
-        case FLD_DXCC: *max_len = sizeof(qso->dxcc);       return qso->dxcc;
-        case FLD_DATE: *max_len = sizeof(qso->date);       return qso->date;
-        case FLD_TIME: *max_len = sizeof(qso->time_utc);   return qso->time_utc;
-        case FLD_FREQ: *max_len = sizeof(qso->freq);       return qso->freq;
-        case FLD_BAND: *max_len = sizeof(qso->band);       return qso->band;
-        case FLD_MODE: *max_len = sizeof(qso->mode);       return qso->mode;
-        case FLD_COMM: *max_len = sizeof(qso->comment);    return qso->comment;
-        default:       *max_len = 0;                       return NULL;
-    }
-}
-
-static void sync_cursor_to_field_end(QSO *qso, int active_field, int *cursor_pos) {
-    size_t max_len = 0;
-    char *ptr = get_qso_field_ptr(qso, active_field, &max_len);
-    *cursor_pos = ptr ? utf8_display_width(ptr) : 0;
-}
-
-/* Returnera vilken kolumn (0..3) ett inmatningsfält tillhör */
-static int field_default_col(int fld) {
-    switch (fld) {
-        case FLD_CALL:
-        case FLD_QTH:
-        case FLD_DATE:
-        case FLD_FREQ:
-        case FLD_COMM:
-            return 0;
-        case FLD_NAME:
-        case FLD_GRID:
-        case FLD_TIME:
-        case FLD_BAND:
-            return 1;
-        case FLD_RSTS:
-        case FLD_DXCC:
-        case FLD_MODE:
-            return 2;
-        case FLD_RSTR:
-            return 3;
-        default:
-            return 0;
-    }
-}
-
-/* Returnera vilken rad (0..4) ett inmatningsfält ligger på */
-static int field_row_index(int fld) {
-    switch (fld) {
-        case FLD_CALL:
-        case FLD_NAME:
-        case FLD_RSTS:
-        case FLD_RSTR:
-            return 0;
-        case FLD_QTH:
-        case FLD_GRID:
-        case FLD_DXCC:
-            return 1;
-        case FLD_DATE:
-        case FLD_TIME:
-            return 2;
-        case FLD_FREQ:
-        case FLD_BAND:
-        case FLD_MODE:
-            return 3;
-        case FLD_COMM:
-        default:
-            return 4;
-    }
-}
-
-/* Flytta vertikalt (dir = +1 för Pil ned, dir = -1 för Pil upp) till närmaste fält
- * på raden under eller över det fält man står i. */
-static int step_field_vertical(int current_field, int dir, int pref_col) {
-    int r = field_row_index(current_field);
-    int target_row = (r + dir + 5) % 5;
-
-    switch (target_row) {
-        case 0:
-            if (pref_col == 0) return FLD_CALL;
-            if (pref_col == 1) return FLD_NAME;
-            if (pref_col == 2) return FLD_RSTS;
-            return FLD_RSTR;
-        case 1:
-            if (pref_col == 0) return FLD_QTH;
-            if (pref_col == 1) return FLD_GRID;
-            return FLD_DXCC;
-        case 2:
-            if (pref_col == 0) return FLD_DATE;
-            return FLD_TIME;
-        case 3:
-            if (pref_col == 0) return FLD_FREQ;
-            if (pref_col == 1) return FLD_BAND;
-            return FLD_MODE;
-        case 4:
-        default:
-            return FLD_COMM;
-    }
-}
-
 /* Tolka tidszon-offset från inställningar (t.ex. "+0100", "+02:00", "+1", "-0500", "UTC+2").
  * Returnerar 1 om giltig offset hittades och sätter *offset_sec_out, annars 0 (använd locale). */
-static int parse_tz_offset_seconds(const char *tz_str, long *offset_sec_out) {
+int parse_tz_offset_seconds(const char *tz_str, long *offset_sec_out) {
     if (tz_str == NULL) return 0;
     const char *p = tz_str;
     while (*p == ' ' || *p == '\t') p++;
@@ -2065,9 +1847,9 @@ static int parse_tz_offset_seconds(const char *tz_str, long *offset_sec_out) {
     return 1;
 }
 
-static void get_utc_strings(char *date_buf, size_t date_sz,
-                            char *time_buf, size_t time_sz,
-                            char *top_buf, size_t top_sz) {
+void get_utc_strings(char *date_buf, size_t date_sz,
+                    char *time_buf, size_t time_sz,
+                    char *top_buf, size_t top_sz) {
     time_t now = time(NULL);
     struct tm *utc = gmtime(&now);
     if (utc != NULL) {
@@ -2077,972 +1859,8 @@ static void get_utc_strings(char *date_buf, size_t date_sz,
     }
 }
 
-/* Formatera både UTC och lokal tid för statusraden längst upp.
- * Tar hänsyn till offset i inställningarna om den finns, annars används systemets locale. */
-static void format_top_bar_clocks(const StationSettings *st, char *out, size_t out_sz) {
-    time_t now = time(NULL);
-    struct tm utc_tm;
-    struct tm loc_tm;
-
-    struct tm *u = gmtime(&now);
-    if (u == NULL) {
-        if (out_sz > 0) out[0] = '\0';
-        return;
-    }
-    utc_tm = *u;
-
-    long offset_sec = 0;
-    if (st != NULL && parse_tz_offset_seconds(st->timezone, &offset_sec)) {
-        time_t adj = now + offset_sec;
-        struct tm *l = gmtime(&adj);
-        if (l != NULL) {
-            loc_tm = *l;
-        } else {
-            loc_tm = utc_tm;
-        }
-    } else {
-        struct tm *l = localtime(&now);
-        if (l != NULL) {
-            loc_tm = *l;
-        } else {
-            loc_tm = utc_tm;
-        }
-    }
-
-    char utc_part[32], loc_part[16];
-    strftime(utc_part, sizeof(utc_part), "%Y-%m-%d %H:%M UTC", &utc_tm);
-    strftime(loc_part, sizeof(loc_part), "%H:%M", &loc_tm);
-
-    if (COLS >= 74) {
-        snprintf(out, out_sz, "%s  |  Lokal: %s", utc_part, loc_part);
-    } else {
-        snprintf(out, out_sz, "%s (%s)", utc_part, loc_part);
-    }
-}
-
-/* Rensa inmatningsformuläret för nytt QSO men behåll Frekvens, Band och Trafiksätt */
-static void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *active_field,
-                           int *field_cursor_pos, int *editing_index, char *last_smcb_call,
-                           char *current_qrb) {
-    char saved_freq[32], saved_band[16], saved_mode[16];
-    copy_str(saved_freq, sizeof(saved_freq), qso->freq);
-    copy_str(saved_band, sizeof(saved_band), qso->band);
-    copy_str(saved_mode, sizeof(saved_mode), qso->mode);
-
-    memset(qso, 0, sizeof(*qso));
-    *time_frozen = 0;
-    *active_field = FLD_CALL;
-    *field_cursor_pos = 0;
-    *editing_index = -1;
-    if (last_smcb_call) last_smcb_call[0] = '\0';
-    if (current_qrb) copy_str(current_qrb, 32, "-");
-
-    copy_str(qso->band, sizeof(qso->band), saved_band[0] ? saved_band : "20 m");
-    copy_str(qso->freq, sizeof(qso->freq), saved_freq[0] ? saved_freq : "14.200");
-    copy_str(qso->mode, sizeof(qso->mode), saved_mode);
-
-    if (st != NULL && st->auto_rst_59) {
-        copy_str(qso->rst_sent, sizeof(qso->rst_sent), "59");
-        copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), "59");
-    }
-
-    get_utc_strings(qso->date, sizeof(qso->date),
-                    qso->time_utc, sizeof(qso->time_utc),
-                    NULL, 0);
-}
-
-/* Aktivera valt färgschema (0..THEME_COUNT-1) – utan separat bakgrundsfärg i inmatningsfälten */
-static void apply_color_theme(int theme_idx) {
-    if (!has_colors()) return;
-    start_color();
-
-    if (theme_idx < 0 || theme_idx >= THEME_COUNT) {
-        theme_idx = 0;
-    }
-
-    switch (theme_idx) {
-        case 0: /* 1. Turbo Pascal / MC Default (Klassisk blå bakgrund) */
-            init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_WHITE);
-            init_pair(CP_BORDER,         COLOR_CYAN,   COLOR_BLUE);
-            init_pair(CP_BORDER_ACTIVE,  COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_TITLE,          COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_LABEL,          COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_FIELD_INACTIVE, COLOR_CYAN,   COLOR_BLUE);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_CYAN,   COLOR_BLUE);
-            init_pair(CP_LOG_ROW,        COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_CYAN);
-            init_pair(CP_LOG_MARKED,     COLOR_YELLOW, COLOR_MAGENTA);
-            init_pair(CP_FKEY_NUM,       COLOR_RED,    COLOR_WHITE);
-            init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLUE);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLUE);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLUE);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_CYAN);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_CYAN);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_MAGENTA);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_MAGENTA);
-            break;
-
-        case 1: /* 2. MC Darkfar (Svart bakgrund, blå/cyan lister, gul/vit text) */
-            init_pair(CP_MAIN_BG,        COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_BORDER,         COLOR_BLUE,   COLOR_BLACK);
-            init_pair(CP_BORDER_ACTIVE,  COLOR_CYAN,   COLOR_BLACK);
-            init_pair(CP_TITLE,          COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_LABEL,          COLOR_CYAN,   COLOR_BLACK);
-            init_pair(CP_FIELD_INACTIVE, COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_LOG_ROW,        COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_CYAN);
-            init_pair(CP_LOG_MARKED,     COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_CYAN);
-            init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_CYAN);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_CYAN);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_BLUE);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_BLUE);
-            break;
-
-        case 2: /* 3. MC Gotar (Svart bakgrund, bärnstensgul/grön stil) */
-            init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_YELLOW);
-            init_pair(CP_BORDER,         COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_BORDER_ACTIVE,  COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_TITLE,          COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_LABEL,          COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_FIELD_INACTIVE, COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_LOG_ROW,        COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  COLOR_GREEN);
-            init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_GREEN);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_GREEN);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_BLACK,  COLOR_GREEN);
-            break;
-
-        case 3: /* 4. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
-            init_pair(CP_MAIN_BG,        COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_BORDER,         COLOR_BLUE,   COLOR_WHITE);
-            init_pair(CP_BORDER_ACTIVE,  COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_TITLE,          COLOR_BLUE,   COLOR_WHITE);
-            init_pair(CP_LABEL,          COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   COLOR_WHITE);
-            init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_GREEN);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_BLUE,   COLOR_WHITE);
-            init_pair(CP_LOG_ROW,        COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_LOG_SELECTED,   COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_FKEY_NUM,       COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_CYAN);
-            init_pair(CP_STATUS_OK,      COLOR_BLUE,   COLOR_WHITE);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_WHITE);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_WHITE);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_BLUE);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_BLUE);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_MAGENTA);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_MAGENTA);
-            break;
-
-        case 4: /* 5. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
-            init_pair(CP_MAIN_BG,        COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLACK);
-            init_pair(CP_BORDER,         COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_BORDER_ACTIVE,  COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_TITLE,          COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_LABEL,          COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FIELD_INACTIVE, COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
-            init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_LOG_ROW,        COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_LOG_SELECTED,   COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_LOG_MARKED,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_FKEY_NUM,       COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_STATUS_OK,      COLOR_WHITE,  COLOR_BLACK);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_GREEN);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_BLACK,  COLOR_GREEN);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_GREEN);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_BLACK,  COLOR_GREEN);
-            break;
-
-        case 5: { /* 6. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
-            short bg_gray   = (COLORS >= 256) ? 252 : COLOR_WHITE;
-            short fg_orange = (COLORS >= 256) ? 208 : COLOR_RED;
-            init_pair(CP_MAIN_BG,        COLOR_BLACK,  bg_gray);
-            init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
-            init_pair(CP_BORDER,         fg_orange,    bg_gray);
-            init_pair(CP_BORDER_ACTIVE,  fg_orange,    bg_gray);
-            init_pair(CP_TITLE,          fg_orange,    bg_gray);
-            init_pair(CP_LABEL,          COLOR_BLACK,  bg_gray);
-            init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  bg_gray);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   bg_gray);
-            init_pair(CP_FROZEN_BADGE,   COLOR_WHITE,  fg_orange);
-            init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
-            init_pair(CP_TABLE_HEADER,   COLOR_BLUE,   bg_gray);
-            init_pair(CP_LOG_ROW,        COLOR_BLACK,  bg_gray);
-            init_pair(CP_LOG_SELECTED,   COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_LOG_MARKED,     COLOR_WHITE,  fg_orange);
-            init_pair(CP_FKEY_NUM,       COLOR_WHITE,  fg_orange);
-            init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_BLUE);
-            init_pair(CP_STATUS_OK,      COLOR_BLUE,   bg_gray);
-            init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
-            init_pair(CP_FLAG_NEW,         COLOR_RED,    bg_gray);
-            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  bg_gray);
-            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_BLUE);
-            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_BLUE);
-            init_pair(CP_FLAG_NEW_MRK,     COLOR_WHITE,  fg_orange);
-            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  fg_orange);
-            break;
-        }
-    }
-
-    bkgd(COLOR_PAIR(CP_MAIN_BG));
-}
-
-/* Rita en ram (box) med titel och markering om sektionen har fokus */
-static void draw_box_with_title(int y, int x, int h, int w, const char *title, int has_focus) {
-    if (h < 2 || w < 4) return;
-    int color = has_focus ? CP_BORDER_ACTIVE : CP_BORDER;
-    int attr  = has_focus ? A_BOLD : 0;
-    attron(COLOR_PAIR(color) | attr);
-    mvaddch(y, x, ACS_ULCORNER);
-    mvhline(y, x + 1, ACS_HLINE, w - 2);
-    mvaddch(y, x + w - 1, ACS_URCORNER);
-
-    for (int r = y + 1; r < y + h - 1; ++r) {
-        mvaddch(r, x, ACS_VLINE);
-        mvaddch(r, x + w - 1, ACS_VLINE);
-    }
-
-    mvaddch(y + h - 1, x, ACS_LLCORNER);
-    mvhline(y + h - 1, x + 1, ACS_HLINE, w - 2);
-    mvaddch(y + h - 1, x + w - 1, ACS_LRCORNER);
-    attroff(COLOR_PAIR(color) | attr);
-
-    if (title != NULL && title[0] != '\0') {
-        attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-        mvprintw(y, x + 2, " %s ", title);
-        attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-    }
-}
-
-/* Rita den översta statusraden (inklusive UTC och lokal tid) */
-static void draw_top_bar(const StationSettings *st) {
-    char clock_str[80] = "";
-    format_top_bar_clocks(st, clock_str, sizeof(clock_str));
-
-    const char *my_call = st->call[0] ? st->call : "(ange i F12)";
-    const char *my_loc  = st->gridsquare[0] ? st->gridsquare : "----";
-
-    attron(COLOR_PAIR(CP_TOPBAR));
-    mvhline(0, 0, ' ', COLS);
-    mvprintw(0, 1, "Station: ");
-    attroff(COLOR_PAIR(CP_TOPBAR));
-
-    attron(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-    printw("%s", my_call);
-    attroff(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-
-    attron(COLOR_PAIR(CP_TOPBAR));
-    if (COLS >= 88 && st->qth[0] != '\0') {
-        printw(" (%s)", st->qth);
-    }
-    printw("  |  Lokator: ");
-    attroff(COLOR_PAIR(CP_TOPBAR));
-
-    attron(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-    printw("%s", my_loc);
-    attroff(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-
-    int clock_len = (int)strlen(clock_str);
-    int clock_col = COLS - clock_len - 1;
-    if (clock_col > 1) {
-        attron(COLOR_PAIR(CP_TOPBAR));
-        mvprintw(0, clock_col, "%s", clock_str);
-        attroff(COLOR_PAIR(CP_TOPBAR));
-    }
-}
-
-/* Rita ett inmatningsfält där etikettens ':' hamnar exakt på kolumn colon_col
- * och markören placeras på cursor_pos inom fältet. */
-static void draw_field_aligned(int row, int colon_col, const char *label, const char *val,
-                               int width, int is_active, int cursor_pos,
-                               int *cur_y, int *cur_x) {
-    if (width < 2) width = 2;
-
-    int label_w = utf8_display_width(label);
-    int label_col = colon_col - label_w;
-    if (label_col < 1) label_col = 1;
-
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(row, label_col, "%s:", label);
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-    int fcol = colon_col + 2;
-
-    if (is_active) {
-        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        for (int i = 0; i < width; ++i) {
-            mvaddch(row, fcol + i, ' ');
-        }
-    } else {
-        attron(COLOR_PAIR(CP_FIELD_INACTIVE));
-        for (int i = 0; i < width; ++i) {
-            mvaddch(row, fcol + i, ' ');
-        }
-    }
-
-    int total_chars = utf8_display_width(val);
-    int start_char = 0;
-    int cpos = is_active ? cursor_pos : 0;
-    if (cpos < 0) cpos = 0;
-    if (cpos > total_chars) cpos = total_chars;
-
-    if (is_active && cpos >= width) {
-        start_char = cpos - width + 1;
-    }
-
-    size_t start_byte = utf8_char_to_byte(val, start_char);
-    size_t end_byte   = utf8_char_to_byte(val, start_char + width);
-    int byte_len = (int)(end_byte - start_byte);
-    mvprintw(row, fcol, "%.*s", byte_len, val + start_byte);
-
-    if (is_active) {
-        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        int screen_offset = cpos - start_char;
-        if (screen_offset < 0) screen_offset = 0;
-        if (screen_offset >= width) screen_offset = width - 1;
-        *cur_y = row;
-        *cur_x = fcol + screen_offset;
-    } else {
-        attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
-    }
-}
-
-/* Rita Band-väljarfältet (< 20m >) linjerat med ':' på colon_col */
-static void draw_band_selector_aligned(int row, int colon_col, const char *val,
-                                       int is_active, int band_selecting,
-                                       int *cur_y, int *cur_x) {
-    const char *label = "Band";
-    int label_w = utf8_display_width(label);
-    int label_col = colon_col - label_w;
-    if (label_col < 1) label_col = 1;
-
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(row, label_col, "%s:", label);
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-    int fcol = colon_col + 2;
-    const char *shown = (val && val[0]) ? val : "20 m";
-
-    if (is_active) {
-        int attr = A_BOLD | (band_selecting ? A_REVERSE : 0);
-        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | attr);
-        mvprintw(row, fcol, "<%-5.5s>", shown);
-        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | attr);
-        *cur_y = row;
-        *cur_x = fcol + 1;
-    } else {
-        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-        mvprintw(row, fcol, "<%-5.5s>", shown);
-        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-    }
-}
-
-/* Rita raden för bandval när Band är aktivt */
-static void draw_band_popup_list(int row, const char *current_band, int band_selecting) {
-    int x = 2;
-    if (!band_selecting) {
-        attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-        mvprintw(row, x, " Band: Tryck Enter för att välja band ");
-        attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-        return;
-    }
-
-    int cur_idx = find_band_index(current_band);
-    attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-    if (COLS >= 95) {
-        mvprintw(row, x, "Band (Pilar väljer, Enter=Klar): ");
-        x += 33;
-    } else {
-        mvprintw(row, x, "Band: ");
-        x += 6;
-    }
-    attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-
-    static const char * const SHORT_NAMES[] = {
-        "160", "80", "60", "40", "30", "20", "17", "15", "12", "10", "6", "2", "70cm", "23cm"
-    };
-
-    int start_i = 0;
-    if (cur_idx >= 7 && COLS < 80) {
-        start_i = cur_idx - 5;
-        if (start_i + 8 > BAND_OPTION_COUNT) start_i = BAND_OPTION_COUNT - 8;
-        if (start_i < 0) start_i = 0;
-    }
-
-    for (int i = start_i; i < BAND_OPTION_COUNT && x + 5 < COLS - 1; ++i) {
-        if (i == cur_idx) {
-            attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD | A_REVERSE);
-            mvprintw(row, x, "[%s]", SHORT_NAMES[i]);
-            attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD | A_REVERSE);
-            x += (int)strlen(SHORT_NAMES[i]) + 2;
-        } else {
-            attron(COLOR_PAIR(CP_FIELD_INACTIVE));
-            mvprintw(row, x, " %s ", SHORT_NAMES[i]);
-            attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
-            x += (int)strlen(SHORT_NAMES[i]) + 2;
-        }
-    }
-}
-
-/* Rita funktionstangentmenyn allra längst ned */
-static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter) {
-    int row = LINES - 1;
-    attron(COLOR_PAIR(CP_FKEY_LABEL));
-    mvhline(row, 0, ' ', COLS);
-    attroff(COLOR_PAIR(CP_FKEY_LABEL));
-
-    struct {
-        const char *key;
-        const char *label;
-    } btns_main[] = {
-        {"F1/Esc", "Nytt"},
-        {"Enter",  focus_mode == FOCUS_LOG ? "Redigera" : "Logga"},
-        {"F3",     (search_filter && search_filter[0]) ? "Sök*" : "Sök"},
-        {"F4",     focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
-        {"Ins",    focus_mode == FOCUS_LOG ? "Märk" : NULL},
-        {"F5",     focus_mode == FOCUS_LOG ? "Hanterad" : NULL},
-        {"F6",     focus_mode == FOCUS_LOG ? "Ny" : NULL},
-        {"F8",     focus_mode == FOCUS_LOG ? "Radera" : NULL},
-        {"F9",     "Hjälp"},
-        {"F10",    "Avsluta"},
-        {"F12",    "Inställn."}
-    };
-
-    struct {
-        const char *key;
-        const char *label;
-    } btns_modal[] = {
-        {"Enter/F2",  "Spara"},
-        {"F5",        "Import"},
-        {"F6",        "Export"},
-        {"Tab/Pilar", "Byt fält"},
-        {"Esc",       "Tillbaka"}
-    };
-
-    int col = 1;
-    if (mode_type == 0) {
-        int count = (int)(sizeof(btns_main) / sizeof(btns_main[0]));
-        for (int i = 0; i < count; ++i) {
-            if (btns_main[i].label == NULL) continue;
-            int btn_len = (int)strlen(btns_main[i].key) + (int)strlen(btns_main[i].label) + 2;
-            if (col + btn_len >= COLS) break;
-
-            attron(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
-            mvprintw(row, col, "%s", btns_main[i].key);
-            col += (int)strlen(btns_main[i].key);
-            attroff(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
-
-            attron(COLOR_PAIR(CP_FKEY_LABEL));
-            mvprintw(row, col, " %-s ", btns_main[i].label);
-            col += (int)strlen(btns_main[i].label) + 2;
-            attroff(COLOR_PAIR(CP_FKEY_LABEL));
-        }
-    } else {
-        int count = (int)(sizeof(btns_modal) / sizeof(btns_modal[0]));
-        for (int i = 0; i < count && col < COLS - 4; ++i) {
-            attron(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
-            mvprintw(row, col, "%s", btns_modal[i].key);
-            col += (int)strlen(btns_modal[i].key);
-            attroff(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
-
-            attron(COLOR_PAIR(CP_FKEY_LABEL));
-            mvprintw(row, col, " %-s  ", btns_modal[i].label);
-            col += (int)strlen(btns_modal[i].label) + 3;
-            attroff(COLOR_PAIR(CP_FKEY_LABEL));
-        }
-    }
-}
-
-/* Skiftlägesokänslig delsökning som hanterar både ASCII och UTF-8 (t.ex. å, ä, ö) */
-static int utf8_contains_ci(const char *haystack, const char *needle) {
-    if (needle == NULL || needle[0] == '\0') return 1;
-    if (haystack == NULL || haystack[0] == '\0') return 0;
-
-    size_t h_len = strlen(haystack);
-    size_t n_len = strlen(needle);
-
-    wchar_t stack_h[128];
-    wchar_t stack_n[64];
-    wchar_t *w_haystack = (h_len < 128) ? stack_h : malloc((h_len + 1) * sizeof(wchar_t));
-    wchar_t *w_needle   = (n_len < 64)  ? stack_n : malloc((n_len + 1) * sizeof(wchar_t));
-
-    int found = 0;
-    if (w_haystack != NULL && w_needle != NULL) {
-        size_t h_res = mbstowcs(w_haystack, haystack, h_len + 1);
-        size_t n_res = mbstowcs(w_needle, needle, n_len + 1);
-        if (h_res != (size_t)-1 && n_res != (size_t)-1) {
-            for (size_t i = 0; i < h_res; ++i) {
-                w_haystack[i] = towupper(w_haystack[i]);
-            }
-            for (size_t i = 0; i < n_res; ++i) {
-                w_needle[i] = towupper(w_needle[i]);
-            }
-            found = (wcsstr(w_haystack, w_needle) != NULL);
-            if (w_haystack != stack_h) free(w_haystack);
-            if (w_needle != stack_n) free(w_needle);
-            return found;
-        }
-    }
-    if (w_haystack && w_haystack != stack_h) free(w_haystack);
-    if (w_needle && w_needle != stack_n) free(w_needle);
-
-    return (strcasestr(haystack, needle) != NULL);
-}
-
-static int build_filtered_indices(const QSOList *log_list, const char *search_filter,
-                                  int *out_indices, int max_out) {
-    int count = 0;
-    for (int i = (int)log_list->count - 1; i >= 0 && count < max_out; --i) {
-        const QSO *item = &log_list->items[i];
-        if (search_filter != NULL && search_filter[0] != '\0') {
-            int match = utf8_contains_ci(item->call, search_filter) ||
-                        utf8_contains_ci(item->name, search_filter) ||
-                        utf8_contains_ci(item->qth, search_filter) ||
-                        utf8_contains_ci(item->gridsquare, search_filter);
-            if (!match) continue;
-        }
-        out_indices[count++] = i;
-    }
-    return count;
-}
-
-/* Returnera antalet tillgängliga datarader i loggradsfönstret */
-static int get_avail_log_rows(void) {
-    int log_top = 8;
-    int log_height = (LINES - 1) - log_top;
-    int first_data_row = log_top + 2;
-    int avail = (log_top + log_height - 1) - first_data_row;
-    return (avail > 0) ? avail : 1;
-}
-
-/* Rita hela huvudskärmen med fälten logiskt linjerade på ':' */
-static void draw_main_screen(const StationSettings *st, const QSO *qso,
-                             FocusMode focus_mode, int active_field, int band_selecting,
-                             int field_cursor_pos, int time_frozen, int editing_index,
-                             const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
-                             const char *search_filter, const char *status_msg,
-                             const char *qrb_str,
-                             int *cur_y, int *cur_x) {
-    erase();
-
-    if (COLS < MIN_COLS || LINES < MIN_LINES) {
-        attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-        mvprintw(LINES / 2 - 1, 2, "Fönstret är för litet (%dx%d).", COLS, LINES);
-        mvprintw(LINES / 2,     2, "Minsta storlek är %dx%d. Förstora terminalen.", MIN_COLS, MIN_LINES);
-        attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-        refresh();
-        return;
-    }
-
-    int in_input = (focus_mode == FOCUS_INPUT);
-
-    /* 1. Längst upp: Statusrad */
-    draw_top_bar(st);
-
-    /* 2. Under detta: Inmatningsfälten (Rader 1..7) */
-    draw_box_with_title(1, 0, 7, COLS,
-                        editing_index >= 0 ? "Redigera QSO" : "Ny förbindelse",
-                        in_input);
-
-    if (editing_index >= 0) {
-        attron(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-        mvprintw(1, 18, " REDIGERAR #%d ", editing_index + 1);
-        attroff(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-    } else if (time_frozen) {
-        attron(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
-        mvprintw(1, 20, " TID FRYST ");
-        attroff(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
-    } else {
-        attron(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
-        mvprintw(1, 20, " UTC LIVE ");
-        attroff(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
-    }
-
-    if (status_msg != NULL && status_msg[0] != '\0' && COLS >= 60) {
-        int max_msg = COLS - 36;
-        if (max_msg > 0) {
-            attron(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
-            mvprintw(1, 34, "%.*s", max_msg, status_msg);
-            attroff(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
-        }
-    }
-
-    /* Kolumnlinjering på ':' i inmatningsrutan:
-     * - Kolumn 1 (colon1): Signal:, QTH:, Datum:, Frekv.:, Not:
-     * - Kolumn 2 (colon2): Namn:, Lokator:, UTC:, Band:
-     * - Kolumn 3 (colon3): RST T:, DXCC:, Mode:
-     * - Kolumn 4 (colon4 på rad 2): RST R: */
-    int colon1 = 11;
-    int colon2 = (COLS >= 76) ? 36 : 34;
-    int colon3 = (COLS >= 76) ? 57 : 50;
-    int colon4 = (COLS >= 76) ? 73 : (COLS - 6);
-
-    const char *lbl_mode = "Mode";
-
-    int w_call = (colon2 - 10) - (colon1 + 2);
-    if (w_call > 12) w_call = 12;
-    if (w_call < 7)  w_call = 7;
-
-    int w_name = (colon3 - 9) - (colon2 + 2);
-    if (w_name < 6) w_name = 6;
-
-    int w_col3_end = (COLS - 2) - (colon3 + 2);
-    if (w_col3_end < 6) w_col3_end = 6;
-
-    /* Rad 2: Signal: [...] | Namn: [...] | RST T: [...] | RST R: [...] */
-    draw_field_aligned(2, colon1, "Signal",   qso->call, w_call,
-                       in_input && active_field == FLD_CALL, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, colon2, "Namn",     qso->name, w_name,
-                       in_input && active_field == FLD_NAME, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, colon3, "RST T",    qso->rst_sent, 4,
-                       in_input && active_field == FLD_RSTS, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, colon4, "RST R",    qso->rst_rcvd, 4,
-                       in_input && active_field == FLD_RSTR, field_cursor_pos, cur_y, cur_x);
-
-    /* Rad 3: QTH: [...] | Lokator: [...] | DXCC: [...] | QRB: [...] */
-    int w_qth = (colon2 - 10) - (colon1 + 2);
-    if (w_qth < 6) w_qth = 6;
-    int w_grid = (colon3 - 9) - (colon2 + 2);
-    if (w_grid < 6) w_grid = 6;
-    int w_dxcc = (colon4 - 6) - (colon3 + 2);
-    if (w_dxcc < 6) w_dxcc = 6;
-
-    draw_field_aligned(3, colon1, "QTH",      qso->qth,        w_qth,
-                       in_input && active_field == FLD_QTH, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, colon2, "Lokator",  qso->gridsquare, w_grid,
-                       in_input && active_field == FLD_GRID, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, colon3, "DXCC",     qso->dxcc,       w_dxcc,
-                       in_input && active_field == FLD_DXCC, field_cursor_pos, cur_y, cur_x);
-
-    /* QRB under RST R på rad 3 */
-    int dummy_y, dummy_x;
-    draw_field_aligned(3, colon4, "QRB",      (qrb_str && qrb_str[0]) ? qrb_str : "-", 8,
-                       0, 0, &dummy_y, &dummy_x);
-
-    /* Rad 4: Datum: [...] | UTC: [...] */
-    draw_field_aligned(4, colon1, "Datum",     qso->date,       11,
-                       in_input && active_field == FLD_DATE, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(4, colon2, "UTC",       qso->time_utc,   6,
-                       in_input && active_field == FLD_TIME, field_cursor_pos, cur_y, cur_x);
-
-    /* Rad 5: Frekv.: [...] | Band: <20m  > | Mode: [...] */
-    draw_field_aligned(5,         colon1, "Frekv.",   qso->freq, 9,
-                       in_input && active_field == FLD_FREQ, field_cursor_pos, cur_y, cur_x);
-    draw_band_selector_aligned(5, colon2,             qso->band,
-                       in_input && active_field == FLD_BAND, band_selecting, cur_y, cur_x);
-    draw_field_aligned(5,         colon3, lbl_mode,   qso->mode, w_col3_end > 8 ? 8 : w_col3_end,
-                       in_input && active_field == FLD_MODE, field_cursor_pos, cur_y, cur_x);
-
-    /* Rad 6: Not: [...] */
-    int w_comment = (COLS - 2) - (colon1 + 2);
-    draw_field_aligned(6, colon1, "Not",      qso->comment, w_comment,
-                       in_input && active_field == FLD_COMM, field_cursor_pos, cur_y, cur_x);
-
-    if (in_input && active_field == FLD_BAND) {
-        draw_band_popup_list(7, qso->band, band_selecting);
-    }
-
-    /* 3. Under inmatningsrutan: Redan loggade QSO ("Loggrader") */
-    int log_top = 8;
-    int log_height = (LINES - 1) - log_top;
-    int marked_count = 0;
-    for (size_t i = 0; i < log_list->count; ++i) {
-        if (log_list->items[i].marked) marked_count++;
-    }
-
-    char log_title[112];
-    if (focus_mode == FOCUS_LOG) {
-        if (marked_count > 0) {
-            snprintf(log_title, sizeof(log_title),
-                     "Loggrader – Ins=Märk, F8=Radera (%d markerade, %zu QSO)",
-                     marked_count, log_list->count);
-        } else {
-            snprintf(log_title, sizeof(log_title),
-                     "Loggrader – Välj med Pilar, Ins=Märk, F8=Radera, Enter=Redigera (%zu QSO)",
-                     log_list->count);
-        }
-    } else if (search_filter != NULL && search_filter[0] != '\0') {
-        if (marked_count > 0) {
-            snprintf(log_title, sizeof(log_title), "Loggrader (Filter: %s | %d markerade | %zu QSO)",
-                     search_filter, marked_count, log_list->count);
-        } else {
-            snprintf(log_title, sizeof(log_title), "Loggrader (Filter: %s | %zu QSO)",
-                     search_filter, log_list->count);
-        }
-    } else {
-        if (marked_count > 0) {
-            snprintf(log_title, sizeof(log_title), "Loggrader (%d markerade, %zu QSO)",
-                     marked_count, log_list->count);
-        } else {
-            snprintf(log_title, sizeof(log_title), "Loggrader (%zu QSO)", log_list->count);
-        }
-    }
-    draw_box_with_title(log_top, 0, log_height, COLS, log_title, focus_mode == FOCUS_LOG);
-
-    int hdr_row = log_top + 1;
-    int first_data_row = log_top + 2;
-    int avail_log_rows = get_avail_log_rows();
-
-    /* Band och Frekv i loggraderna: Band är högerställt (%5s) och Frekv (%8s) med 3 decimaler */
-    attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
-    if (COLS >= 92) {
-        int rem_hdr = (COLS - 5) - 82;
-        if (rem_hdr < 3) rem_hdr = 3;
-        mvprintw(hdr_row, 2, "%-10s %-5s %-11s %5s %8s %-5s %-7s %-8s %-12s %-.*s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST S/M", "Lokator", "Namn", rem_hdr, "QTH");
-    } else if (COLS >= 74) {
-        int rem_hdr = (COLS - 5) - 66;
-        if (rem_hdr < 4) rem_hdr = 4;
-        mvprintw(hdr_row, 2, "%-10s %-5s %-10s %5s %8s %-5s %-7s %-6s %-.*s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Lok.", rem_hdr, "Namn/QTH");
-    } else {
-        int rem_hdr = (COLS - 5) - 56;
-        if (rem_hdr < 3) rem_hdr = 3;
-        mvprintw(hdr_row, 2, "%-10s %-5s %-9s %5s %8s %-4s %-7s %-.*s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", rem_hdr, "Namn");
-    }
-    mvprintw(hdr_row, COLS - 4, "St");
-    attroff(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
-
-    int max_filtered = (int)log_list->count > 0 ? (int)log_list->count : 1;
-    int *filtered_idx = malloc((size_t)max_filtered * sizeof(int));
-    int filtered_count = 0;
-    if (filtered_idx != NULL) {
-        filtered_count = build_filtered_indices(log_list, search_filter, filtered_idx, max_filtered);
-    }
-
-    if (avail_log_rows > 0 && filtered_count > 0) {
-        if (selected_log_pos < *log_scroll_offset) {
-            *log_scroll_offset = selected_log_pos;
-        } else if (selected_log_pos >= *log_scroll_offset + avail_log_rows) {
-            *log_scroll_offset = selected_log_pos - avail_log_rows + 1;
-        }
-        if (*log_scroll_offset < 0) *log_scroll_offset = 0;
-    } else {
-        *log_scroll_offset = 0;
-    }
-
-    int shown = 0;
-    for (int pos = *log_scroll_offset; pos < filtered_count && shown < avail_log_rows; ++pos) {
-        int qso_idx = filtered_idx[pos];
-        const QSO *item = &log_list->items[qso_idx];
-        int r = first_data_row + shown;
-        int is_selected_row = (focus_mode == FOCUS_LOG && pos == selected_log_pos);
-
-        char d_disp[16], t_disp[16], f_disp[16], b_disp[16], rst_disp[36];
-        format_date_yyyy_mm_dd(item->date, d_disp, sizeof(d_disp));
-        format_time_hh_mm(item->time_utc, t_disp, sizeof(t_disp));
-        format_band_display(item->band, b_disp, sizeof(b_disp));
-        parse_and_normalize_freq(item->freq, f_disp, sizeof(f_disp));
-        snprintf(rst_disp, sizeof(rst_disp), "%s/%s",
-                 item->rst_sent[0] ? item->rst_sent : "-",
-                 item->rst_rcvd[0] ? item->rst_rcvd : "-");
-
-        if (is_selected_row) {
-            attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-            mvhline(r, 1, ' ', COLS - 2);
-            if (item->marked) {
-                mvaddch(r, 1, '*');
-            } else {
-                mvaddch(r, 1, '>');
-            }
-            *cur_y = r;
-            *cur_x = 2;
-        } else if (item->marked) {
-            attron(COLOR_PAIR(CP_LOG_MARKED) | A_BOLD);
-            mvhline(r, 1, ' ', COLS - 2);
-            mvaddch(r, 1, '*');
-        } else {
-            attron(COLOR_PAIR(CP_LOG_ROW) | A_BOLD);
-            mvaddch(r, 1, ' ');
-        }
-
-        if (COLS >= 92) {
-            int rem_qth = (COLS - 5) - 82;
-            if (rem_qth < 2) rem_qth = 2;
-            mvprintw(r, 2, "%-10.10s %-5.5s %-11.11s %5.5s %8.8s %-5.5s %-7.7s %-8.8s %-12.12s %-.*s",
-                     d_disp[0] ? d_disp : "-",
-                     t_disp[0] ? t_disp : "-",
-                     item->call[0] ? item->call : "-",
-                     b_disp[0] ? b_disp : "-",
-                     f_disp[0] ? f_disp : "-",
-                     item->mode[0] ? item->mode : "-",
-                     rst_disp,
-                     item->gridsquare[0] ? item->gridsquare : "-",
-                     item->name[0] ? item->name : "-",
-                     rem_qth,
-                     item->qth[0] ? item->qth : "-");
-        } else if (COLS >= 74) {
-            int rem = (COLS - 5) - 66;
-            if (rem < 2) rem = 2;
-            const char *nq = item->name[0] ? item->name : (item->qth[0] ? item->qth : "-");
-            mvprintw(r, 2, "%-10.10s %-5.5s %-10.10s %5.5s %8.8s %-5.5s %-7.7s %-6.6s %-.*s",
-                     d_disp[0] ? d_disp : "-",
-                     t_disp[0] ? t_disp : "-",
-                     item->call[0] ? item->call : "-",
-                     b_disp[0] ? b_disp : "-",
-                     f_disp[0] ? f_disp : "-",
-                     item->mode[0] ? item->mode : "-",
-                     rst_disp,
-                     item->gridsquare[0] ? item->gridsquare : "-",
-                     rem, nq);
-        } else {
-            int rem = (COLS - 5) - 56;
-            if (rem < 2) rem = 2;
-            mvprintw(r, 2, "%-10.10s %-5.5s %-9.9s %5.5s %8.8s %-4.4s %-7.7s %-.*s",
-                     d_disp[0] ? d_disp : "-",
-                     t_disp[0] ? t_disp : "-",
-                     item->call[0] ? item->call : "-",
-                     b_disp[0] ? b_disp : "-",
-                     f_disp[0] ? f_disp : "-",
-                     item->mode[0] ? item->mode : "-",
-                     rst_disp,
-                     rem,
-                     item->name[0] ? item->name : "-");
-        }
-
-        int flag_cp = is_selected_row ? (item->handled ? CP_FLAG_HANDLED_SEL : CP_FLAG_NEW_SEL)
-                    : item->marked    ? (item->handled ? CP_FLAG_HANDLED_MRK : CP_FLAG_NEW_MRK)
-                                      : (item->handled ? CP_FLAG_HANDLED : CP_FLAG_NEW);
-        attron(COLOR_PAIR(flag_cp) | A_BOLD);
-        mvprintw(r, COLS - 3, "%s", item->handled ? "✓" : "✗");
-        attroff(COLOR_PAIR(flag_cp) | A_BOLD);
-
-        if (is_selected_row) {
-            attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-        } else {
-            attroff(COLOR_PAIR(CP_LOG_ROW) | A_BOLD);
-        }
-        shown++;
-    }
-
-    free(filtered_idx);
-
-    if (shown == 0 && avail_log_rows > 0) {
-        mvprintw(first_data_row, 2, "Inga förbindelser att visa ännu. Skriv in anropssignal ovan och tryck Enter.");
-    }
-
-    /* 4. Allra längst ned: Funktionstangentrad */
-    draw_bottom_fkey_bar(0, focus_mode, search_filter);
-
-    move(*cur_y, *cur_x);
-    refresh();
-}
-
-/* F9: Hjälpskärm */
-static void run_help_modal(const StationSettings *st) {
-    while (1) {
-        erase();
-        draw_top_bar(st);
-        draw_box_with_title(1, 0, LINES - 2, COLS, "Hjälp – QSO-logg (F9)", 1);
-
-        attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-        mvprintw(3, 3, "Tangentbordskommandon:");
-        attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-
-        attron(COLOR_PAIR(CP_LABEL));
-        mvprintw(4,  4, "Tab / Shift-Tab   : Hoppa till nästa / föregående inmatningsfält");
-        mvprintw(5,  4, "Vänster / Höger   : Hoppa till föregående / nästa fält");
-        mvprintw(6,  4, "Pil upp / Pil ned : Gå till närmaste fält över eller under aktivt fält");
-        mvprintw(7,  4, "Enter på Band     : Aktivera bandval (byt med pilar, Enter bekräftar)");
-        mvprintw(8,  4, "F1 / Esc          : Rensa inmatningsrutan (UTC-klockan tickar igen)");
-        mvprintw(9,  4, "F2 / Enter        : Logga QSO direkt med ifyllda uppgifter");
-        mvprintw(10, 4, "F3 / Ctrl-F       : Sök/filtrera (Signal, Namn, QTH, Lokator)");
-        mvprintw(11, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
-        mvprintw(12, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
-        mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
-        mvprintw(14, 4, "                    F5 = Markera som hanterad (✓), F6 = Markera som ny (✗)");
-        mvprintw(15, 4, "                    Home/End = Första/sista rad på sidan, PgUp/PgDn = Bläddra sida");
-        mvprintw(16, 4, "                    Ctrl-Home / Ctrl-End = Översta / sista raden i hela loggen");
-        mvprintw(17, 4, "Inmatningsfält    : Home = Anropssignal, End = Not (Kommentarsfältet)");
-        mvprintw(18, 4, "F9                : Visa denna hjälpsida");
-        mvprintw(19, 4, "F10 / Ctrl-Q      : Avsluta programmet");
-        mvprintw(20, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
-
-        if (LINES >= 26) {
-            attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-            mvprintw(21, 3, "Smarta funktioner:");
-            attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
-            attron(COLOR_PAIR(CP_LABEL));
-            mvprintw(22, 4, "- Frekvens utanför amatörband ger beräknat metervärde (300/f avrundat).");
-            mvprintw(23, 4, "- DXCC identifieras automatiskt från dxcc.txt när du skriver anropssignal.");
-            mvprintw(24, 4, "- Svenska signaler (SA-SM, 7S, 8S) kan slås upp i SM Callbook (slås på i F12).");
-            mvprintw(25, 4, "- Fältet 'Not' lagras som standard ADIF-kommentar (COMMENT).");
-        }
-        attroff(COLOR_PAIR(CP_LABEL));
-
-        int row = LINES - 1;
-        attron(COLOR_PAIR(CP_FKEY_LABEL));
-        mvhline(row, 0, ' ', COLS);
-        mvprintw(row, 2, "Tryck Esc, Enter eller F9 för att stänga hjälpen.");
-        attroff(COLOR_PAIR(CP_FKEY_LABEL));
-
-        refresh();
-
-        int ch = getch();
-        if (ch == 27 || ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(9)) {
-            break;
-        }
-    }
-}
-
 /* Rensa hela loggboken i minnet och på disk (qsolog.adi skrivs över med tom ADIF 3.1.8-header) */
-static int clear_log_book(QSOList *log_list, const StationSettings *st) {
+int clear_log_book(QSOList *log_list, const StationSettings *st) {
     (void)st;
     if (log_list != NULL) {
         log_list->count = 0;
@@ -3054,536 +1872,11 @@ static int clear_log_book(QSOList *log_list, const StationSettings *st) {
     return 0;
 }
 
-typedef struct {
-    char name[256];
-    int is_dir;
-    long size_bytes;
-} FileDialogItem;
-
-static int cmp_file_dialog_item(const void *a_ptr, const void *b_ptr) {
-    const FileDialogItem *a = (const FileDialogItem *)a_ptr;
-    const FileDialogItem *b = (const FileDialogItem *)b_ptr;
-    if (strcmp(a->name, "..") == 0) return -1;
-    if (strcmp(b->name, "..") == 0) return 1;
-    if (a->is_dir != b->is_dir) {
-        return a->is_dir ? -1 : 1;
-    }
-    return strcasecmp(a->name, b->name);
-}
-
-static int matches_extension(const char *filename, const char *ext_list) {
-    if (ext_list == NULL || ext_list[0] == '\0') return 1;
-    const char *dot = strrchr(filename, '.');
-    if (dot == NULL) return 0;
-
-    char buf[128];
-    copy_str(buf, sizeof(buf), ext_list);
-    char *token = strtok(buf, ";, ");
-    while (token != NULL) {
-        while (*token == '*' || *token == ' ') token++;
-        if (*token == '.') {
-            if (strcasecmp(dot, token) == 0) return 1;
-        } else {
-            if (strcasecmp(dot + 1, token) == 0) return 1;
-        }
-        token = strtok(NULL, ";, ");
-    }
-    return 0;
-}
-
-static void format_file_size(long bytes, char *out, size_t out_sz) {
-    if (bytes < 0) {
-        copy_str(out, out_sz, "");
-    } else if (bytes < 1024) {
-        snprintf(out, out_sz, "%ld B", bytes);
-    } else if (bytes < 1024 * 1024) {
-        snprintf(out, out_sz, "%.1f KB", (double)bytes / 1024.0);
-    } else if (bytes < 1024L * 1024 * 1024) {
-        snprintf(out, out_sz, "%.1f MB", (double)bytes / (1024.0 * 1024.0));
-    } else {
-        snprintf(out, out_sz, "%.1f GB", (double)bytes / (1024.0 * 1024.0 * 1024.0));
-    }
-}
-
-static int load_dir_items(const char *dir_path, int filter_active, const char *ext_filter,
-                          FileDialogItem **items_out, size_t *count_out) {
-    *items_out = NULL;
-    *count_out = 0;
-
-    DIR *d = opendir(dir_path);
-    if (d == NULL) return -1;
-
-    size_t cap = 32;
-    FileDialogItem *items = malloc(cap * sizeof(FileDialogItem));
-    if (items == NULL) {
-        closedir(d);
-        return -1;
-    }
-    size_t count = 0;
-
-    if (strcmp(dir_path, "/") != 0) {
-        copy_str(items[count].name, sizeof(items[count].name), "..");
-        items[count].is_dir = 1;
-        items[count].size_bytes = -1;
-        count++;
-    }
-
-    struct dirent *ent;
-    while ((ent = readdir(d)) != NULL) {
-        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-            continue;
-        }
-        if (ent->d_name[0] == '.') {
-            continue;
-        }
-
-        char full_path[PATH_MAX + 512];
-        if (strcmp(dir_path, "/") == 0) {
-            snprintf(full_path, sizeof(full_path), "/%s", ent->d_name);
-        } else {
-            snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, ent->d_name);
-        }
-
-        struct stat st;
-        if (stat(full_path, &st) != 0) {
-            continue;
-        }
-
-        int is_dir = S_ISDIR(st.st_mode);
-        int is_reg = S_ISREG(st.st_mode);
-
-        if (!is_dir && !is_reg) {
-            continue;
-        }
-
-        if (is_reg && filter_active && !matches_extension(ent->d_name, ext_filter)) {
-            continue;
-        }
-
-        if (count >= cap) {
-            size_t new_cap = cap * 2;
-            FileDialogItem *new_items = realloc(items, new_cap * sizeof(FileDialogItem));
-            if (new_items == NULL) break;
-            items = new_items;
-            cap = new_cap;
-        }
-
-        copy_str(items[count].name, sizeof(items[count].name), ent->d_name);
-        items[count].is_dir = is_dir;
-        items[count].size_bytes = is_dir ? -1 : (long)st.st_size;
-        count++;
-    }
-
-    closedir(d);
-
-    if (count > 1) {
-        qsort(items, count, sizeof(FileDialogItem), cmp_file_dialog_item);
-    }
-
-    *items_out = items;
-    *count_out = count;
-    return 0;
-}
-
-/* Rensa bort inledande och avslutande mellanslag/tabbar */
-static void trim_str(char *str) {
-    if (str == NULL) return;
-    char *start = str;
-    while (*start == ' ' || *start == '\t') start++;
-    if (*start == '\0') {
-        str[0] = '\0';
-        return;
-    }
-    char *end = start + strlen(start) - 1;
-    while (end > start && (*end == ' ' || *end == '\t')) {
-        *end = '\0';
-        end--;
-    }
-    if (start > str) {
-        memmove(str, start, strlen(start) + 1);
-    }
-}
-
-/* Säkerställ att filnamnet har en ändelse. Om ändelse saknas antas .adi */
-static void ensure_adif_extension(char *filename, size_t max_len) {
-    if (filename == NULL || filename[0] == '\0') return;
-    const char *base = get_path_basename(filename);
-    const char *dot = strrchr(base, '.');
-    if (dot == NULL || dot[1] == '\0') {
-        if (dot != NULL && dot[1] == '\0') {
-            strncat(filename, "adi", max_len - strlen(filename) - 1);
-        } else {
-            strncat(filename, ".adi", max_len - strlen(filename) - 1);
-        }
-    }
-}
-
-/* Generisk filväljardialog med ncurses (stöder både öppna/importera och spara/exportera).
- * start_dir: startkatalog (t.ex. "." eller NULL)
- * ext_filter: t.ex. ".adi;.adif"
- * selected_path: buffert som fylls med vald sökväg
- * max_path_len: storlek på selected_path
- * is_save_mode: 0 för öppna/importera, 1 för spara/exportera (visar filnamnsinmatning)
- * default_filename: förvalt filnamn vid spara (t.ex. "export.adi")
- * Returnerar 1 om fil valdes, 0 om avbruten med Esc. */
-static int run_file_dialog(const char *title, const char *start_dir, const char *ext_filter,
-                           char *selected_path, size_t max_path_len,
-                           int is_save_mode, const char *default_filename) {
-    char current_dir[PATH_MAX];
-    if (start_dir != NULL && start_dir[0] != '\0') {
-        if (realpath(start_dir, current_dir) == NULL) {
-            if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
-                copy_str(current_dir, sizeof(current_dir), ".");
-            }
-        }
-    } else {
-        if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
-            copy_str(current_dir, sizeof(current_dir), ".");
-        }
-    }
-
-    int filter_active = (ext_filter != NULL && ext_filter[0] != '\0') ? 1 : 0;
-    FileDialogItem *items = NULL;
-    size_t count = 0;
-    load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-
-    int selected_pos = 0;
-    int scroll_offset = 0;
-
-    char fname_buf[PATH_MAX] = {0};
-    if (is_save_mode && default_filename != NULL && default_filename[0] != '\0') {
-        copy_str(fname_buf, sizeof(fname_buf), default_filename);
-    }
-    int fname_cursor_pos = utf8_display_width(fname_buf);
-    int focus_area = is_save_mode ? 0 : 1; /* 0 = Filnamnsfält, 1 = Fillista */
-
-    while (1) {
-        int box_h = LINES - 4;
-        if (box_h > 22) box_h = 22;
-        if (box_h < 12) box_h = 12;
-        int box_w = COLS - 6;
-        if (box_w > 76) box_w = 76;
-        if (box_w < 46) box_w = 46;
-        int by = (LINES - box_h) / 2;
-        int bx = (COLS - box_w) / 2;
-
-        int cur_y = by + 1, cur_x = bx + 2;
-
-        for (int r = 0; r < box_h; ++r) {
-            mvhline(by + r, bx, ' ', box_w);
-        }
-        draw_box_with_title(by, bx, box_h, box_w,
-                            (title && title[0]) ? title : (is_save_mode ? "Spara fil" : "Välj fil"), 1);
-
-        /* Katalograd */
-        int max_dir_w = box_w - 14;
-        char disp_dir[PATH_MAX];
-        int dlen = (int)strlen(current_dir);
-        if (dlen > max_dir_w && max_dir_w > 4) {
-            snprintf(disp_dir, sizeof(disp_dir), "...%s", current_dir + dlen - (max_dir_w - 3));
-        } else {
-            copy_str(disp_dir, sizeof(disp_dir), current_dir);
-        }
-        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(by + 1, bx + 2, "Katalog: ");
-        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(by + 1, bx + 11, "%-*s", max_dir_w, disp_dir);
-
-        /* Filterrad */
-        attron(COLOR_PAIR(CP_LABEL));
-        mvprintw(by + 2, bx + 2, "Filter : %-15s [F2: %s]",
-                 filter_active ? ext_filter : "*.* (alla)",
-                 filter_active ? "Visa alla" : "Filtrera");
-        attroff(COLOR_PAIR(CP_LABEL));
-
-        /* Övre separator */
-        attron(COLOR_PAIR(CP_BORDER));
-        mvaddch(by + 3, bx, ACS_LTEE);
-        mvhline(by + 3, bx + 1, ACS_HLINE, box_w - 2);
-        mvaddch(by + 3, bx + box_w - 1, ACS_RTEE);
-        attroff(COLOR_PAIR(CP_BORDER));
-
-        int visible_rows = is_save_mode ? (box_h - 7) : (box_h - 5);
-        if (visible_rows < 1) visible_rows = 1;
-
-        if (selected_pos < scroll_offset) {
-            scroll_offset = selected_pos;
-        } else if (selected_pos >= scroll_offset + visible_rows) {
-            scroll_offset = selected_pos - visible_rows + 1;
-        }
-
-        if (count == 0) {
-            attron(COLOR_PAIR(CP_FIELD_INACTIVE));
-            mvprintw(by + 4, bx + 4, "(Inga filer matchar filter)");
-            attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
-        } else {
-            for (int i = 0; i < visible_rows; ++i) {
-                int item_idx = scroll_offset + i;
-                int r = by + 4 + i;
-                if (item_idx >= (int)count) break;
-
-                int is_sel = (item_idx == selected_pos && (focus_area == 1 || !is_save_mode));
-                if (is_sel) {
-                    attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-                } else {
-                    attron(COLOR_PAIR(CP_LOG_ROW));
-                }
-                mvhline(r, bx + 1, ' ', box_w - 2);
-
-                const FileDialogItem *it = &items[item_idx];
-                if (it->is_dir) {
-                    mvprintw(r, bx + 2, "%c [MAPP] %-s", is_sel ? '>' : ' ', it->name);
-                } else {
-                    char sz_str[32];
-                    format_file_size(it->size_bytes, sz_str, sizeof(sz_str));
-                    int max_name_w = box_w - 22;
-                    if (max_name_w < 10) max_name_w = 10;
-                    mvprintw(r, bx + 2, "%c        %-*.*s %8s",
-                             is_sel ? '>' : ' ', max_name_w, max_name_w, it->name, sz_str);
-                }
-
-                if (is_sel) {
-                    attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-                    if (focus_area == 1 || !is_save_mode) {
-                        cur_y = r;
-                        cur_x = bx + 2;
-                    }
-                } else {
-                    attroff(COLOR_PAIR(CP_LOG_ROW));
-                }
-            }
-        }
-
-        /* Scrollindikatorer */
-        int last_list_row = is_save_mode ? (by + box_h - 4) : (by + box_h - 2);
-        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        if (scroll_offset > 0) {
-            mvaddch(by + 4, bx + box_w - 2, '^');
-        }
-        if (scroll_offset + visible_rows < (int)count) {
-            mvaddch(last_list_row, bx + box_w - 2, 'v');
-        }
-        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-        if (is_save_mode) {
-            /* Undre separator ovanför filnamnsfältet */
-            attron(COLOR_PAIR(CP_BORDER));
-            mvaddch(by + box_h - 3, bx, ACS_LTEE);
-            mvhline(by + box_h - 3, bx + 1, ACS_HLINE, box_w - 2);
-            mvaddch(by + box_h - 3, bx + box_w - 1, ACS_RTEE);
-            attroff(COLOR_PAIR(CP_BORDER));
-
-            /* Filnamnsfält */
-            int r_fname = by + box_h - 2;
-            const char *lbl_fn = "Filnamn:";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_fname, bx + 2, "%s", lbl_fn);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-            int fn_col = bx + 11;
-            int fn_w = box_w - 13;
-            if (fn_w < 10) fn_w = 10;
-            if (focus_area == 0) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_fname, fn_col, "%-*.*s", fn_w, fn_w, fname_buf);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_fname;
-                cur_x = fn_col + fname_cursor_pos;
-                if (cur_x >= fn_col + fn_w) cur_x = fn_col + fn_w - 1;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_fname, fn_col, "%-*.*s", fn_w, fn_w, fname_buf);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
-        }
-
-        /* Nedersta statusrad i popupen */
-        attron(COLOR_PAIR(CP_FKEY_LABEL));
-        mvhline(by + box_h - 1, bx, ' ', box_w);
-        if (is_save_mode) {
-            mvprintw(by + box_h - 1, bx + 2, "[Enter] Spara  [Tab] Växla  [F2] Filter  [Esc] Avbryt");
-        } else {
-            mvprintw(by + box_h - 1, bx + 2, "[Enter] Välj/Öppna  [F2] Växla filter  [Esc] Avbryt");
-        }
-        attroff(COLOR_PAIR(CP_FKEY_LABEL));
-
-        move(cur_y, cur_x);
-        refresh();
-
-        int ch = getch();
-        if (ch == ERR) continue;
-
-        if (ch == 27 || ch == KEY_F(5) || ch == KEY_F(6)) {
-            if (items) free(items);
-            return 0;
-        } else if (ch == KEY_F(2)) {
-            filter_active = !filter_active;
-            if (items) free(items);
-            items = NULL;
-            count = 0;
-            load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-            selected_pos = 0;
-            scroll_offset = 0;
-            continue;
-        }
-
-        if (is_save_mode && focus_area == 0) {
-            /* Tangenthändelser i Filnamnsfältet */
-            if (ch == '\t' || ch == KEY_DOWN) {
-                focus_area = 1;
-            } else if (ch == KEY_UP) {
-                focus_area = 1;
-            } else if (ch == KEY_LEFT) {
-                if (fname_cursor_pos > 0) fname_cursor_pos--;
-            } else if (ch == KEY_RIGHT) {
-                int max_c = utf8_display_width(fname_buf);
-                if (fname_cursor_pos < max_c) fname_cursor_pos++;
-            } else if (ch == KEY_HOME) {
-                fname_cursor_pos = 0;
-            } else if (ch == KEY_END) {
-                fname_cursor_pos = utf8_display_width(fname_buf);
-            } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
-                utf8_backspace_at(fname_buf, &fname_cursor_pos);
-            } else if (ch == KEY_DC) {
-                utf8_delete_at(fname_buf, fname_cursor_pos);
-            } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
-                utf8_insert_byte_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, (char)ch);
-            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
-                trim_str(fname_buf);
-                if (fname_buf[0] != '\0') {
-                    ensure_adif_extension(fname_buf, sizeof(fname_buf));
-                    if (strcmp(current_dir, "/") == 0) {
-                        snprintf(selected_path, max_path_len, "/%s", fname_buf);
-                    } else {
-                        snprintf(selected_path, max_path_len, "%s/%s", current_dir, fname_buf);
-                    }
-
-                    /* Bekräfta om filen redan existerar */
-                    if (access(selected_path, F_OK) == 0) {
-                        int confirm = 0;
-                        while (1) {
-                            int qh = 6, qw = 46;
-                            int qy = (LINES - qh) / 2;
-                            int qx = (COLS - qw) / 2;
-                            attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-                            for (int r = 0; r < qh; ++r) {
-                                mvhline(qy + r, qx, ' ', qw);
-                            }
-                            mvprintw(qy + 1, qx + 2, "Filen finns redan!");
-                            mvprintw(qy + 2, qx + 2, "Vill du skriva över den?");
-                            attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-
-                            attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-                            mvprintw(qy + 4, qx + 4, "[J] Ja, skriv över    [N/Esc] Avbryt");
-                            attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-                            refresh();
-
-                            int cch = getch();
-                            if (cch == 'j' || cch == 'J') {
-                                confirm = 1;
-                                break;
-                            } else if (cch == 'n' || cch == 'N' || cch == 27) {
-                                confirm = 0;
-                                break;
-                            }
-                        }
-                        if (!confirm) {
-                            continue;
-                        }
-                    }
-
-                    if (items) free(items);
-                    return 1;
-                }
-            }
-        } else {
-            /* Tangenthändelser i Fillistan (och hela fönstret i Open-läge) */
-            if (is_save_mode && (ch == '\t')) {
-                focus_area = 0;
-            } else if (ch == KEY_UP) {
-                if (selected_pos > 0) {
-                    selected_pos--;
-                } else if (is_save_mode) {
-                    focus_area = 0;
-                }
-            } else if (ch == KEY_DOWN) {
-                if (selected_pos + 1 < (int)count) {
-                    selected_pos++;
-                } else if (is_save_mode) {
-                    focus_area = 0;
-                }
-            } else if (ch == KEY_PPAGE) {
-                selected_pos -= visible_rows;
-                if (selected_pos < 0) selected_pos = 0;
-            } else if (ch == KEY_NPAGE) {
-                selected_pos += visible_rows;
-                if (selected_pos >= (int)count) selected_pos = count > 0 ? (int)count - 1 : 0;
-            } else if (ch == KEY_HOME) {
-                selected_pos = 0;
-            } else if (ch == KEY_END) {
-                selected_pos = count > 0 ? (int)count - 1 : 0;
-            } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
-                /* Gå till föräldrakatalog */
-                char parent_dir[PATH_MAX + 512];
-                snprintf(parent_dir, sizeof(parent_dir), "%s/..", current_dir);
-                char resolved[PATH_MAX];
-                if (realpath(parent_dir, resolved) != NULL) {
-                    copy_str(current_dir, sizeof(current_dir), resolved);
-                    if (items) free(items);
-                    items = NULL;
-                    count = 0;
-                    load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-                    selected_pos = 0;
-                    scroll_offset = 0;
-                }
-            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
-                if (count > 0 && selected_pos < (int)count) {
-                    FileDialogItem *sel = &items[selected_pos];
-                    if (sel->is_dir) {
-                        char next_dir[PATH_MAX + 512];
-                        if (strcmp(sel->name, "..") == 0) {
-                            snprintf(next_dir, sizeof(next_dir), "%s/..", current_dir);
-                        } else if (strcmp(current_dir, "/") == 0) {
-                            snprintf(next_dir, sizeof(next_dir), "/%s", sel->name);
-                        } else {
-                            snprintf(next_dir, sizeof(next_dir), "%s/%s", current_dir, sel->name);
-                        }
-                        char resolved[PATH_MAX];
-                        if (realpath(next_dir, resolved) != NULL) {
-                            copy_str(current_dir, sizeof(current_dir), resolved);
-                            if (items) free(items);
-                            items = NULL;
-                            count = 0;
-                            load_dir_items(current_dir, filter_active, ext_filter, &items, &count);
-                            selected_pos = 0;
-                            scroll_offset = 0;
-                        }
-                    } else if (is_save_mode) {
-                        /* Vid spara: kopiera vald fil till filnamnsfältet och fokusera det */
-                        copy_str(fname_buf, sizeof(fname_buf), sel->name);
-                        fname_cursor_pos = utf8_display_width(fname_buf);
-                        focus_area = 0;
-                    } else {
-                        /* Vid öppna/importera: välj filen direkt */
-                        if (strcmp(current_dir, "/") == 0) {
-                            snprintf(selected_path, max_path_len, "/%s", sel->name);
-                        } else {
-                            snprintf(selected_path, max_path_len, "%s/%s", current_dir, sel->name);
-                        }
-                        if (items) free(items);
-                        return 1;
-                    }
-                }
-            }
-        }
-    }
-}
-
 /* Bygg standardfilnamn för export:
  * Egen stationssignal_datum_tid där datum är YYMMDD och tid är HHMMSS.
  * Om endast nya loggrader exporteras läggs _nya till på slutet.
  * Filnamnet avslutas alltid med .adi. */
-static void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
+void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
     if (out == NULL || out_sz == 0) return;
 
     char clean_call[32];
@@ -3629,501 +1922,21 @@ static void build_default_export_filename(char *out, size_t out_sz, const Statio
     }
 }
 
-/* F12: Inställningssida med ':'-linjerade fält, färgscheman, SM Callbook, Auto RST och Töm loggbok */
-static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
-                               QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
-                               char *status_msg, size_t status_sz) {
-    StationSettings edit = *st;
-    int active = 0;
-    int cursor_pos = utf8_display_width(edit.call);
 
-    while (1) {
-        int cur_y = 3, cur_x = 24;
-        erase();
 
-        if (COLS < MIN_COLS || LINES < MIN_LINES) {
-            mvprintw(LINES / 2, 2, "Minsta fönsterstorlek är %dx%d.", MIN_COLS, MIN_LINES);
-            refresh();
-        } else {
-            draw_top_bar(&edit);
-            draw_box_with_title(1, 0, LINES - 2, COLS, "Inställningar – Min Station (F12)", 1);
 
-            int colon_col = 22;
-            int fw = COLS - colon_col - 5;
-            if (fw > 32) fw = 32;
-            if (fw < 12) fw = 12;
 
-            draw_field_aligned(3,  colon_col, "Signal",        edit.call,       fw, active == 0, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(4,  colon_col, "Namn",          edit.name,       fw, active == 1, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(5,  colon_col, "QTH",           edit.qth,        fw, active == 2, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(6,  colon_col, "Lokator",       edit.gridsquare, fw, active == 3, cursor_pos, &cur_y, &cur_x);
-            draw_field_aligned(7,  colon_col, "Lokal tidszon", edit.timezone,   fw, active == 4, cursor_pos, &cur_y, &cur_x);
 
-            int r_theme  = 8;
-            int r_smcb   = 9;
-            int r_rst    = 10;
-            int r_flt    = 11;
-            int r_import = 12;
-            int r_export = 13;
-            int r_clear  = 14;
 
-            /* Fält 5: Färgschema */
-            const char *lbl_theme = "Färgschema";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_theme, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            int fcol = colon_col + 2;
-            if (active == 5) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_theme, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_theme;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_theme, fcol, "< %-28s >", THEME_NAMES[edit.theme]);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
 
-            /* Fält 6: SM Callbook toggle (Default Avstängd) */
-            const char *lbl_smcb = "SM Callbook (ssa.se)";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_smcb, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            const char *smcb_txt = edit.smcb_enabled ? "På (Slå upp SA-SM, 7S, 8S)" : "Av";
-            if (active == 6) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_smcb;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
 
-            /* Fält 7: Automatisk RST 59/59 vid nytt QSO */
-            const char *lbl_rst = "Auto RST 59/59";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_rst, colon_col - utf8_display_width(lbl_rst), "%s:", lbl_rst);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            const char *rst_txt = edit.auto_rst_59 ? "På (Fyll i 59 / 59 vid nytt QSO)" : "Av";
-            if (active == 7) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_rst, fcol, "< %-28s >", rst_txt);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_rst;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_rst, fcol, "< %-28s >", rst_txt);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
 
-            /* Fält 8: Filtrera loggrader efter anropssignal */
-            const char *lbl_flt = "Filtrera loggrader";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_flt, colon_col - utf8_display_width(lbl_flt), "%s:", lbl_flt);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            const char *flt_txt = edit.filter_log ? "På" : "Av";
-            if (active == 8) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_flt, fcol, "< %-28s >", flt_txt);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_flt;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_flt, fcol, "< %-28s >", flt_txt);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
 
-            /* Fält 9: Importera ADIF från fil (F5) */
-            const char *lbl_import = "Importera ADIF (F5)";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_import, colon_col - utf8_display_width(lbl_import), "%s:", lbl_import);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-            if (active == 9) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_import;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
-
-            /* Fält 10: Exportera ADIF till fil (F6) */
-            int marked_count = 0;
-            if (log_list != NULL) {
-                for (size_t i = 0; i < log_list->count; ++i) {
-                    if (log_list->items[i].marked) marked_count++;
-                }
-            }
-
-            const char *lbl_export = "Exportera ADIF (F6)";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_export, colon_col - utf8_display_width(lbl_export), "%s:", lbl_export);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-            char export_hint[128];
-            if (marked_count > 0) {
-                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera %d markerade QSO ]", marked_count);
-            } else if (log_list != NULL && log_list->count > 0) {
-                int new_count = 0;
-                for (size_t i = 0; i < log_list->count; ++i) {
-                    if (log_list->items[i].handled == 0) new_count++;
-                }
-                if (new_count > 0 && new_count < (int)log_list->count) {
-                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera (%d nya / %zu totalt) ]", new_count, log_list->count);
-                } else if (new_count > 0) {
-                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu nya QSO) ]", log_list->count);
-                } else {
-                    snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (%zu QSO) ]", log_list->count);
-                }
-            } else {
-                snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (0 QSO) ]");
-            }
-
-            if (active == 10) {
-                attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                mvprintw(r_export, fcol, "%-s", export_hint);
-                attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-                cur_y = r_export;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_export, fcol, "%-s", export_hint);
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
-
-            /* Fält 11: Töm loggbok och börja på nytt */
-            const char *lbl_clear = "Töm loggbok";
-            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-            mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
-            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-            if (active == 11) {
-                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-                mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
-                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-                cur_y = r_clear;
-                cur_x = fcol + 2;
-            } else {
-                attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-                mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
-                attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-            }
-
-            if (status_msg != NULL && status_msg[0] != '\0' && LINES >= 19) {
-                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-                mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
-                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-            }
-
-            if (LINES >= 17) {
-                mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. F5=Importera, F6=Exportera. Enter=Spara.");
-            }
-
-            draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
-            move(cur_y, cur_x);
-            refresh();
-        }
-
-        int ch = getch();
-        if (ch == ERR) {
-            continue;
-        } else if (ch == 27 || ch == KEY_F(12)) {
-            apply_color_theme(st->theme);
-            copy_str(status_msg, status_sz, "Inställningar stängda.");
-            return;
-        } else if (ch == KEY_F(5) || (active == 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
-            char chosen_path[PATH_MAX] = {0};
-            int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
-            if (chosen && chosen_path[0] != '\0') {
-                int added = import_qsos_from_adif(chosen_path, log_list, &edit);
-                if (added < 0) {
-                    snprintf(status_msg, status_sz, "Kunde inte läsa filen: %s", get_path_basename(chosen_path));
-                } else if (added == 0) {
-                    snprintf(status_msg, status_sz, "Import klar: Inga nya QSO hittades i %s.", get_path_basename(chosen_path));
-                } else {
-                    snprintf(status_msg, status_sz, "Importerade %d QSO från %s!", added, get_path_basename(chosen_path));
-                    if (selected_log_pos && log_list && log_list->count > 0) {
-                        *selected_log_pos = (int)log_list->count - 1;
-                    }
-                }
-            } else {
-                copy_str(status_msg, status_sz, "ADIF-import avbröts.");
-            }
-            apply_color_theme(edit.theme);
-            continue;
-        } else if (ch == KEY_F(6) || (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
-            if (log_list == NULL || log_list->count == 0) {
-                copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
-                apply_color_theme(edit.theme);
-                continue;
-            }
-
-            int m_cnt = 0;
-            int m_new_cnt = 0;
-            int new_cnt = 0;
-            int handled_cnt = 0;
-            for (size_t i = 0; i < log_list->count; ++i) {
-                if (log_list->items[i].marked) {
-                    m_cnt++;
-                    if (log_list->items[i].handled == 0) m_new_cnt++;
-                }
-                if (log_list->items[i].handled == 0) new_cnt++;
-                else handled_cnt++;
-            }
-
-            int exp_mode = EXPORT_MODE_ALL;
-            int only_new = 0;
-            char diag_title[128];
-
-            if (m_cnt > 0) {
-                exp_mode = EXPORT_MODE_MARKED;
-                only_new = (m_new_cnt == m_cnt);
-                snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till ADIF", m_cnt);
-            } else if (new_cnt > 0 && handled_cnt > 0) {
-                /* Både nya och hanterade finns i loggen – låt användaren välja */
-                int choice = 0; /* 0 = avbröt, 1 = endast nya, 2 = alla */
-                while (1) {
-                    int box_h = 8, box_w = 48;
-                    int by = (LINES - box_h) / 2;
-                    int bx = (COLS - box_w) / 2;
-                    attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
-                    for (int r = 0; r < box_h; ++r) {
-                        mvhline(by + r, bx, ' ', box_w);
-                    }
-                    draw_box_with_title(by, bx, box_h, box_w, "Exportera till ADIF", 1);
-                    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
-                    mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
-                    mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
-                    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    refresh();
-
-                    int k = getch();
-                    if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
-                        choice = 1;
-                        break;
-                    } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
-                        choice = 2;
-                        break;
-                    } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
-                        choice = 0;
-                        break;
-                    }
-                }
-                if (choice == 0) {
-                    copy_str(status_msg, status_sz, "ADIF-export avbröts.");
-                    apply_color_theme(edit.theme);
-                    continue;
-                }
-                if (choice == 1) {
-                    exp_mode = EXPORT_MODE_ONLY_NEW;
-                    only_new = 1;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till ADIF", new_cnt);
-                } else {
-                    exp_mode = EXPORT_MODE_ALL;
-                    only_new = 0;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
-                }
-            } else if (new_cnt > 0) {
-                /* Alla QSO i loggen är nya */
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 1;
-                snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till ADIF", log_list->count);
-            } else {
-                /* Alla QSO i loggen är redan hanterade */
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 0;
-                snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
-            }
-
-            char def_name[PATH_MAX];
-            build_default_export_filename(def_name, sizeof(def_name), &edit, only_new);
-
-            char chosen_path[PATH_MAX] = {0};
-            int chosen = run_file_dialog(diag_title, ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 1, def_name);
-            if (chosen && chosen_path[0] != '\0') {
-                int exported = export_qsos_adif(chosen_path, log_list, &edit, exp_mode);
-                if (exported < 0) {
-                    snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
-                } else {
-                    if (editing_index >= 0 && (size_t)editing_index < log_list->count) {
-                        qso->handled = log_list->items[editing_index].handled;
-                    }
-                    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
-                        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(chosen_path));
-                    } else if (exp_mode == EXPORT_MODE_MARKED) {
-                        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(chosen_path));
-                    } else {
-                        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(chosen_path));
-                    }
-                }
-            } else {
-                copy_str(status_msg, status_sz, "ADIF-export avbröts.");
-            }
-            apply_color_theme(edit.theme);
-            continue;
-        } else if (active == 11 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
-            /* Bekräftelseruta för att tömma loggboken */
-            int confirm = 0;
-            while (1) {
-                int box_h = 7, box_w = 46;
-                int by = (LINES - box_h) / 2;
-                int bx = (COLS - box_w) / 2;
-                attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-                for (int r = 0; r < box_h; ++r) {
-                    mvhline(by + r, bx, ' ', box_w);
-                }
-                mvprintw(by + 1, bx + 2, "VARNING: Tömma hela loggboken?");
-                mvprintw(by + 2, bx + 2, "Alla QSO kommer att raderas permanent!");
-                attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-
-                attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-                mvprintw(by + 4, bx + 4, "[J] Ja, radera allt    [N/Esc] Avbryt");
-                attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-                refresh();
-
-                int cch = getch();
-                if (cch == 'j' || cch == 'J') {
-                    confirm = 1;
-                    break;
-                } else if (cch == 'n' || cch == 'N' || cch == 27 || cch == KEY_F(12)) {
-                    confirm = 0;
-                    break;
-                }
-            }
-            if (confirm) {
-                clear_log_book(log_list, st);
-                if (selected_log_pos) *selected_log_pos = 0;
-                if (log_scroll_offset) *log_scroll_offset = 0;
-                apply_color_theme(st->theme);
-                copy_str(status_msg, status_sz, "Loggboken har tömts!");
-                return;
-            } else {
-                apply_color_theme(st->theme);
-            }
-        } else if (ch == KEY_F(2) || ch == 19 || (active < 9 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
-            to_upper_str(edit.call);
-            to_upper_str(edit.gridsquare);
-            *st = edit;
-            apply_color_theme(st->theme);
-            save_station_settings(CONFIG_FILE, st);
-            if (qso != NULL && editing_index < 0 && st->auto_rst_59) {
-                if (qso->rst_sent[0] == '\0') copy_str(qso->rst_sent, sizeof(qso->rst_sent), "59");
-                if (qso->rst_rcvd[0] == '\0') copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), "59");
-            }
-            copy_str(status_msg, status_sz, "Stationsinställningar sparade!");
-            return;
-        } else if (ch == '\t' || ch == KEY_DOWN) {
-            active = (active + 1) % STATION_FIELD_COUNT;
-            char *p = (active == 0) ? edit.call : (active == 1) ? edit.name :
-                      (active == 2) ? edit.qth  : (active == 3) ? edit.gridsquare :
-                      (active == 4) ? edit.timezone : NULL;
-            cursor_pos = p ? utf8_display_width(p) : 0;
-        } else if (ch == KEY_BTAB || ch == KEY_UP) {
-            active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
-            char *p = (active == 0) ? edit.call : (active == 1) ? edit.name :
-                      (active == 2) ? edit.qth  : (active == 3) ? edit.gridsquare :
-                      (active == 4) ? edit.timezone : NULL;
-            cursor_pos = p ? utf8_display_width(p) : 0;
-        } else if (active == 5 && ch == KEY_LEFT) {
-            edit.theme = (edit.theme + THEME_COUNT - 1) % THEME_COUNT;
-            apply_color_theme(edit.theme);
-        } else if (active == 5 && (ch == KEY_RIGHT || ch == ' ')) {
-            edit.theme = (edit.theme + 1) % THEME_COUNT;
-            apply_color_theme(edit.theme);
-        } else if (active == 6 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.smcb_enabled = !edit.smcb_enabled;
-        } else if (active == 7 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.auto_rst_59 = !edit.auto_rst_59;
-        } else if (active == 8 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.filter_log = !edit.filter_log;
-        } else if (active < 5 && ch == KEY_LEFT) {
-            if (cursor_pos > 0) cursor_pos--;
-        } else if (active < 5 && ch == KEY_RIGHT) {
-            char *p = (active == 0) ? edit.call : (active == 1) ? edit.name :
-                      (active == 2) ? edit.qth  : (active == 3) ? edit.gridsquare : edit.timezone;
-            int max_c = utf8_display_width(p);
-            if (cursor_pos < max_c) cursor_pos++;
-        } else if (active < 5 && (ch == KEY_BACKSPACE || ch == 127 || ch == '\b')) {
-            char *p = (active == 0) ? edit.call : (active == 1) ? edit.name :
-                      (active == 2) ? edit.qth  : (active == 3) ? edit.gridsquare : edit.timezone;
-            utf8_backspace_at(p, &cursor_pos);
-        } else if (active < 5 && ch == KEY_DC) {
-            char *p = (active == 0) ? edit.call : (active == 1) ? edit.name :
-                      (active == 2) ? edit.qth  : (active == 3) ? edit.gridsquare : edit.timezone;
-            utf8_delete_at(p, cursor_pos);
-        } else if (active < 5 && ch >= 32 && ch != 127 && ch < KEY_MIN) {
-            char *ptr = NULL;
-            size_t cap = 0;
-            switch (active) {
-                case 0: ptr = edit.call;       cap = sizeof(edit.call); break;
-                case 1: ptr = edit.name;       cap = sizeof(edit.name); break;
-                case 2: ptr = edit.qth;        cap = sizeof(edit.qth); break;
-                case 3: ptr = edit.gridsquare; cap = sizeof(edit.gridsquare); break;
-                case 4: ptr = edit.timezone;   cap = sizeof(edit.timezone); break;
-            }
-            if (ptr) {
-                char c = (char)ch;
-                if ((active == 0 || active == 3) && (unsigned char)c < 128) {
-                    c = (char)toupper((unsigned char)c);
-                }
-                utf8_insert_byte_at(ptr, cap, &cursor_pos, c);
-            }
-        }
-    }
-}
-
-/* F3: Sök/filtrera i Loggrader (Signal, Namn, QTH, Lokator) */
-static void run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz) {
-    int cpos = utf8_display_width(search_filter);
-    while (1) {
-        int cur_y = LINES - 1, cur_x = 35;
-        draw_top_bar(st);
-        mvhline(LINES - 1, 0, ' ', COLS);
-        const char *prompt_lbl = (COLS >= 80) ? "Sök (Signal/Namn/QTH/Lokator)" : "Sök";
-        int colon_x = (COLS >= 80) ? 33 : 6;
-        draw_field_aligned(LINES - 1, colon_x, prompt_lbl,
-                           search_filter, 18, 1, cpos, &cur_y, &cur_x);
-        if (COLS >= 75) {
-            attron(COLOR_PAIR(CP_FKEY_LABEL));
-            mvprintw(LINES - 1, colon_x + 22, "[Enter=Klar, Tom=Alla]");
-            attroff(COLOR_PAIR(CP_FKEY_LABEL));
-        }
-        move(cur_y, cur_x);
-        refresh();
-
-        int ch = getch();
-        if (ch == ERR) continue;
-        if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == 27 || ch == KEY_F(3)) {
-            break;
-        } else if (ch == KEY_LEFT) {
-            if (cpos > 0) cpos--;
-        } else if (ch == KEY_RIGHT) {
-            int max_c = utf8_display_width(search_filter);
-            if (cpos < max_c) cpos++;
-        } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
-            utf8_backspace_at(search_filter, &cpos);
-        } else if (ch == KEY_DC) {
-            utf8_delete_at(search_filter, cpos);
-        } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
-            utf8_insert_byte_at(search_filter, filter_sz, &cpos, (char)ch);
-        }
-    }
-}
 
 /* Sök efter en signal i loggraderna (nyaste först).
  * Om signalen finns och har namn, QTH eller lokator, kopieras dessa och 1 returneras.
@@ -4441,28 +2254,7 @@ int main(void) {
     QSOList log_list = {NULL, 0, 0};
     load_qsos_from_adif(LOG_FILE, &log_list);
 
-    initscr();
-    set_escdelay(25);
-    cbreak();
-    noecho();
-    keypad(stdscr, TRUE);
-    define_key("\033[1;5H", KEY_CTRL_HOME);
-    define_key("\033[1;5F", KEY_CTRL_END);
-    define_key("\033[1;6H", KEY_CTRL_HOME);
-    define_key("\033[1;6F", KEY_CTRL_END);
-    define_key("\033[7^",   KEY_CTRL_HOME);
-    define_key("\033[8^",   KEY_CTRL_END);
-    define_key("\033[7;5~", KEY_CTRL_HOME);
-    define_key("\033[8;5~", KEY_CTRL_END);
-    define_key("\033[H",    KEY_HOME);
-    define_key("\033[F",    KEY_END);
-    define_key("\033OH",    KEY_HOME);
-    define_key("\033OF",    KEY_END);
-    define_key("\033[1~",   KEY_HOME);
-    define_key("\033[4~",   KEY_END);
-    define_key("\033[5~",   KEY_PPAGE);
-    define_key("\033[6~",   KEY_NPAGE);
-    timeout(250);
+    tui_init();
     apply_color_theme(station.theme);
 
     QSO current_qso;
@@ -5016,7 +2808,7 @@ int main(void) {
     persist_qso_radio_settings(&current_qso, &station);
 
     g_smcb_abort = 1;
-    endwin();
+    tui_cleanup();
     free(log_list.items);
     free_dxcc_db();
     curl_global_cleanup();

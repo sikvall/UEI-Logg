@@ -1,1 +1,5 @@
 station.conf
+ueilog
+qsolog
+*.o
+*.adi
