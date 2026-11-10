@@ -5,8 +5,8 @@ TARGET = qsolog
 
 all: $(TARGET)
 
-$(TARGET): qsolog.c
-	$(CC) $(CFLAGS) -o $(TARGET) qsolog.c $(LDFLAGS)
+$(TARGET): main.c
+	$(CC) $(CFLAGS) -o $(TARGET) main.c $(LDFLAGS)
 
 clean:
 	rm -f $(TARGET)
