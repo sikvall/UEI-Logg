@@ -9,6 +9,7 @@
 #include <strings.h>
 #include <time.h>
 #include <math.h>
+#include <pthread.h>
 
 #define LOG_FILE "qsolog.adi"
 #define CONFIG_FILE "station.conf"
@@ -550,6 +551,7 @@ static int fetch_sm_callbook_once(const char *query_call,
 
     CurlBuf buf = {NULL, 0};
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_REFERER, "https://www.ssa.se/ssa/smcb/");
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) qsolog/1.0");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -701,6 +703,143 @@ static int lookup_sm_callbook(const char *call_in,
     return 0;
 }
 
+/* Cache för SM Callbook (signaler -> namn, QTH) */
+typedef struct {
+    char call[32];
+    char name[64];
+    char qth[64];
+    int found;
+} SmcbCacheEntry;
+
+static SmcbCacheEntry g_smcb_cache[128];
+static size_t g_smcb_cache_count = 0;
+static pthread_mutex_t g_smcb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Delat tillstånd för asynkront SM Callbook-uppslag i bakgrunden */
+typedef struct {
+    int active;             /* 1 om en bakgrundstråd körs */
+    int req_id;             /* Inkrementellt ID för aktuell förfrågan */
+    char req_call[32];      /* Signalen som efterfrågas */
+
+    int has_result;         /* 1 om tråden är klar och resultatet inte hämtats */
+    int res_id;             /* req_id för det färdiga resultatet */
+    int res_found;
+    char res_call[32];
+    char res_name[64];
+    char res_qth[64];
+} SmcbAsyncState;
+
+static SmcbAsyncState g_smcb_async;
+static volatile int g_smcb_abort = 0;
+
+static int lookup_smcb_cache(const char *call_in, char *name_out, size_t name_sz,
+                             char *qth_out, size_t qth_sz, int *was_cached) {
+    if (was_cached) *was_cached = 0;
+    pthread_mutex_lock(&g_smcb_mutex);
+    for (size_t i = 0; i < g_smcb_cache_count; ++i) {
+        if (strcasecmp(g_smcb_cache[i].call, call_in) == 0) {
+            if (was_cached) *was_cached = 1;
+            int found = g_smcb_cache[i].found;
+            if (found) {
+                if (name_out && name_sz > 0) copy_str(name_out, name_sz, g_smcb_cache[i].name);
+                if (qth_out && qth_sz > 0) copy_str(qth_out, qth_sz, g_smcb_cache[i].qth);
+            }
+            pthread_mutex_unlock(&g_smcb_mutex);
+            return found;
+        }
+    }
+    pthread_mutex_unlock(&g_smcb_mutex);
+    return 0;
+}
+
+static void store_smcb_cache(const char *call_in, const char *name, const char *qth, int found) {
+    pthread_mutex_lock(&g_smcb_mutex);
+    for (size_t i = 0; i < g_smcb_cache_count; ++i) {
+        if (strcasecmp(g_smcb_cache[i].call, call_in) == 0) {
+            g_smcb_cache[i].found = found;
+            copy_str(g_smcb_cache[i].name, sizeof(g_smcb_cache[i].name), name ? name : "");
+            copy_str(g_smcb_cache[i].qth, sizeof(g_smcb_cache[i].qth), qth ? qth : "");
+            pthread_mutex_unlock(&g_smcb_mutex);
+            return;
+        }
+    }
+    if (g_smcb_cache_count < sizeof(g_smcb_cache) / sizeof(g_smcb_cache[0])) {
+        copy_str(g_smcb_cache[g_smcb_cache_count].call, sizeof(g_smcb_cache[0].call), call_in);
+        copy_str(g_smcb_cache[g_smcb_cache_count].name, sizeof(g_smcb_cache[0].name), name ? name : "");
+        copy_str(g_smcb_cache[g_smcb_cache_count].qth, sizeof(g_smcb_cache[0].qth), qth ? qth : "");
+        g_smcb_cache[g_smcb_cache_count].found = found;
+        g_smcb_cache_count++;
+    }
+    pthread_mutex_unlock(&g_smcb_mutex);
+}
+
+typedef struct {
+    char call[32];
+    int req_id;
+} SmcbThreadArg;
+
+static void *smcb_worker_thread(void *arg) {
+    SmcbThreadArg *targ = (SmcbThreadArg *)arg;
+    char query_call[32];
+    copy_str(query_call, sizeof(query_call), targ->call);
+    int req_id = targ->req_id;
+    free(targ);
+
+    char name[64] = "", qth[64] = "";
+    int found = lookup_sm_callbook(query_call, name, sizeof(name), qth, sizeof(qth));
+
+    if (g_smcb_abort) return NULL;
+
+    store_smcb_cache(query_call, name, qth, found);
+
+    pthread_mutex_lock(&g_smcb_mutex);
+    if (!g_smcb_abort && req_id == g_smcb_async.req_id) {
+        g_smcb_async.has_result = 1;
+        g_smcb_async.res_id = req_id;
+        g_smcb_async.res_found = found;
+        copy_str(g_smcb_async.res_call, sizeof(g_smcb_async.res_call), query_call);
+        copy_str(g_smcb_async.res_name, sizeof(g_smcb_async.res_name), name);
+        copy_str(g_smcb_async.res_qth, sizeof(g_smcb_async.res_qth), qth);
+    }
+    g_smcb_async.active = 0;
+    pthread_mutex_unlock(&g_smcb_mutex);
+
+    return NULL;
+}
+
+static void start_smcb_background_lookup(const char *base_call) {
+    if (base_call == NULL || base_call[0] == '\0') return;
+
+    pthread_mutex_lock(&g_smcb_mutex);
+    if (g_smcb_async.active && strcasecmp(g_smcb_async.req_call, base_call) == 0) {
+        pthread_mutex_unlock(&g_smcb_mutex);
+        return;
+    }
+
+    g_smcb_async.req_id++;
+    copy_str(g_smcb_async.req_call, sizeof(g_smcb_async.req_call), base_call);
+    g_smcb_async.active = 1;
+    g_smcb_async.has_result = 0;
+
+    SmcbThreadArg *targ = malloc(sizeof(SmcbThreadArg));
+    if (!targ) {
+        g_smcb_async.active = 0;
+        pthread_mutex_unlock(&g_smcb_mutex);
+        return;
+    }
+    copy_str(targ->call, sizeof(targ->call), base_call);
+    targ->req_id = g_smcb_async.req_id;
+
+    pthread_t tid;
+    if (pthread_create(&tid, NULL, smcb_worker_thread, targ) == 0) {
+        pthread_detach(tid);
+    } else {
+        free(targ);
+        g_smcb_async.active = 0;
+    }
+    pthread_mutex_unlock(&g_smcb_mutex);
+}
+
 /* Kontrollera om en sträng är en giltig och komplett Maidenhead-lokator (4 eller 6 tecken).
  * Returnerar 4 eller 6 vid giltig lokator, annars 0. */
 static int is_valid_locator(const char *loc) {
@@ -840,6 +979,7 @@ static int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out) {
 
     CurlBuf buf = {NULL, 0};
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "qsolog-uei/1.0 (amateur radio log; contact: sm5uei@avitec.se)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3L);
@@ -2676,26 +2816,28 @@ static int find_call_in_log(const QSOList *log_list, const char *call_in,
 
 /* Utför uppslagning av Namn och QTH:
  * 1. Kontrollerar först om signalen redan finns i befintliga loggrader med namn/QTH/lokator.
- * 2. Om inte, och om SMCB är påslaget och signalen är svensk, görs SM Callbook-uppslag online. */
+ * 2. Om inte, kontrolleras SMCB-cachen i minnet.
+ * 3. Om signalen saknas och SMCB är påslaget, startas en asynkron bakgrundssökning
+ *    så att redigeringen inte fryser/stoppar. */
 static void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
                                       const StationSettings *st,
                                       char *last_smcb_call, size_t last_smcb_sz,
                                       char *status_msg, size_t status_sz) {
     if (qso->call[0] == '\0') return;
 
-    /* 1. Sök i tidigare loggade rader */
+    /* 1. Sök i tidigare loggade rader (direkt i minnet) */
     char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
     if (find_call_in_log(log_list, qso->call, log_name, sizeof(log_name),
                          log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
-        if (log_name[0] != '\0') copy_str(qso->name, sizeof(qso->name), log_name);
-        if (log_qth[0] != '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
+        if (log_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), log_name);
+        if (log_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
         if (log_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), log_grid);
         snprintf(status_msg, status_sz, "Från logg: %s%s%s",
                  log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth);
         return;
     }
 
-    /* 2. Slå upp online i SM Callbook om aktiverat och svensk signal */
+    /* 2. Slå upp i SM Callbook om aktiverat och svensk signal */
     if (!st->smcb_enabled) return;
 
     char base_call[32];
@@ -2703,15 +2845,84 @@ static void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
     if (strcasecmp(base_call, last_smcb_call) == 0) return;
 
     copy_str(last_smcb_call, last_smcb_sz, base_call);
-    char found_name[64] = "", found_qth[64] = "";
-    if (lookup_sm_callbook(base_call,
-                           found_name, sizeof(found_name),
-                           found_qth, sizeof(found_qth))) {
-        if (found_name[0] != '\0') copy_str(qso->name, sizeof(qso->name), found_name);
-        if (found_qth[0] != '\0')  copy_str(qso->qth, sizeof(qso->qth), found_qth);
-        snprintf(status_msg, status_sz, "SMCB: %s, %s", found_name, found_qth);
-    } else {
+
+    /* Kontrollera om signalen redan finns i SMCB-cache */
+    int was_cached = 0;
+    char cached_name[64] = "", cached_qth[64] = "";
+    if (lookup_smcb_cache(base_call, cached_name, sizeof(cached_name), cached_qth, sizeof(cached_qth), &was_cached)) {
+        if (cached_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), cached_name);
+        if (cached_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), cached_qth);
+        snprintf(status_msg, status_sz, "SMCB: %s, %s", cached_name, cached_qth);
+        return;
+    }
+    if (was_cached) {
         snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", base_call);
+        return;
+    }
+
+    /* Starta asynkron sökning i bakgrundstråd */
+    start_smcb_background_lookup(base_call);
+    snprintf(status_msg, status_sz, "SMCB: Slår upp %s...", base_call);
+}
+
+/* Kontrollera om bakgrundssökningen i SM Callbook har blivit klar och applicera resultatet */
+static void poll_smcb_background_result(QSO *qso, const StationSettings *st,
+                                        int active_field, int *cursor_pos,
+                                        char *status_msg, size_t status_sz,
+                                        char *current_qrb, size_t qrb_sz) {
+    int has_result = 0;
+    int res_found = 0;
+    char res_call[32] = "", res_name[64] = "", res_qth[64] = "";
+
+    pthread_mutex_lock(&g_smcb_mutex);
+    if (g_smcb_async.has_result) {
+        has_result = 1;
+        res_found = g_smcb_async.res_found;
+        copy_str(res_call, sizeof(res_call), g_smcb_async.res_call);
+        copy_str(res_name, sizeof(res_name), g_smcb_async.res_name);
+        copy_str(res_qth, sizeof(res_qth), g_smcb_async.res_qth);
+        g_smcb_async.has_result = 0;
+    }
+    pthread_mutex_unlock(&g_smcb_mutex);
+
+    if (!has_result) return;
+
+    /* Kontrollera att det aktuella QSO:t fortfarande har samma signal */
+    char base_call[32];
+    if (qso->call[0] == '\0' || !extract_swedish_base_call(qso->call, base_call, sizeof(base_call))) {
+        return;
+    }
+    if (strcasecmp(base_call, res_call) != 0) {
+        return; /* Signalen har ändrats under tiden, ignorera resultatet */
+    }
+
+    if (res_found) {
+        int updated = 0;
+        if (qso->name[0] == '\0' && res_name[0] != '\0') {
+            copy_str(qso->name, sizeof(qso->name), res_name);
+            if (active_field == FLD_NAME && cursor_pos) {
+                *cursor_pos = utf8_display_width(qso->name);
+            }
+            updated = 1;
+        }
+        if (qso->qth[0] == '\0' && res_qth[0] != '\0') {
+            copy_str(qso->qth, sizeof(qso->qth), res_qth);
+            if (active_field == FLD_QTH && cursor_pos) {
+                *cursor_pos = utf8_display_width(qso->qth);
+            }
+            updated = 1;
+            /* Uppdatera QRB om motstationens lokator är tom */
+            if (current_qrb && qrb_sz > 0) {
+                compute_qrb_str(st, qso, current_qrb, qrb_sz);
+            }
+        }
+        if (updated || status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
+            snprintf(status_msg, status_sz, "SMCB: %s, %s", res_name, res_qth);
+        }
+    } else {
+        if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
+            snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", res_call);
+        }
     }
 }
 
@@ -2919,6 +3130,11 @@ int main(void) {
                             current_qso.time_utc, sizeof(current_qso.time_utc),
                             NULL, 0);
         }
+
+        poll_smcb_background_result(&current_qso, &station,
+                                    active_field, &field_cursor_pos,
+                                    status_msg, sizeof(status_msg),
+                                    current_qrb, sizeof(current_qrb));
 
         int cur_y = 2, cur_x = 16;
         const char *active_filter = (search_filter[0] != '\0') ? search_filter :
@@ -3240,6 +3456,7 @@ int main(void) {
                                   current_qrb, sizeof(current_qrb));
     persist_qso_radio_settings(&current_qso, &station);
 
+    g_smcb_abort = 1;
     endwin();
     free(log_list.items);
     free_dxcc_db();
