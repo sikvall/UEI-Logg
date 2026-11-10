@@ -8,6 +8,7 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
+#include <math.h>
 
 #define LOG_FILE "qsolog.adi"
 #define CONFIG_FILE "station.conf"
@@ -111,7 +112,7 @@ typedef struct {
  * 5: DXCC          (Rad 3, Kol 2)
  * 6: Lokator       (Rad 3, Kol 3)
  * 7: Datum         (Rad 4, Kol 1)
- * 8: Tid (UTC)     (Rad 4, Kol 2)
+ * 8: UTC           (Rad 4, Kol 2)
  * 9: Frekvens      (Rad 5, Kol 1)
  * 10: Band         (Rad 5, Kol 2)
  * 11: Trafiksätt   (Rad 5, Kol 3)
@@ -698,6 +699,212 @@ static int lookup_sm_callbook(const char *call_in,
     }
 
     return 0;
+}
+
+/* Kontrollera om en sträng är en giltig och komplett Maidenhead-lokator (4 eller 6 tecken).
+ * Returnerar 4 eller 6 vid giltig lokator, annars 0. */
+static int is_valid_locator(const char *loc) {
+    if (loc == NULL) return 0;
+    while (*loc == ' ' || *loc == '\t') loc++;
+    size_t len = strlen(loc);
+    while (len > 0 && (loc[len - 1] == ' ' || loc[len - 1] == '\t' || loc[len - 1] == '\r' || loc[len - 1] == '\n')) len--;
+    if (len != 4 && len != 6) return 0;
+
+    char l0 = (char)toupper((unsigned char)loc[0]);
+    char l1 = (char)toupper((unsigned char)loc[1]);
+    char l2 = loc[2];
+    char l3 = loc[3];
+
+    if (l0 < 'A' || l0 > 'R' || l1 < 'A' || l1 > 'R') return 0;
+    if (!isdigit((unsigned char)l2) || !isdigit((unsigned char)l3)) return 0;
+
+    if (len == 6) {
+        char l4 = (char)toupper((unsigned char)loc[4]);
+        char l5 = (char)toupper((unsigned char)loc[5]);
+        if (l4 < 'A' || l4 > 'X' || l5 < 'A' || l5 > 'X') return 0;
+    }
+    return (int)len;
+}
+
+/* Konvertera Maidenhead locator (4 eller 6 tecken) till latitud och longitud (grader).
+ * Returnerar 1 om giltig, annars 0. */
+static int locator_to_latlon(const char *loc, double *lat_out, double *lon_out) {
+    int vlen = is_valid_locator(loc);
+    if (!vlen) return 0;
+
+    while (*loc == ' ' || *loc == '\t') loc++;
+    char l0 = (char)toupper((unsigned char)loc[0]);
+    char l1 = (char)toupper((unsigned char)loc[1]);
+    char l2 = loc[2];
+    char l3 = loc[3];
+
+    double lon = (l0 - 'A') * 20.0 - 180.0 + (l2 - '0') * 2.0;
+    double lat = (l1 - 'A') * 10.0 - 90.0 + (l3 - '0') * 1.0;
+
+    if (vlen == 6) {
+        char l4 = (char)toupper((unsigned char)loc[4]);
+        char l5 = (char)toupper((unsigned char)loc[5]);
+        lon += (l4 - 'A') * (5.0 / 60.0) + (2.5 / 60.0);
+        lat += (l5 - 'A') * (2.5 / 60.0) + (1.25 / 60.0);
+    } else {
+        lon += 1.0;
+        lat += 0.5;
+    }
+
+    if (lat_out) *lat_out = lat;
+    if (lon_out) *lon_out = lon;
+    return 1;
+}
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+/* Beräkna storcirkelavstånd (haversine) i kilometer mellan två koordinater */
+static double calculate_distance_km(double lat1, double lon1, double lat2, double lon2) {
+    double rad = M_PI / 180.0;
+    double dlat = (lat2 - lat1) * rad;
+    double dlon = (lon2 - lon1) * rad;
+    double rlat1 = lat1 * rad;
+    double rlat2 = lat2 * rad;
+
+    double a = sin(dlat / 2.0) * sin(dlat / 2.0) +
+               cos(rlat1) * cos(rlat2) * sin(dlon / 2.0) * sin(dlon / 2.0);
+    double c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a));
+    return 6371.0 * c;
+}
+
+/* Cache för QTH -> koordinater så vi inte gör onödiga HTTP-anrop */
+typedef struct {
+    char qth[64];
+    double lat;
+    double lon;
+    int valid;
+} QthCoordCache;
+
+static QthCoordCache g_qth_cache[64];
+static size_t g_qth_cache_count = 0;
+
+static int lookup_qth_cache(const char *qth, double *lat, double *lon) {
+    for (size_t i = 0; i < g_qth_cache_count; ++i) {
+        if (strcasecmp(g_qth_cache[i].qth, qth) == 0) {
+            if (g_qth_cache[i].valid) {
+                *lat = g_qth_cache[i].lat;
+                *lon = g_qth_cache[i].lon;
+                return 1;
+            }
+            return 0;
+        }
+    }
+    return -1; /* Inte i cache */
+}
+
+static void store_qth_cache(const char *qth, double lat, double lon, int valid) {
+    if (g_qth_cache_count < sizeof(g_qth_cache) / sizeof(g_qth_cache[0])) {
+        copy_str(g_qth_cache[g_qth_cache_count].qth, sizeof(g_qth_cache[0].qth), qth);
+        g_qth_cache[g_qth_cache_count].lat = lat;
+        g_qth_cache[g_qth_cache_count].lon = lon;
+        g_qth_cache[g_qth_cache_count].valid = valid;
+        g_qth_cache_count++;
+    }
+}
+
+/* Slå upp koordinater för en ort (QTH) via OpenStreetMap Nominatim */
+static int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out) {
+    if (qth == NULL || qth[0] == '\0') return 0;
+    while (*qth == ' ' || *qth == '\t') qth++;
+    if (qth[0] == '\0') return 0;
+
+    double clat = 0, clon = 0;
+    int cstatus = lookup_qth_cache(qth, &clat, &clon);
+    if (cstatus == 1) {
+        *lat_out = clat;
+        *lon_out = clon;
+        return 1;
+    } else if (cstatus == 0) {
+        return 0;
+    }
+
+    CURL *curl = curl_easy_init();
+    if (!curl) return 0;
+
+    char *escaped = curl_easy_escape(curl, qth, 0);
+    if (!escaped) {
+        curl_easy_cleanup(curl);
+        return 0;
+    }
+
+    char url[256];
+    snprintf(url, sizeof(url), "https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1", escaped);
+    curl_free(escaped);
+
+    CurlBuf buf = {NULL, 0};
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "qsolog-uei/1.0 (amateur radio log; contact: sm5uei@avitec.se)");
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    int found = 0;
+    if (res == CURLE_OK && buf.data != NULL) {
+        char *lat_str = strstr(buf.data, "\"lat\":\"");
+        char *lon_str = strstr(buf.data, "\"lon\":\"");
+        if (lat_str && lon_str) {
+            double lat_val = atof(lat_str + 7);
+            double lon_val = atof(lon_str + 7);
+            if (lat_val != 0.0 || lon_val != 0.0) {
+                *lat_out = lat_val;
+                *lon_out = lon_val;
+                found = 1;
+            }
+        }
+    }
+    free(buf.data);
+
+    store_qth_cache(qth, found ? *lat_out : 0.0, found ? *lon_out : 0.0, found);
+    return found;
+}
+
+/* Beräkna QRB (avstånd i km) mellan min station och motstationen.
+ * 1. Provar lokator mot lokator om motstationen har giltig, komplett lokator (4 eller 6 tecken).
+ * 2. Om lokator är tom och QTH finns, slås koordinater upp via geokodning.
+ * Om lokator är ofullständig eller koordinater saknas, visas "-". */
+static void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    copy_str(out, out_sz, "-");
+
+    if (my_st == NULL || target_qso == NULL) return;
+
+    double my_lat = 0, my_lon = 0;
+    int have_my_pos = 0;
+
+    if (locator_to_latlon(my_st->gridsquare, &my_lat, &my_lon)) {
+        have_my_pos = 1;
+    } else if (my_st->qth[0] != '\0' && geocode_qth_osm(my_st->qth, &my_lat, &my_lon)) {
+        have_my_pos = 1;
+    }
+    if (!have_my_pos) return;
+
+    double tg_lat = 0, tg_lon = 0;
+    int have_tg_pos = 0;
+
+    if (locator_to_latlon(target_qso->gridsquare, &tg_lat, &tg_lon)) {
+        have_tg_pos = 1;
+    } else if (target_qso->gridsquare[0] == '\0' && target_qso->qth[0] != '\0') {
+        if (geocode_qth_osm(target_qso->qth, &tg_lat, &tg_lon)) {
+            have_tg_pos = 1;
+        }
+    }
+    if (!have_tg_pos) return;
+
+    double dist_km = calculate_distance_km(my_lat, my_lon, tg_lat, tg_lon);
+    long rounded_km = (long)(dist_km + 0.5);
+    snprintf(out, out_sz, "%ld km", rounded_km);
 }
 
 /* Tolka och normalisera frekvensinmatning till MHz med 3 decimaler (punkt som decimaltecken). */
@@ -1378,7 +1585,8 @@ static void format_top_bar_clocks(const StationSettings *st, char *out, size_t o
 
 /* Rensa inmatningsformuläret för nytt QSO men behåll Frekvens, Band och Trafiksätt */
 static void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *active_field,
-                           int *field_cursor_pos, int *editing_index, char *last_smcb_call) {
+                           int *field_cursor_pos, int *editing_index, char *last_smcb_call,
+                           char *current_qrb) {
     char saved_freq[32], saved_band[16], saved_mode[16];
     copy_str(saved_freq, sizeof(saved_freq), qso->freq);
     copy_str(saved_band, sizeof(saved_band), qso->band);
@@ -1390,6 +1598,7 @@ static void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen
     *field_cursor_pos = 0;
     *editing_index = -1;
     if (last_smcb_call) last_smcb_call[0] = '\0';
+    if (current_qrb) copy_str(current_qrb, 32, "-");
 
     copy_str(qso->band, sizeof(qso->band), saved_band[0] ? saved_band : "20m");
     copy_str(qso->freq, sizeof(qso->freq), saved_freq[0] ? saved_freq : "14.200");
@@ -1822,6 +2031,7 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
                              int field_cursor_pos, int time_frozen, int editing_index,
                              const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                              const char *search_filter, const char *status_msg,
+                             const char *qrb_str,
                              int *cur_y, int *cur_x) {
     erase();
 
@@ -1869,8 +2079,8 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     /* Kolumnlinjering på ':' i inmatningsrutan:
      * - Kolumn 1 (colon1): Signal:, QTH:, Datum:, Frekv.:, Not:
-     * - Kolumn 2 (colon2): Namn:, DXCC:, Tid (UTC):, Band:
-     * - Kolumn 3 (colon3): RST T:, Lokator:, Mode:
+     * - Kolumn 2 (colon2): Namn:, Lokator:, UTC:, Band:
+     * - Kolumn 3 (colon3): RST T:, DXCC:, Mode:
      * - Kolumn 4 (colon4 på rad 2): RST R: */
     int colon1 = 11;
     int colon2 = (COLS >= 76) ? 36 : 34;
@@ -1899,23 +2109,30 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(2, colon4, "RST R",    qso->rst_rcvd, 4,
                        in_input && active_field == FLD_RSTR, field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 3: QTH: [...] | DXCC: [...] | Lokator: [...] */
+    /* Rad 3: QTH: [...] | Lokator: [...] | DXCC: [...] | QRB: [...] */
     int w_qth = (colon2 - 10) - (colon1 + 2);
     if (w_qth < 6) w_qth = 6;
-    int w_dxcc = (colon3 - 9) - (colon2 + 2);
+    int w_grid = (colon3 - 9) - (colon2 + 2);
+    if (w_grid < 6) w_grid = 6;
+    int w_dxcc = (colon4 - 6) - (colon3 + 2);
     if (w_dxcc < 6) w_dxcc = 6;
 
-    draw_field_aligned(3, colon1, "QTH",      qso->qth,  w_qth,
+    draw_field_aligned(3, colon1, "QTH",      qso->qth,        w_qth,
                        in_input && active_field == FLD_QTH, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, colon2, "DXCC",     qso->dxcc, w_dxcc,
-                       in_input && active_field == FLD_DXCC, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, colon3, "Lokator",  qso->gridsquare, w_col3_end > 8 ? 8 : w_col3_end,
+    draw_field_aligned(3, colon2, "Lokator",  qso->gridsquare, w_grid,
                        in_input && active_field == FLD_GRID, field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(3, colon3, "DXCC",     qso->dxcc,       w_dxcc,
+                       in_input && active_field == FLD_DXCC, field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 4: Datum: [...] | Tid (UTC): [...] */
+    /* QRB under RST R på rad 3 */
+    int dummy_y, dummy_x;
+    draw_field_aligned(3, colon4, "QRB",      (qrb_str && qrb_str[0]) ? qrb_str : "-", 8,
+                       0, 0, &dummy_y, &dummy_x);
+
+    /* Rad 4: Datum: [...] | UTC: [...] */
     draw_field_aligned(4, colon1, "Datum",     qso->date,       11,
                        in_input && active_field == FLD_DATE, field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(4, colon2, "Tid (UTC)", qso->time_utc,   6,
+    draw_field_aligned(4, colon2, "UTC",       qso->time_utc,   6,
                        in_input && active_field == FLD_TIME, field_cursor_pos, cur_y, cur_x);
 
     /* Rad 5: Frekv.: [...] | Band: <20m  > | Mode: [...] */
@@ -2436,18 +2653,20 @@ static void run_search_bar(const StationSettings *st, char *search_filter, size_
 }
 
 /* Sök efter en signal i loggraderna (nyaste först).
- * Om signalen finns och har namn och/eller QTH, kopieras dessa och 1 returneras.
+ * Om signalen finns och har namn, QTH eller lokator, kopieras dessa och 1 returneras.
  * Annars returneras 0. */
 static int find_call_in_log(const QSOList *log_list, const char *call_in,
                             char *name_out, size_t name_sz,
-                            char *qth_out, size_t qth_sz) {
+                            char *qth_out, size_t qth_sz,
+                            char *grid_out, size_t grid_sz) {
     if (log_list == NULL || call_in == NULL || call_in[0] == '\0') return 0;
     for (int i = (int)log_list->count - 1; i >= 0; --i) {
         const QSO *q = &log_list->items[i];
         if (strcasecmp(q->call, call_in) == 0) {
-            if ((q->name[0] != '\0' || q->qth[0] != '\0')) {
+            if (q->name[0] != '\0' || q->qth[0] != '\0' || q->gridsquare[0] != '\0') {
                 if (name_out && name_sz > 0) copy_str(name_out, name_sz, q->name);
                 if (qth_out && qth_sz > 0) copy_str(qth_out, qth_sz, q->qth);
+                if (grid_out && grid_sz > 0) copy_str(grid_out, grid_sz, q->gridsquare);
                 return 1;
             }
         }
@@ -2456,7 +2675,7 @@ static int find_call_in_log(const QSOList *log_list, const char *call_in,
 }
 
 /* Utför uppslagning av Namn och QTH:
- * 1. Kontrollerar först om signalen redan finns i befintliga loggrader med namn/QTH.
+ * 1. Kontrollerar först om signalen redan finns i befintliga loggrader med namn/QTH/lokator.
  * 2. Om inte, och om SMCB är påslaget och signalen är svensk, görs SM Callbook-uppslag online. */
 static void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
                                       const StationSettings *st,
@@ -2465,10 +2684,12 @@ static void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
     if (qso->call[0] == '\0') return;
 
     /* 1. Sök i tidigare loggade rader */
-    char log_name[64] = "", log_qth[64] = "";
-    if (find_call_in_log(log_list, qso->call, log_name, sizeof(log_name), log_qth, sizeof(log_qth))) {
+    char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
+    if (find_call_in_log(log_list, qso->call, log_name, sizeof(log_name),
+                         log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
         if (log_name[0] != '\0') copy_str(qso->name, sizeof(qso->name), log_name);
         if (log_qth[0] != '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
+        if (log_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), log_grid);
         snprintf(status_msg, status_sz, "Från logg: %s%s%s",
                  log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth);
         return;
@@ -2508,9 +2729,18 @@ static void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
                                           const QSOList *log_list,
                                           StationSettings *st,
                                           char *last_smcb_call, size_t last_smcb_sz,
-                                          char *status_msg, size_t status_sz) {
+                                          char *status_msg, size_t status_sz,
+                                          char *current_qrb, size_t qrb_sz) {
     if (leaving_field == FLD_CALL) {
         maybe_lookup_call_details(qso, log_list, st, last_smcb_call, last_smcb_sz, status_msg, status_sz);
+        if (current_qrb && qrb_sz > 0) {
+            compute_qrb_str(st, qso, current_qrb, qrb_sz);
+        }
+    }
+    if (leaving_field == FLD_QTH || leaving_field == FLD_GRID) {
+        if (current_qrb && qrb_sz > 0) {
+            compute_qrb_str(st, qso, current_qrb, qrb_sz);
+        }
     }
     if (leaving_field == FLD_FREQ && qso->freq[0] != '\0') {
         char norm_freq[32];
@@ -2567,7 +2797,8 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
                                  int *field_cursor_pos, int *editing_index,
                                  StationSettings *st, QSOList *log_list,
                                  char *last_smcb_call,
-                                 char *status_msg, size_t status_sz) {
+                                 char *status_msg, size_t status_sz,
+                                 char *current_qrb) {
     if (qso->call[0] == '\0') {
         copy_str(status_msg, status_sz, "Ange anropssignal först!");
         *active_field = FLD_CALL;
@@ -2621,7 +2852,7 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
         log_list->items[idx] = *qso;
         if (save_all_qsos_adif(LOG_FILE, log_list, st) == 0) {
             snprintf(status_msg, status_sz, "Uppdaterade QSO #%d med %s", idx + 1, qso->call);
-            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call);
+            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
         } else {
             copy_str(status_msg, status_sz, "Fel: Kunde inte spara ändring till ADIF!");
         }
@@ -2630,7 +2861,7 @@ static void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
             qso_list_push(log_list, qso);
             snprintf(status_msg, status_sz, "Loggade %s (%s %s)",
                      qso->call, qso->band, qso->mode);
-            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call);
+            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
         } else {
             copy_str(status_msg, status_sz, "Fel: Kunde inte spara till ADIF!");
         }
@@ -2670,6 +2901,9 @@ int main(void) {
     int field_cursor_pos = 0;
     int editing_index = -1;
     int idle_ticks_on_call = 0;
+    int idle_ticks_on_qth = 0;
+    int idle_ticks_on_grid = 0;
+    char current_qrb[32] = "-";
     FocusMode focus_mode = FOCUS_INPUT;
     int selected_log_pos = 0;
     int log_scroll_offset = 0;
@@ -2677,7 +2911,7 @@ int main(void) {
     char last_smcb_call[32] = "";
     char status_msg[128] = "";
 
-    reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call);
+    reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
 
     while (1) {
         if (!time_frozen && editing_index < 0) {
@@ -2692,7 +2926,7 @@ int main(void) {
         draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                          field_cursor_pos, time_frozen, editing_index,
                          &log_list, selected_log_pos, &log_scroll_offset,
-                         active_filter, status_msg, &cur_y, &cur_x);
+                         active_filter, status_msg, current_qrb, &cur_y, &cur_x);
 
         int ch = getch();
         if (ch == ERR) {
@@ -2705,11 +2939,28 @@ int main(void) {
                     maybe_lookup_call_details(&current_qso, &log_list, &station,
                                               last_smcb_call, sizeof(last_smcb_call),
                                               status_msg, sizeof(status_msg));
+                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                }
+            }
+            if (focus_mode == FOCUS_INPUT && active_field == FLD_QTH && current_qso.qth[0] != '\0') {
+                idle_ticks_on_qth++;
+                if (idle_ticks_on_qth == 3) {
+                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                }
+            }
+            if (focus_mode == FOCUS_INPUT && active_field == FLD_GRID && current_qso.gridsquare[0] != '\0') {
+                idle_ticks_on_grid++;
+                if (idle_ticks_on_grid == 3) {
+                    if (is_valid_locator(current_qso.gridsquare)) {
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    }
                 }
             }
             continue;
         }
         idle_ticks_on_call = 0;
+        idle_ticks_on_qth = 0;
+        idle_ticks_on_grid = 0;
 
         /* Globala funktionstangenter, ESC och Ctrl-O */
         if (ch == KEY_F(10) || ch == 17) { /* F10 eller Ctrl+Q: Avsluta */
@@ -2744,7 +2995,7 @@ int main(void) {
             /* F1 eller ESC: Rensa inmatningsfältet och låt UTC-klockan ticka igen */
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
-            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call);
+            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
             preferred_col = 0;
             copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
             continue;
@@ -2753,6 +3004,7 @@ int main(void) {
             run_settings_modal(&station, &current_qso, editing_index, &log_list,
                                &selected_log_pos, &log_scroll_offset,
                                status_msg, sizeof(status_msg));
+            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
             continue;
         } else if (ch == KEY_F(3) || ch == 6) { /* F3 eller Ctrl+F: Sök */
             band_selecting = 0;
@@ -2785,6 +3037,7 @@ int main(void) {
                     preferred_col = 0;
                     sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
                     focus_mode = FOCUS_INPUT;
+                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
                     snprintf(status_msg, sizeof(status_msg),
                              "Redigerar QSO #%d (%s) – Enter sparar ändring.",
                              orig_idx + 1, current_qso.call);
@@ -2824,17 +3077,20 @@ int main(void) {
             band_selecting = 0;
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
-                                          status_msg, sizeof(status_msg));
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
             try_save_current_qso(&current_qso, &time_frozen, &active_field,
                                  &field_cursor_pos, &editing_index,
-                                 &station, &log_list, last_smcb_call, status_msg, sizeof(status_msg));
+                                 &station, &log_list, last_smcb_call, status_msg, sizeof(status_msg),
+                                 current_qrb);
             preferred_col = field_default_col(active_field);
         } else if (ch == '\t' || ch == KEY_RIGHT) {
             /* Tab och Högerpil hoppar till nästa inmatningsfält */
             band_selecting = 0;
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
-                                          status_msg, sizeof(status_msg));
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
             active_field = (active_field + 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
@@ -2843,7 +3099,8 @@ int main(void) {
             band_selecting = 0;
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
-                                          status_msg, sizeof(status_msg));
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
             active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
@@ -2852,7 +3109,8 @@ int main(void) {
             band_selecting = 0;
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
-                                          status_msg, sizeof(status_msg));
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
             if (active_field != FLD_COMM) {
                 preferred_col = field_default_col(active_field);
             }
@@ -2863,7 +3121,8 @@ int main(void) {
             band_selecting = 0;
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
-                                          status_msg, sizeof(status_msg));
+                                          status_msg, sizeof(status_msg),
+                                          current_qrb, sizeof(current_qrb));
             if (active_field != FLD_COMM) {
                 preferred_col = field_default_col(active_field);
             }
@@ -2881,6 +3140,28 @@ int main(void) {
                 if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
                     resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
                 }
+                if (active_field == FLD_GRID) {
+                    if (current_qso.gridsquare[0] == '\0') {
+                        if (current_qso.qth[0] != '\0') {
+                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        } else {
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                        }
+                    } else if (is_valid_locator(current_qso.gridsquare) == 6) {
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    } else {
+                        copy_str(current_qrb, sizeof(current_qrb), "-");
+                    }
+                }
+                if (active_field == FLD_QTH) {
+                    if (current_qso.qth[0] == '\0') {
+                        if (is_valid_locator(current_qso.gridsquare)) {
+                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        } else {
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                        }
+                    }
+                }
             }
         } else if (active_field != FLD_BAND && ch == KEY_DC) {
             size_t max_len = 0;
@@ -2893,6 +3174,28 @@ int main(void) {
                 }
                 if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
                     resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
+                }
+                if (active_field == FLD_GRID) {
+                    if (current_qso.gridsquare[0] == '\0') {
+                        if (current_qso.qth[0] != '\0') {
+                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        } else {
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                        }
+                    } else if (is_valid_locator(current_qso.gridsquare) == 6) {
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    } else {
+                        copy_str(current_qrb, sizeof(current_qrb), "-");
+                    }
+                }
+                if (active_field == FLD_QTH) {
+                    if (current_qso.qth[0] == '\0') {
+                        if (is_valid_locator(current_qso.gridsquare)) {
+                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        } else {
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                        }
+                    }
                 }
             }
         } else if (active_field != FLD_BAND && ch >= 32 && ch != 127 && ch < KEY_MIN) {
@@ -2922,13 +3225,19 @@ int main(void) {
                 if (active_field == FLD_FREQ) {
                     resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
                 }
+                if (active_field == FLD_GRID) {
+                    if (is_valid_locator(current_qso.gridsquare) == 6) {
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    }
+                }
             }
         }
     }
 
     apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                   last_smcb_call, sizeof(last_smcb_call),
-                                  status_msg, sizeof(status_msg));
+                                  status_msg, sizeof(status_msg),
+                                  current_qrb, sizeof(current_qrb));
     persist_qso_radio_settings(&current_qso, &station);
 
     endwin();
