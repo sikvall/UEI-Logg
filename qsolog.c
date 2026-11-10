@@ -24,9 +24,15 @@
 #define PATH_MAX 4096
 #endif
 
+#ifndef LOG_FILE
 #define LOG_FILE "qsolog.adi"
+#endif
+#ifndef CONFIG_FILE
 #define CONFIG_FILE "station.conf"
+#endif
+#ifndef DXCC_FILE
 #define DXCC_FILE "dxcc.txt"
+#endif
 
 #define MIN_COLS 60
 #define MIN_LINES 20
@@ -84,7 +90,13 @@ enum {
     CP_FKEY_NUM,
     CP_FKEY_LABEL,
     CP_STATUS_OK,
-    CP_STATUS_WARN
+    CP_STATUS_WARN,
+    CP_FLAG_NEW,
+    CP_FLAG_HANDLED,
+    CP_FLAG_NEW_SEL,
+    CP_FLAG_HANDLED_SEL,
+    CP_FLAG_NEW_MRK,
+    CP_FLAG_HANDLED_MRK
 };
 
 /* Inställningar för egen station */
@@ -119,6 +131,7 @@ typedef struct {
     char dxcc[64];       /* ADIF: COUNTRY    - DXCC */
     char comment[256];   /* ADIF: COMMENT    - Kommentar */
     char distance[16];   /* ADIF: DISTANCE   - Avstånd i km */
+    int  handled;        /* ADIF: APP_QSOLOG_HANDLED - 0 = ny, 1 = hanterad */
     int  marked;         /* 1 om markerad i logglistan */
 } QSO;
 
@@ -1428,6 +1441,9 @@ static void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSetting
     write_adif_field(fp, "COUNTRY", qso->dxcc);
     write_adif_field(fp, "COMMENT", qso->comment);
     write_adif_field(fp, "DISTANCE", qso->distance);
+    if (qso->handled) {
+        write_adif_field(fp, "APP_QSOLOG_HANDLED", "1");
+    }
     if (st != NULL) {
         write_adif_field(fp, "STATION_CALLSIGN", st->call);
         write_adif_field(fp, "OPERATOR", st->call);
@@ -1514,6 +1530,8 @@ static void assign_adif_field(QSO *qso, const char *tag, const char *val) {
         if (qso->comment[0] == '\0') copy_str(qso->comment, sizeof(qso->comment), val);
     } else if (strcasecmp(tag, "DISTANCE") == 0) {
         copy_str(qso->distance, sizeof(qso->distance), val);
+    } else if (strcasecmp(tag, "APP_QSOLOG_HANDLED") == 0) {
+        qso->handled = (atoi(val) != 0 || strcasecmp(val, "Y") == 0 || strcasecmp(val, "YES") == 0 || strcasecmp(val, "TRUE") == 0);
     }
 }
 
@@ -1717,6 +1735,9 @@ static void finalize_imported_qso(QSO *current, const StationSettings *st) {
             snprintf(current->distance, sizeof(current->distance), "%d", d_val);
         }
     }
+
+    /* Rader som importeras markeras alltid som nya (handled = 0) */
+    current->handled = 0;
 }
 
 static int cmp_qso_chronological(const void *a_ptr, const void *b_ptr) {
@@ -1834,8 +1855,9 @@ static int import_qsos_from_adif(const char *filename, QSOList *list, const Stat
 
 /* Exportera QSO till en extern ADIF-fil.
  * Om only_marked är 1 exporteras endast markerade poster, annars alla i listan.
+ * Rader som exporteras markeras som hanterade (handled = 1).
  * Returnerar antal exporterade QSO, eller -1 vid filfel. */
-static int export_qsos_adif(const char *filename, const QSOList *list, const StationSettings *st, int only_marked) {
+static int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int only_marked) {
     if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) return -1;
@@ -1845,12 +1867,19 @@ static int export_qsos_adif(const char *filename, const QSOList *list, const Sta
     int count = 0;
     for (size_t i = 0; i < list->count; ++i) {
         if (!only_marked || list->items[i].marked) {
+            list->items[i].handled = 1;
             write_qso_record_adif(fp, &list->items[i], st);
             count++;
         }
     }
 
     fclose(fp);
+
+    /* Spara loggen så att handled-flaggan bevaras även i qsolog.adi */
+    if (count > 0) {
+        save_all_qsos_adif(LOG_FILE, list, st);
+    }
+
     return count;
 }
 
@@ -2127,6 +2156,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLUE);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLUE);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLUE);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_CYAN);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_CYAN);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_MAGENTA);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_MAGENTA);
             break;
 
         case 1: /* 2. MC Darkfar (Svart bakgrund, blå/cyan lister, gul/vit text) */
@@ -2150,6 +2185,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_CYAN);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_CYAN);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_CYAN);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_BLUE);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_BLUE);
             break;
 
         case 2: /* 3. MC Gotar (Svart bakgrund, bärnstensgul/grön stil) */
@@ -2173,6 +2214,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_STATUS_OK,      COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_GREEN);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_BLACK,  COLOR_GREEN);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_GREEN);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_BLACK,  COLOR_GREEN);
             break;
 
         case 3: /* 4. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
@@ -2196,6 +2243,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_CYAN);
             init_pair(CP_STATUS_OK,      COLOR_BLUE,   COLOR_WHITE);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_WHITE);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_WHITE);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_BLUE);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_BLUE);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_MAGENTA);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  COLOR_MAGENTA);
             break;
 
         case 4: /* 5. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
@@ -2219,6 +2272,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_STATUS_OK,      COLOR_WHITE,  COLOR_BLACK);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    COLOR_BLACK);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  COLOR_BLACK);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_GREEN);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_BLACK,  COLOR_GREEN);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_RED,    COLOR_GREEN);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_BLACK,  COLOR_GREEN);
             break;
 
         case 5: { /* 6. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
@@ -2244,6 +2303,12 @@ static void apply_color_theme(int theme_idx) {
             init_pair(CP_FKEY_LABEL,     COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_STATUS_OK,      COLOR_BLUE,   bg_gray);
             init_pair(CP_STATUS_WARN,    COLOR_WHITE,  COLOR_RED);
+            init_pair(CP_FLAG_NEW,         COLOR_RED,    bg_gray);
+            init_pair(CP_FLAG_HANDLED,     COLOR_GREEN,  bg_gray);
+            init_pair(CP_FLAG_NEW_SEL,     COLOR_RED,    COLOR_BLUE);
+            init_pair(CP_FLAG_HANDLED_SEL, COLOR_GREEN,  COLOR_BLUE);
+            init_pair(CP_FLAG_NEW_MRK,     COLOR_WHITE,  fg_orange);
+            init_pair(CP_FLAG_HANDLED_MRK, COLOR_GREEN,  fg_orange);
             break;
         }
     }
@@ -2464,6 +2529,8 @@ static void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char
         {"F3",     (search_filter && search_filter[0]) ? "Sök*" : "Sök"},
         {"F4",     focus_mode == FOCUS_LOG ? "Inmatn." : "Loggrad"},
         {"Ins",    focus_mode == FOCUS_LOG ? "Märk" : NULL},
+        {"F5",     focus_mode == FOCUS_LOG ? "Hanterad" : NULL},
+        {"F6",     focus_mode == FOCUS_LOG ? "Ny" : NULL},
         {"F8",     focus_mode == FOCUS_LOG ? "Radera" : NULL},
         {"F9",     "Hjälp"},
         {"F10",    "Avsluta"},
@@ -2740,15 +2807,22 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* Band och Frekv i loggraderna: Band är högerställt (%5s) och Frekv (%8s) med 3 decimaler */
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
     if (COLS >= 92) {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-11s %5s %8s %-5s %-7s %-8s %-12s %-s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST S/M", "Lokator", "Namn", "QTH");
+        int rem_hdr = (COLS - 5) - 82;
+        if (rem_hdr < 3) rem_hdr = 3;
+        mvprintw(hdr_row, 2, "%-10s %-5s %-11s %5s %8s %-5s %-7s %-8s %-12s %-.*s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST S/M", "Lokator", "Namn", rem_hdr, "QTH");
     } else if (COLS >= 74) {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-10s %5s %8s %-5s %-7s %-6s %-s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Lok.", "Namn/QTH");
+        int rem_hdr = (COLS - 5) - 66;
+        if (rem_hdr < 4) rem_hdr = 4;
+        mvprintw(hdr_row, 2, "%-10s %-5s %-10s %5s %8s %-5s %-7s %-6s %-.*s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Lok.", rem_hdr, "Namn/QTH");
     } else {
-        mvprintw(hdr_row, 2, "%-10s %-5s %-9s %5s %8s %-4s %-7s %-s",
-                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", "Namn");
+        int rem_hdr = (COLS - 5) - 56;
+        if (rem_hdr < 3) rem_hdr = 3;
+        mvprintw(hdr_row, 2, "%-10s %-5s %-9s %5s %8s %-4s %-7s %-.*s",
+                 "Datum", "UTC", "Signal", "Band", "Frekv", "Mode", "RST", rem_hdr, "Namn");
     }
+    mvprintw(hdr_row, COLS - 4, "St");
     attroff(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
 
     int max_filtered = (int)log_list->count > 0 ? (int)log_list->count : 1;
@@ -2805,8 +2879,8 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
         }
 
         if (COLS >= 92) {
-            int rem_qth = (COLS - 2) - 82;
-            if (rem_qth < 4) rem_qth = 4;
+            int rem_qth = (COLS - 5) - 82;
+            if (rem_qth < 2) rem_qth = 2;
             mvprintw(r, 2, "%-10.10s %-5.5s %-11.11s %5.5s %8.8s %-5.5s %-7.7s %-8.8s %-12.12s %-.*s",
                      d_disp[0] ? d_disp : "-",
                      t_disp[0] ? t_disp : "-",
@@ -2820,8 +2894,8 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
                      rem_qth,
                      item->qth[0] ? item->qth : "-");
         } else if (COLS >= 74) {
-            int rem = (COLS - 2) - 64;
-            if (rem < 4) rem = 4;
+            int rem = (COLS - 5) - 66;
+            if (rem < 2) rem = 2;
             const char *nq = item->name[0] ? item->name : (item->qth[0] ? item->qth : "-");
             mvprintw(r, 2, "%-10.10s %-5.5s %-10.10s %5.5s %8.8s %-5.5s %-7.7s %-6.6s %-.*s",
                      d_disp[0] ? d_disp : "-",
@@ -2834,8 +2908,8 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
                      item->gridsquare[0] ? item->gridsquare : "-",
                      rem, nq);
         } else {
-            int rem = (COLS - 2) - 54;
-            if (rem < 3) rem = 3;
+            int rem = (COLS - 5) - 56;
+            if (rem < 2) rem = 2;
             mvprintw(r, 2, "%-10.10s %-5.5s %-9.9s %5.5s %8.8s %-4.4s %-7.7s %-.*s",
                      d_disp[0] ? d_disp : "-",
                      t_disp[0] ? t_disp : "-",
@@ -2847,6 +2921,13 @@ static void draw_main_screen(const StationSettings *st, const QSO *qso,
                      rem,
                      item->name[0] ? item->name : "-");
         }
+
+        int flag_cp = is_selected_row ? (item->handled ? CP_FLAG_HANDLED_SEL : CP_FLAG_NEW_SEL)
+                    : item->marked    ? (item->handled ? CP_FLAG_HANDLED_MRK : CP_FLAG_NEW_MRK)
+                                      : (item->handled ? CP_FLAG_HANDLED : CP_FLAG_NEW);
+        attron(COLOR_PAIR(flag_cp) | A_BOLD);
+        mvprintw(r, COLS - 3, "%s", item->handled ? "✓" : "✗");
+        attroff(COLOR_PAIR(flag_cp) | A_BOLD);
 
         if (is_selected_row) {
             attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
@@ -2891,18 +2972,19 @@ static void run_help_modal(const StationSettings *st) {
         mvprintw(11, 4, "F4 / Ctrl-O       : Växla mellan Inmatningsrutan och Loggraderna");
         mvprintw(12, 4, "Loggrader         : Välj med Pilar, Enter = Redigera");
         mvprintw(13, 4, "                    Ins = Markera rad (och gå ned), F8 = Radera markerade/aktuell");
-        mvprintw(14, 4, "F9                : Visa denna hjälpsida");
-        mvprintw(15, 4, "F10 / Ctrl-Q      : Avsluta programmet");
-        mvprintw(16, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
+        mvprintw(14, 4, "                    F5 = Markera som hanterad (✓), F6 = Markera som ny (✗)");
+        mvprintw(15, 4, "F9                : Visa denna hjälpsida");
+        mvprintw(16, 4, "F10 / Ctrl-Q      : Avsluta programmet");
+        mvprintw(17, 4, "F12               : Inställningar (Station, Färg, F5 Import, F6 Export)");
 
-        if (LINES >= 22) {
+        if (LINES >= 23) {
             attron(COLOR_PAIR(CP_TITLE) | A_BOLD);
-            mvprintw(17, 3, "Smarta funktioner:");
+            mvprintw(18, 3, "Smarta funktioner:");
             attroff(COLOR_PAIR(CP_TITLE) | A_BOLD);
             attron(COLOR_PAIR(CP_LABEL));
-            mvprintw(18, 4, "- Frekvens utanför amatörband ger beräknat metervärde (300/f avrundat).");
-            mvprintw(19, 4, "- DXCC identifieras automatiskt från dxcc.txt när du skriver anropssignal.");
-            mvprintw(20, 4, "- Svenska signaler (SA-SM, 7S, 8S) kan slås upp i SM Callbook (slås på i F12).");
+            mvprintw(19, 4, "- Frekvens utanför amatörband ger beräknat metervärde (300/f avrundat).");
+            mvprintw(20, 4, "- DXCC identifieras automatiskt från dxcc.txt när du skriver anropssignal.");
+            mvprintw(21, 4, "- Svenska signaler (SA-SM, 7S, 8S) kan slås upp i SM Callbook (slås på i F12).");
         }
         attroff(COLOR_PAIR(CP_LABEL));
 
@@ -3699,6 +3781,9 @@ static void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 if (exported < 0) {
                     snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
                 } else {
+                    if (editing_index >= 0 && log_list != NULL && (size_t)editing_index < log_list->count) {
+                        qso->handled = log_list->items[editing_index].handled;
+                    }
                     if (m_cnt > 0) {
                         snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(chosen_path));
                     } else {
@@ -4289,7 +4374,7 @@ int main(void) {
                 if (f_cnt > 0) {
                     focus_mode = FOCUS_LOG;
                     if (selected_log_pos >= f_cnt) selected_log_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Välj med pilar, Ins=Märk, F8=Radera, Enter=Redigera.");
+                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, F5=Hanterad, F6=Ny, F8=Radera, Enter=Redigera.");
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Inga loggrader att välja ännu.");
                 }
@@ -4342,6 +4427,58 @@ int main(void) {
                              "Markerade rad (QSO med %s) [%d markerade]" :
                              "Avmarkerade rad (QSO med %s) [%d markerade]",
                              log_list.items[orig_idx].call, m_cnt);
+                }
+            } else if (ch == KEY_F(5)) {
+                /* F5: Markera som hanterad (alla markerade rader, eller aktuell om ingen markerad) */
+                int m_cnt = 0;
+                for (size_t mi = 0; mi < log_list.count; ++mi) {
+                    if (log_list.items[mi].marked) m_cnt++;
+                }
+                if (m_cnt > 0) {
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        if (log_list.items[mi].marked) {
+                            log_list.items[mi].handled = 1;
+                        }
+                    }
+                    if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
+                        current_qso.handled = 1;
+                    }
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som hanterade (✓).", m_cnt);
+                } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
+                    int orig_idx = f_idx[selected_log_pos];
+                    log_list.items[orig_idx].handled = 1;
+                    if (editing_index == orig_idx) {
+                        current_qso.handled = 1;
+                    }
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som hanterat (✓).", log_list.items[orig_idx].call);
+                }
+            } else if (ch == KEY_F(6)) {
+                /* F6: Markera som ny (alla markerade rader, eller aktuell om ingen markerad) */
+                int m_cnt = 0;
+                for (size_t mi = 0; mi < log_list.count; ++mi) {
+                    if (log_list.items[mi].marked) m_cnt++;
+                }
+                if (m_cnt > 0) {
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        if (log_list.items[mi].marked) {
+                            log_list.items[mi].handled = 0;
+                        }
+                    }
+                    if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
+                        current_qso.handled = 0;
+                    }
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som nya (✗).", m_cnt);
+                } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
+                    int orig_idx = f_idx[selected_log_pos];
+                    log_list.items[orig_idx].handled = 0;
+                    if (editing_index == orig_idx) {
+                        current_qso.handled = 0;
+                    }
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som nytt (✗).", log_list.items[orig_idx].call);
                 }
             } else if (ch == KEY_F(8)) {
                 /* F8: Radera alla markerade rader, eller aktuell rad om ingen är markerad */
