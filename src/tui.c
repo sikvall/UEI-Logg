@@ -474,9 +474,9 @@ int build_filtered_indices(const QSOList *log_list, const char *search_filter,
     int count = 0;
     if (log_list == NULL || indices_out == NULL || max_out <= 0) return 0;
 
-    for (size_t i = 0; i < log_list->count && count < max_out; ++i) {
+    for (int i = (int)log_list->count - 1; i >= 0 && count < max_out; --i) {
         if (search_filter == NULL || search_filter[0] == '\0') {
-            indices_out[count++] = (int)i;
+            indices_out[count++] = i;
         } else {
             const QSO *q = &log_list->items[i];
             if (utf8_contains_ci(q->call, search_filter) ||
@@ -486,7 +486,7 @@ int build_filtered_indices(const QSOList *log_list, const char *search_filter,
                 utf8_contains_ci(q->comment, search_filter) ||
                 utf8_contains_ci(q->band, search_filter) ||
                 utf8_contains_ci(q->mode, search_filter)) {
-                indices_out[count++] = (int)i;
+                indices_out[count++] = i;
             }
         }
     }
@@ -837,9 +837,9 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
     const char *qrb_val = has_qrb ? qrb_str : "-";
     int lbl_qrb_x = c3 - 3; /* "QRB" är 3 tecken */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    attron(COLOR_PAIR(CP_LABEL));
     mvprintw(3, lbl_qrb_x, "QRB:");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    attroff(COLOR_PAIR(CP_LABEL));
     int qrb_color = has_qrb ? CP_STATUS_OK : CP_FIELD_INACTIVE;
     attron(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
     mvprintw(3, c3 + 2, "%-8.8s", qrb_val);

@@ -710,10 +710,15 @@ int main(void) {
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
                                           current_qrb, sizeof(current_qrb));
+            size_t count_before = log_list.count;
             try_save_current_qso(&current_qso, &time_frozen, &active_field,
                                  &field_cursor_pos, &editing_index,
                                  &station, &log_list, last_smcb_call, status_msg, sizeof(status_msg),
                                  current_qrb);
+            if (log_list.count > count_before) {
+                selected_log_pos = 0;
+                log_scroll_offset = 0;
+            }
             preferred_col = field_default_col(active_field);
         } else if (ch == '\t' || ch == KEY_RIGHT) {
             /* Tab / Högerpil stegar till nästa inmatningsfält */
