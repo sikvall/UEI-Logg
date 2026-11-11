@@ -593,9 +593,7 @@ int main(void) {
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
                                           current_qrb, sizeof(current_qrb));
-            if (active_field != FLD_COMM) {
-                preferred_col = field_default_col(active_field);
-            }
+            preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, +1, preferred_col);
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
         } else if (ch == KEY_UP) {
@@ -605,9 +603,7 @@ int main(void) {
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
                                           current_qrb, sizeof(current_qrb));
-            if (active_field != FLD_COMM) {
-                preferred_col = field_default_col(active_field);
-            }
+            preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, -1, preferred_col);
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
         } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1 || ch == KEY_CTRL_HOME) {
@@ -628,7 +624,7 @@ int main(void) {
                                           status_msg, sizeof(status_msg),
                                           current_qrb, sizeof(current_qrb));
             active_field = FLD_COMM;
-            preferred_col = 0;
+            preferred_col = 4;
             sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
         } else if (ch == KEY_PPAGE) {
             /* PgUp: bläddra loggraderna uppåt */

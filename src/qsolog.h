@@ -69,16 +69,16 @@ enum {
 /* Fältindex i visnings- och Tab/Pil-ordning */
 enum {
     FLD_CALL = 0,
-    FLD_NAME = 1,
-    FLD_RSTS = 2,
-    FLD_RSTR = 3,
+    FLD_RSTS = 1,
+    FLD_RSTR = 2,
+    FLD_NAME = 3,
     FLD_QTH  = 4,
-    FLD_GRID = 5,
-    FLD_DXCC = 6,
-    FLD_DATE = 7,
-    FLD_TIME = 8,
-    FLD_FREQ = 9,
-    FLD_BAND = 10,
+    FLD_DATE = 5,
+    FLD_TIME = 6,
+    FLD_FREQ = 7,
+    FLD_BAND = 8,
+    FLD_GRID = 9,
+    FLD_DXCC = 10,
     FLD_MODE = 11,
     FLD_COMM = 12
 };
