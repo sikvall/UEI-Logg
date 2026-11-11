@@ -476,6 +476,19 @@ static int qrz_query_call(const char *session_key, const char *call,
         return 0;
     }
 
+    /* Kontrollera om QRZ anger att signalen är Silent Key (t.ex. /SK2025 eller Silent Key) */
+    char raw_call[64] = "";
+    extract_xml_tag(resp.data, "call", raw_call, sizeof(raw_call));
+    if (strstr(raw_call, "/SK") != NULL || strcasestr(raw_call, "/sk") != NULL ||
+        utf8_contains_ci(resp.data, "Silent Key") || utf8_contains_ci(resp.data, "Silent key") ||
+        utf8_contains_ci(resp.data, "<fname>SK</fname>")) {
+        if (name_out && name_sz > 0) copy_str(name_out, name_sz, "-SK-");
+        if (qth_out && qth_sz > 0) qth_out[0] = '\0';
+        if (grid_out && grid_sz > 0) grid_out[0] = '\0';
+        free(resp.data);
+        return 1;
+    }
+
     char raw_fname[64] = "", raw_name[64] = "", raw_addr2[64] = "", raw_grid[16] = "";
     extract_xml_tag(resp.data, "fname", raw_fname, sizeof(raw_fname));
     extract_xml_tag(resp.data, "name", raw_name, sizeof(raw_name));
@@ -708,6 +721,17 @@ void poll_qrz_background_result(QSO *qso, const StationSettings *st,
     }
 
     if (res_found) {
+        if (strcmp(res_name, "-SK-") == 0) {
+            copy_str(qso->name, sizeof(qso->name), "-SK-");
+            qso->qth[0] = '\0';
+            qso->gridsquare[0] = '\0';
+            copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+            if (current_qrb && qrb_sz > 0) copy_str(current_qrb, qrb_sz, "-");
+            if (active_field == FLD_NAME && cursor_pos) *cursor_pos = 0;
+            snprintf(status_msg, status_sz, "QRZ: SILENT KEY (-SK-)");
+            return;
+        }
+
         int updated = 0;
         if (qso->name[0] == '\0' && res_name[0] != '\0') {
             copy_str(qso->name, sizeof(qso->name), res_name);

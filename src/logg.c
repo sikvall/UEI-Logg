@@ -418,6 +418,13 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
     char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
     if (find_call_in_log(log_list, qso->call, log_name, sizeof(log_name),
                          log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
+        if (strcmp(log_name, "-SK-") == 0) {
+            copy_str(qso->name, sizeof(qso->name), "-SK-");
+            qso->qth[0] = '\0';
+            copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+            copy_str(status_msg, status_sz, "Från logg: SILENT KEY (-SK-)");
+            return;
+        }
         if (log_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), log_name);
         if (log_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
         if (log_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), log_grid);
@@ -437,6 +444,13 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         int was_cached = 0;
         char cached_name[64] = "", cached_qth[64] = "";
         if (lookup_smcb_cache(base_call, cached_name, sizeof(cached_name), cached_qth, sizeof(cached_qth), &was_cached)) {
+            if (strcmp(cached_name, "-SK-") == 0) {
+                copy_str(qso->name, sizeof(qso->name), "-SK-");
+                qso->qth[0] = '\0';
+                copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+                copy_str(status_msg, status_sz, "SMCB: SILENT KEY (-SK-)");
+                return;
+            }
             if (cached_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), cached_name);
             if (cached_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), cached_qth);
             snprintf(status_msg, status_sz, "SMCB: %s, %s", cached_name, cached_qth);
@@ -448,6 +462,14 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
                 int qrz_cached = 0;
                 char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
                 if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
+                    if (strcmp(q_name, "-SK-") == 0) {
+                        copy_str(qso->name, sizeof(qso->name), "-SK-");
+                        qso->qth[0] = '\0';
+                        qso->gridsquare[0] = '\0';
+                        copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+                        copy_str(status_msg, status_sz, "QRZ: SILENT KEY (-SK-)");
+                        return;
+                    }
                     if (q_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), q_name);
                     if (q_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), q_qth);
                     if (q_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), q_grid);
@@ -477,6 +499,14 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         int qrz_cached = 0;
         char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
         if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
+            if (strcmp(q_name, "-SK-") == 0) {
+                copy_str(qso->name, sizeof(qso->name), "-SK-");
+                qso->qth[0] = '\0';
+                qso->gridsquare[0] = '\0';
+                copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+                copy_str(status_msg, status_sz, "QRZ: SILENT KEY (-SK-)");
+                return;
+            }
             if (q_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), q_name);
             if (q_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), q_qth);
             if (q_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), q_grid);

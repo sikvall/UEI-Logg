@@ -157,6 +157,16 @@ static int fetch_sm_callbook_once(const char *query_call,
 
     /* Tolka HTML-svaret från SM Callbook */
     int found = 0;
+
+    /* Kontrollera om signalen är markerad som Silent Key (avliden) */
+    if (utf8_contains_ci(buf.data, "Silent key") || utf8_contains_ci(buf.data, "Silent-key") ||
+        utf8_contains_ci(buf.data, "Silentkey") || utf8_contains_ci(buf.data, "Avliden")) {
+        if (name_out && name_sz > 0) copy_str(name_out, name_sz, "-SK-");
+        if (qth_out && qth_sz > 0) qth_out[0] = '\0';
+        free(buf.data);
+        return 1;
+    }
+
     char *block = strstr(buf.data, "<span class=\"block\">");
     if (block != NULL) {
         char *after_strong = strstr(block, "</strong><br>");
@@ -469,6 +479,16 @@ void poll_smcb_background_result(QSO *qso, const StationSettings *st,
     }
 
     if (res_found) {
+        if (strcmp(res_name, "-SK-") == 0) {
+            copy_str(qso->name, sizeof(qso->name), "-SK-");
+            qso->qth[0] = '\0';
+            copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
+            if (current_qrb && qrb_sz > 0) copy_str(current_qrb, qrb_sz, "-");
+            if (active_field == FLD_NAME && cursor_pos) *cursor_pos = 0;
+            snprintf(status_msg, status_sz, "SMCB: SILENT KEY (-SK-)");
+            return;
+        }
+
         int updated = 0;
         if (qso->name[0] == '\0' && res_name[0] != '\0') {
             copy_str(qso->name, sizeof(qso->name), res_name);

@@ -431,6 +431,15 @@ int main(void) {
             char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
             if (find_call_in_log(&log_list, current_qso.call, log_name, sizeof(log_name),
                                  log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
+                if (strcmp(log_name, "-SK-") == 0) {
+                    copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                    current_qso.qth[0] = '\0';
+                    copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                    copy_str(current_qrb, sizeof(current_qrb), "-");
+                    field_cursor_pos = 0;
+                    copy_str(status_msg, sizeof(status_msg), "Logg: SILENT KEY (-SK-)");
+                    continue;
+                }
                 if (log_name[0] != '\0') copy_str(current_qso.name, sizeof(current_qso.name), log_name);
                 if (log_qth[0] != '\0')  copy_str(current_qso.qth, sizeof(current_qso.qth), log_qth);
                 if (log_grid[0] != '\0') copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), log_grid);
@@ -459,6 +468,16 @@ int main(void) {
                     char sm_name[64] = "", sm_qth[64] = "";
                     int sm_hit = lookup_sm_callbook(base_call, sm_name, sizeof(sm_name), sm_qth, sizeof(sm_qth));
                     if (sm_hit) {
+                        if (strcmp(sm_name, "-SK-") == 0) {
+                            copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                            current_qso.qth[0] = '\0';
+                            copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                            store_smcb_cache(base_call, "-SK-", "", 1);
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                            field_cursor_pos = 0;
+                            copy_str(status_msg, sizeof(status_msg), "SMCB: SILENT KEY (-SK-)");
+                            continue;
+                        }
                         copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
                         copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
                         store_smcb_cache(base_call, sm_name, sm_qth, 1);
@@ -483,6 +502,16 @@ int main(void) {
                                                  qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
                                                  qrz_grid, sizeof(qrz_grid));
                         if (qrz_hit) {
+                            if (strcmp(qrz_name, "-SK-") == 0) {
+                                copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                                current_qso.qth[0] = '\0';
+                                current_qso.gridsquare[0] = '\0';
+                                copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                                copy_str(current_qrb, sizeof(current_qrb), "-");
+                                field_cursor_pos = 0;
+                                copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
+                                continue;
+                            }
                             copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
                             copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
                             if (qrz_grid[0] != '\0') {
@@ -518,6 +547,16 @@ int main(void) {
                                              qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
                                              qrz_grid, sizeof(qrz_grid));
                     if (qrz_hit) {
+                        if (strcmp(qrz_name, "-SK-") == 0) {
+                            copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                            current_qso.qth[0] = '\0';
+                            current_qso.gridsquare[0] = '\0';
+                            copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                            copy_str(current_qrb, sizeof(current_qrb), "-");
+                            field_cursor_pos = 0;
+                            copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
+                            continue;
+                        }
                         copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
                         copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
                         if (qrz_grid[0] != '\0') {
@@ -559,6 +598,16 @@ int main(void) {
                                          qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
                                          qrz_grid, sizeof(qrz_grid));
                 if (qrz_hit) {
+                    if (strcmp(qrz_name, "-SK-") == 0) {
+                        copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                        current_qso.qth[0] = '\0';
+                        current_qso.gridsquare[0] = '\0';
+                        copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                        copy_str(current_qrb, sizeof(current_qrb), "-");
+                        field_cursor_pos = 0;
+                        copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
+                        continue;
+                    }
                     copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
                     copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
                     if (qrz_grid[0] != '\0') {
@@ -604,6 +653,16 @@ int main(void) {
                                      qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
                                      qrz_grid, sizeof(qrz_grid));
             if (qrz_hit) {
+                if (strcmp(qrz_name, "-SK-") == 0) {
+                    copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                    current_qso.qth[0] = '\0';
+                    current_qso.gridsquare[0] = '\0';
+                    copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                    copy_str(current_qrb, sizeof(current_qrb), "-");
+                    field_cursor_pos = 0;
+                    copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
+                    continue;
+                }
                 copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
                 copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
                 if (qrz_grid[0] != '\0') {
