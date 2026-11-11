@@ -813,28 +813,27 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     int c4 = 51;
     int c5 = 69;
 
+    int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
     int w_qth = (COLS >= 88) ? 15 : (COLS - (c5 + 2) - 1);
+    if (has_qrb && COLS < 102) {
+        w_qth = COLS - (c5 + 2) - 13;
+        if (w_qth < 6) w_qth = 6;
+    }
     if (w_qth < 5) w_qth = 5;
     if (w_qth > 15) w_qth = 15;
 
-    /* Rad 1 (y = 2): Signal 10, RST T 6, RST M 6, Namn 12, QTH 15 */
+    /* Rad 1 (y = 2): Signal 10, RST T 6, RST M 6, Namn 12, QTH 15, QRB */
     draw_field_aligned(2, c1, "Signal", qso->call,     10,    (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c3, "RST M",  qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c4, "Namn",   qso->name,     12,    (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c5, "QTH",    qso->qth,      w_qth, (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 2 (y = 3): Datum, UTC, Frekvens, Band */
-    draw_field_aligned(3, c1, "Datum",    qso->date,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, c2, "UTC",      qso->time_utc,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, c4, "Frekvens", qso->freq,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
-    draw_band_selector_aligned(3, c5, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
-
-    /* QRB / avstånd till höger om Band på rad 2 */
-    int qrb_col = c5 + 13;
-    if (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0 && COLS >= qrb_col + 8) {
+    /* QRB / avstånd till höger om QTH på rad 1 */
+    int qrb_col = (c5 + 2) + w_qth + 2;
+    if (has_qrb && COLS >= qrb_col + 7) {
         attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(3, qrb_col, "QRB: ");
+        mvprintw(2, qrb_col, "QRB: ");
         attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
         attron(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
         int max_qrb_w = COLS - qrb_col - 6;
@@ -843,6 +842,12 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         }
         attroff(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
     }
+
+    /* Rad 2 (y = 3): Datum, UTC, Frekvens, Band */
+    draw_field_aligned(3, c1, "Datum",    qso->date,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(3, c2, "UTC",      qso->time_utc,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(3, c4, "Frekvens", qso->freq,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
+    draw_band_selector_aligned(3, c5, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
 
     /* Rad 3 (y = 4): Lokator, DXCC, Mode, Notering som tar upp resten av sista raden */
     int comm_w = COLS - (c5 + 2) - 1;
