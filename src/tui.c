@@ -873,22 +873,44 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_box_with_title(log_top, 0, log_h, COLS, log_title, (focus_mode == FOCUS_LOG));
 
     /* Kolumnrubriker */
+    int col_ny = COLS - 4;
+    int max_col = COLS - 5;
+
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
     mvhline(log_top + 1, 1, ' ', COLS - 2);
-    mvprintw(log_top + 1, 2, "  #");
+    mvprintw(log_top + 1, 2, "   #");
     mvprintw(log_top + 1, 7, "Datum");
-    mvprintw(log_top + 1, 19, "Tid");
-    mvprintw(log_top + 1, 26, "Signal");
-    mvprintw(log_top + 1, 38, "Frekv (MHz)");
-    mvprintw(log_top + 1, 51, "%8s", "Band");
-    mvprintw(log_top + 1, 62, "Mode");
-    mvprintw(log_top + 1, 68, "RST T");
-    mvprintw(log_top + 1, 74, "RST M");
-    if (COLS > 85) mvprintw(log_top + 1, 80, "Namn");
-    if (COLS > 105) mvprintw(log_top + 1, 100, "QTH");
-    if (COLS > 125) mvprintw(log_top + 1, 120, "Lokator");
-    if (COLS >= 140) mvprintw(log_top + 1, 132, "DXCC");
-    mvprintw(log_top + 1, COLS - 3, "Ny");
+    mvprintw(log_top + 1, 18, "Tid");
+    mvprintw(log_top + 1, 24, "Signal");
+    mvprintw(log_top + 1, 36, "Frekv (MHz)");
+    mvprintw(log_top + 1, 49, "%7s", "Band");
+    mvprintw(log_top + 1, 58, "Mode");
+    mvprintw(log_top + 1, 64, "RST T");
+    mvprintw(log_top + 1, 71, "RST M");
+
+    int w_name = 0, w_qth_col = 0, w_loc = 0, w_dxcc = 0;
+    if (max_col >= 78 + 4) {
+        w_name = max_col - 78 + 1;
+        if (w_name > 16) w_name = 16;
+        mvprintw(log_top + 1, 78, "%-*.*s", w_name, w_name, "Namn");
+    }
+    if (w_name == 16 && max_col >= 96 + 4) {
+        w_qth_col = max_col - 96 + 1;
+        if (w_qth_col > 16) w_qth_col = 16;
+        mvprintw(log_top + 1, 96, "%-*.*s", w_qth_col, w_qth_col, "QTH");
+    }
+    if (w_qth_col == 16 && max_col >= 114 + 6) {
+        w_loc = max_col - 114 + 1;
+        if (w_loc > 8) w_loc = 8;
+        mvprintw(log_top + 1, 114, "%-*.*s", w_loc, w_loc, "Lokator");
+    }
+    if (w_loc == 8 && max_col >= 124 + 4) {
+        w_dxcc = max_col - 124 + 1;
+        if (w_dxcc > 18) w_dxcc = 18;
+        mvprintw(log_top + 1, 124, "%-*.*s", w_dxcc, w_dxcc, "DXCC");
+    }
+
+    mvprintw(log_top + 1, col_ny, "Ny");
     attroff(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
 
     /* Bygg lista av filtrerade index */
@@ -927,22 +949,30 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
             mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
             mvprintw(row_y, 7, "%-10s", item->date);
-            mvprintw(row_y, 19, "%-5s", item->time_utc);
-            mvprintw(row_y, 26, "%-10s", item->call);
-            mvprintw(row_y, 38, "%-10s", item->freq);
+            mvprintw(row_y, 18, "%-5s", item->time_utc);
+            mvprintw(row_y, 24, "%-10s", item->call);
+            mvprintw(row_y, 36, "%-10s", item->freq);
 
             char band_dsp[16];
             format_band_display(item->band, band_dsp, sizeof(band_dsp));
-            mvprintw(row_y, 51, "%8s", band_dsp);
+            mvprintw(row_y, 49, "%7s", band_dsp);
 
-            mvprintw(row_y, 62, "%-4s", item->mode);
-            mvprintw(row_y, 68, "%-4s", item->rst_sent);
-            mvprintw(row_y, 74, "%-4s", item->rst_rcvd);
+            mvprintw(row_y, 58, "%-4s", item->mode);
+            mvprintw(row_y, 64, "%-5s", item->rst_sent);
+            mvprintw(row_y, 71, "%-5s", item->rst_rcvd);
 
-            if (COLS > 85) mvprintw(row_y, 80, "%-18.18s", item->name);
-            if (COLS > 105) mvprintw(row_y, 100, "%-18.18s", item->qth);
-            if (COLS > 125) mvprintw(row_y, 120, "%-10.10s", item->gridsquare);
-            if (COLS >= 140) mvprintw(row_y, 132, "%-16.16s", item->dxcc);
+            if (w_name > 0) {
+                mvprintw(row_y, 78, "%-*.*s", w_name, w_name, item->name);
+            }
+            if (w_qth_col > 0) {
+                mvprintw(row_y, 96, "%-*.*s", w_qth_col, w_qth_col, item->qth);
+            }
+            if (w_loc > 0) {
+                mvprintw(row_y, 114, "%-*.*s", w_loc, w_loc, item->gridsquare);
+            }
+            if (w_dxcc > 0) {
+                mvprintw(row_y, 124, "%-*.*s", w_dxcc, w_dxcc, item->dxcc);
+            }
 
             attroff(COLOR_PAIR(row_color) | row_attr);
 
@@ -952,7 +982,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                 (is_selected ? CP_FLAG_NEW_SEL : (is_marked ? CP_FLAG_NEW_MRK : CP_FLAG_NEW));
 
             attron(COLOR_PAIR(flag_color) | A_BOLD);
-            mvprintw(row_y, COLS - 3, item->handled ? " ✓" : " ✗");
+            mvprintw(row_y, col_ny, item->handled ? " ✓ " : " ✗ ");
             attroff(COLOR_PAIR(flag_color) | A_BOLD);
 
             if (is_selected) {
