@@ -454,10 +454,11 @@ void draw_top_bar(const StationSettings *st) {
  * @return Antal synliga rader i loggen.
  */
 int get_avail_log_rows(void) {
-    int top_reserved = 6; /* Topbar (1) + Input box (5) */
+    int top_reserved = 7; /* Topbar (1) + Input box (6) */
     int bot_reserved = 1; /* Endast F-tangentrad (1) */
     int sw_reserved  = (LINES >= 25) ? 4 : 0;
-    int avail = LINES - top_reserved - bot_reserved - sw_reserved;
+    int log_h = LINES - top_reserved - bot_reserved - sw_reserved;
+    int avail = log_h - 2; /* minus ram och kolumnrubriker */
     return (avail > 0) ? avail : 1;
 }
 
@@ -655,7 +656,22 @@ static int sw_tone_to_color_pair(SwTone tone) {
 }
 
 /**
+ * @brief Hjälpfunktion för att rita ett rymdvädersfält högerjusterat mot ett kolon.
+ */
+static void print_sw_field(int row, int colon_col, const char *label, const char *val, int color_pair) {
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    int llen = utf8_display_width(label);
+    mvprintw(row, colon_col - llen, "%s:", label);
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+    attron(COLOR_PAIR(color_pair) | A_BOLD);
+    mvprintw(row, colon_col + 2, "%s", (val && val[0] != '\0') ? val : "-");
+    attroff(COLOR_PAIR(color_pair) | A_BOLD);
+}
+
+/**
  * @brief Ritar den inramade rymdvädersrutan under loggraderna med data från https://hf.avitec.se.
+ * Fälten är alignade på kolon så att etiketterna linjerar lodrätt mellan rad 1 och rad 2.
  * Visar K-index (Kiruna), MUF, LUF, CME på rad 1 samt Solfackla, Solvind, Norrsken på rad 2.
  * @param top_y Översta raden för rutan.
  * @param width Rutans bredd (COLS).
@@ -666,80 +682,25 @@ void draw_space_weather_box(int top_y, int width) {
     SpaceWeatherData sw;
     space_weather_get_data(&sw);
 
-    /* Beräkna kolumnpositioner */
-    int c0 = 3;
-    int c1 = (width >= 80) ? 23 : (width * 25 / 100);
-    int c2 = (width >= 80) ? 43 : (width * 50 / 100);
-    int c3 = (width >= 80) ? 62 : (width * 75 / 100);
+    /* Beräkna kolumnpositioner för kolon */
+    int colon0 = 12;
+    int colon1 = (width >= 90) ? (width * 31 / 100) : 33;
+    int colon2 = (width >= 90) ? (width * 55 / 100) : 53;
+    int colon3 = (width >= 90) ? (width * 77 / 100) : 69;
 
-    /* RAD 1: K-index ("K Kiruna"), MUF, LUF, CME */
     int r1 = top_y + 1;
-
-    /* Kolumn 1: K Kiruna */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r1, c0, "K Kiruna: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_k = sw_tone_to_color_pair(sw.k_tone);
-    attron(COLOR_PAIR(cp_k) | A_BOLD);
-    printw("%-s", sw.k_kiruna);
-    attroff(COLOR_PAIR(cp_k) | A_BOLD);
-
-    /* Kolumn 2: MUF */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r1, c1, "MUF: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_muf = sw_tone_to_color_pair(sw.muf_tone);
-    attron(COLOR_PAIR(cp_muf) | A_BOLD);
-    printw("%-s", sw.muf);
-    attroff(COLOR_PAIR(cp_muf) | A_BOLD);
-
-    /* Kolumn 3: LUF */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r1, c2, "LUF: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_luf = sw_tone_to_color_pair(sw.luf_tone);
-    attron(COLOR_PAIR(cp_luf) | A_BOLD);
-    printw("%-s", sw.luf);
-    attroff(COLOR_PAIR(cp_luf) | A_BOLD);
-
-    /* Kolumn 4: CME */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r1, c3, "CME: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_cme = sw_tone_to_color_pair(sw.cme_tone);
-    attron(COLOR_PAIR(cp_cme) | A_BOLD);
-    printw("%-s", sw.cme);
-    attroff(COLOR_PAIR(cp_cme) | A_BOLD);
-
-    /* RAD 2: Solfackla, Solvind, Norrsken */
     int r2 = top_y + 2;
 
-    /* Kolumn 1: Solfackla */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r2, c0, "Solfackla: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_sf = sw_tone_to_color_pair(sw.solfackla_tone);
-    attron(COLOR_PAIR(cp_sf) | A_BOLD);
-    printw("%-s", sw.solfackla);
-    attroff(COLOR_PAIR(cp_sf) | A_BOLD);
+    /* RAD 1: K-index ("K Kiruna"), MUF, LUF, CME */
+    print_sw_field(r1, colon0, "K Kiruna", sw.k_kiruna, sw_tone_to_color_pair(sw.k_tone));
+    print_sw_field(r1, colon1, "MUF", sw.muf, sw_tone_to_color_pair(sw.muf_tone));
+    print_sw_field(r1, colon2, "LUF", sw.luf, sw_tone_to_color_pair(sw.luf_tone));
+    print_sw_field(r1, colon3, "CME", sw.cme, sw_tone_to_color_pair(sw.cme_tone));
 
-    /* Kolumn 2: Solvind */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r2, c1, "Solvind: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_sv = sw_tone_to_color_pair(sw.solvind_tone);
-    attron(COLOR_PAIR(cp_sv) | A_BOLD);
-    printw("%-s", sw.solvind);
-    attroff(COLOR_PAIR(cp_sv) | A_BOLD);
-
-    /* Kolumn 3: Norrsken */
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r2, c2, "Norrsken: ");
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    int cp_no = sw_tone_to_color_pair(sw.norrsken_tone);
-    attron(COLOR_PAIR(cp_no) | A_BOLD);
-    printw("%-s", sw.norrsken);
-    attroff(COLOR_PAIR(cp_no) | A_BOLD);
+    /* RAD 2: Solfackla, Solvind, Norrsken */
+    print_sw_field(r2, colon0, "Solfackla", sw.solfackla, sw_tone_to_color_pair(sw.solfackla_tone));
+    print_sw_field(r2, colon1, "Solvind", sw.solvind, sw_tone_to_color_pair(sw.solvind_tone));
+    print_sw_field(r2, colon2, "Norrsken", sw.norrsken, sw_tone_to_color_pair(sw.norrsken_tone));
 
     /* Tidsstämpel för senaste uppdatering till höger */
     if (width >= 70 && sw.updated_time[0] != '\0') {
@@ -926,72 +887,126 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (focus_mode == FOCUS_LOG && filtered_count > 0) {
         if (selected_log_pos < *log_scroll_offset) {
             *log_scroll_offset = selected_log_pos;
-        } else if (selected_log_pos >= *log_scroll_offset + log_avail_rows) {
-            *log_scroll_offset = selected_log_pos - log_avail_rows + 1;
+        }
+        /* Kontrollera att selected_log_pos ryms på skärmen från log_scroll_offset */
+        while (*log_scroll_offset < selected_log_pos) {
+            int lines = 0;
+            for (int idx = *log_scroll_offset; idx <= selected_log_pos; ++idx) {
+                lines++;
+                int orig = filtered_indices[idx];
+                if (log_list->items[orig].comment[0] != '\0') {
+                    lines++;
+                }
+            }
+            if (lines <= log_avail_rows) {
+                break;
+            }
+            (*log_scroll_offset)++;
         }
     }
     if (*log_scroll_offset < 0) *log_scroll_offset = 0;
+    if (filtered_count > 0 && *log_scroll_offset >= filtered_count) {
+        *log_scroll_offset = filtered_count - 1;
+    }
 
-    for (int i = 0; i < log_avail_rows; ++i) {
-        int row_y = log_top + 2 + i;
-        int f_idx = *log_scroll_offset + i;
-        if (f_idx < filtered_count) {
-            int actual_idx = filtered_indices[f_idx];
-            const QSO *item = &log_list->items[actual_idx];
+    int cur_screen_row = 0;
+    int f_idx = *log_scroll_offset;
 
-            int is_selected = (focus_mode == FOCUS_LOG && f_idx == selected_log_pos);
-            int is_marked   = item->marked;
+    while (cur_screen_row < log_avail_rows && f_idx < filtered_count) {
+        int row_y = log_top + 2 + cur_screen_row;
+        int actual_idx = filtered_indices[f_idx];
+        const QSO *item = &log_list->items[actual_idx];
 
-            int row_color = is_selected ? CP_LOG_SELECTED : (is_marked ? CP_LOG_MARKED : CP_LOG_ROW);
-            int row_attr  = (is_selected || is_marked) ? A_BOLD : 0;
+        int is_selected = (focus_mode == FOCUS_LOG && f_idx == selected_log_pos);
+        int is_marked   = item->marked;
 
-            attron(COLOR_PAIR(row_color) | row_attr);
-            mvhline(row_y, 1, ' ', COLS - 2);
+        int row_color = is_selected ? CP_LOG_SELECTED : (is_marked ? CP_LOG_MARKED : CP_LOG_ROW);
+        int row_attr  = (is_selected || is_marked) ? A_BOLD : 0;
 
-            char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
-            mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
-            mvprintw(row_y, 7, "%-10s", item->date);
-            mvprintw(row_y, 18, "%-5s", item->time_utc);
-            mvprintw(row_y, 24, "%-10s", item->call);
-            mvprintw(row_y, 36, "%-10s", item->freq);
+        attron(COLOR_PAIR(row_color) | row_attr);
+        mvhline(row_y, 1, ' ', COLS - 2);
 
-            char band_dsp[16];
-            format_band_display(item->band, band_dsp, sizeof(band_dsp));
-            mvprintw(row_y, 49, "%7s", band_dsp);
+        char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
+        mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
+        mvprintw(row_y, 7, "%-10s", item->date);
+        mvprintw(row_y, 18, "%-5s", item->time_utc);
+        mvprintw(row_y, 24, "%-10s", item->call);
+        mvprintw(row_y, 36, "%-10s", item->freq);
 
-            mvprintw(row_y, 58, "%-4s", item->mode);
-            mvprintw(row_y, 64, "%-5s", item->rst_sent);
-            mvprintw(row_y, 71, "%-5s", item->rst_rcvd);
+        char band_dsp[16];
+        format_band_display(item->band, band_dsp, sizeof(band_dsp));
+        mvprintw(row_y, 49, "%7s", band_dsp);
 
-            if (w_name > 0) {
-                mvprintw(row_y, 78, "%-*.*s", w_name, w_name, item->name);
-            }
-            if (w_qth_col > 0) {
-                mvprintw(row_y, 96, "%-*.*s", w_qth_col, w_qth_col, item->qth);
-            }
-            if (w_loc > 0) {
-                mvprintw(row_y, 114, "%-*.*s", w_loc, w_loc, item->gridsquare);
-            }
-            if (w_dxcc > 0) {
-                mvprintw(row_y, 124, "%-*.*s", w_dxcc, w_dxcc, item->dxcc);
-            }
+        mvprintw(row_y, 58, "%-4s", item->mode);
+        mvprintw(row_y, 64, "%-5s", item->rst_sent);
+        mvprintw(row_y, 71, "%-5s", item->rst_rcvd);
 
-            attroff(COLOR_PAIR(row_color) | row_attr);
-
-            /* Hanterad statusflagga: grön bock (✓) eller rött kryss (✗) */
-            int flag_color = item->handled ?
-                (is_selected ? CP_FLAG_HANDLED_SEL : (is_marked ? CP_FLAG_HANDLED_MRK : CP_FLAG_HANDLED)) :
-                (is_selected ? CP_FLAG_NEW_SEL : (is_marked ? CP_FLAG_NEW_MRK : CP_FLAG_NEW));
-
-            attron(COLOR_PAIR(flag_color) | A_BOLD);
-            mvprintw(row_y, col_ny, item->handled ? " ✓ " : " ✗ ");
-            attroff(COLOR_PAIR(flag_color) | A_BOLD);
-
-            if (is_selected) {
-                *cur_y = row_y;
-                *cur_x = 2;
-            }
+        if (w_name > 0) {
+            mvprintw(row_y, 78, "%-*.*s", w_name, w_name, item->name);
         }
+        if (w_qth_col > 0) {
+            mvprintw(row_y, 96, "%-*.*s", w_qth_col, w_qth_col, item->qth);
+        }
+        if (w_loc > 0) {
+            mvprintw(row_y, 114, "%-*.*s", w_loc, w_loc, item->gridsquare);
+        }
+        if (w_dxcc > 0) {
+            mvprintw(row_y, 124, "%-*.*s", w_dxcc, w_dxcc, item->dxcc);
+        }
+
+        attroff(COLOR_PAIR(row_color) | row_attr);
+
+        /* Hanterad statusflagga: grön bock (✓) eller rött kryss (✗) */
+        int flag_color = item->handled ?
+            (is_selected ? CP_FLAG_HANDLED_SEL : (is_marked ? CP_FLAG_HANDLED_MRK : CP_FLAG_HANDLED)) :
+            (is_selected ? CP_FLAG_NEW_SEL : (is_marked ? CP_FLAG_NEW_MRK : CP_FLAG_NEW));
+
+        attron(COLOR_PAIR(flag_color) | A_BOLD);
+        mvprintw(row_y, col_ny, item->handled ? " ✓ " : " ✗ ");
+        attroff(COLOR_PAIR(flag_color) | A_BOLD);
+
+        if (is_selected) {
+            *cur_y = row_y;
+            *cur_x = 2;
+        }
+
+        cur_screen_row++;
+
+        /* Om det finns en Notering och det finns plats kvar i rutan: visa den på raden under */
+        if (item->comment[0] != '\0' && cur_screen_row < log_avail_rows) {
+            int note_y = log_top + 2 + cur_screen_row;
+            attron(COLOR_PAIR(row_color) | row_attr);
+            mvhline(note_y, 1, ' ', COLS - 2);
+
+            int max_note_w = COLS - 19;
+            if (max_note_w < 5) max_note_w = 5;
+
+            if (is_selected || is_marked) {
+                mvprintw(note_y, 7, "Notering: %.*s", max_note_w, item->comment);
+                attroff(COLOR_PAIR(row_color) | row_attr);
+            } else {
+                attroff(COLOR_PAIR(row_color) | row_attr);
+                attron(COLOR_PAIR(CP_LABEL));
+                mvprintw(note_y, 7, "Notering: ");
+                attroff(COLOR_PAIR(CP_LABEL));
+                attron(COLOR_PAIR(CP_LOG_ROW));
+                printw("%.*s", max_note_w, item->comment);
+                attroff(COLOR_PAIR(CP_LOG_ROW));
+            }
+
+            cur_screen_row++;
+        }
+
+        f_idx++;
+    }
+
+    /* Rensa eventuella resterande rader i loggrutan */
+    while (cur_screen_row < log_avail_rows) {
+        int clear_y = log_top + 2 + cur_screen_row;
+        attron(COLOR_PAIR(CP_MAIN_BG));
+        mvhline(clear_y, 1, ' ', COLS - 2);
+        attroff(COLOR_PAIR(CP_MAIN_BG));
+        cur_screen_row++;
     }
     if (filtered_indices) free(filtered_indices);
 

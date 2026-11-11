@@ -263,9 +263,17 @@ int main(void) {
                 /* End: gå till sista raden på den sida vi ser */
                 if (f_cnt > 0) {
                     int avail = get_avail_log_rows();
-                    int last_vis = log_scroll_offset + avail - 1;
-                    if (last_vis >= f_cnt) last_vis = f_cnt - 1;
-                    if (last_vis < 0) last_vis = 0;
+                    int lines = 0;
+                    int last_vis = log_scroll_offset;
+                    for (int idx = log_scroll_offset; idx < f_cnt; ++idx) {
+                        int orig = f_idx[idx];
+                        int qso_lines = (log_list.items[orig].comment[0] != '\0') ? 2 : 1;
+                        if (lines + qso_lines > avail && lines > 0) {
+                            break;
+                        }
+                        lines += qso_lines;
+                        last_vis = idx;
+                    }
                     selected_log_pos = last_vis;
                 }
             } else if (ch == KEY_PPAGE) {
