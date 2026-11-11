@@ -112,8 +112,8 @@ typedef struct {
     char freq[32];       /* ADIF: FREQ       - Frekvens (MHz) */
     char band[16];       /* ADIF: BAND       - Band (160m..23cm) */
     char mode[16];       /* ADIF: MODE       - Trafiksätt (t.ex. SSB, CW) */
-    char rst_sent[16];   /* ADIF: RST_SENT   - RST Sänt */
-    char rst_rcvd[16];   /* ADIF: RST_RCVD   - RST Mott. */
+    char rst_sent[16];   /* ADIF: RST_SENT   - RST T (sänd) */
+    char rst_rcvd[16];   /* ADIF: RST_RCVD   - RST M (mottagen) */
     char qth[64];        /* ADIF: QTH        - QTH */
     char dxcc[64];       /* ADIF: COUNTRY    - DXCC */
     char comment[256];   /* ADIF: COMMENT    - Kommentar */

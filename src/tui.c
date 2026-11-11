@@ -6,6 +6,7 @@
 
 #include "tui.h"
 #include "dxcc.h"
+#include "logg.h"
 #include "qrb.h"
 #include "space_weather.h"
 #include "util.h"
@@ -532,7 +533,7 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
 }
 
 /**
- * @brief Ritar det högerställda bandvalsfältet med pilindikatorer.
+ * @brief Ritar det anpassade bandvalsfältet med pilindikator (v eller ^).
  */
 void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int is_active, int band_selecting,
@@ -543,7 +544,7 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
     attroff(COLOR_PAIR(CP_LABEL));
 
     int val_col = colon_col + 2;
-    int width = 9;
+    int width = 10;
 
     char formatted[16];
     format_band_display(val, formatted, sizeof(formatted));
@@ -554,47 +555,18 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
         attr |= A_REVERSE;
     }
 
+    const char *arrow = band_selecting ? "^" : "v";
+
     attron(COLOR_PAIR(color) | attr);
     for (int i = 0; i < width; ++i) {
         mvaddch(row, val_col + i, ' ');
     }
-    mvprintw(row, val_col, "%8s ", formatted);
+    mvprintw(row, val_col, " %-6s %s", formatted, arrow);
     attroff(COLOR_PAIR(color) | attr);
 
     if (is_active) {
         *cur_y = row;
         *cur_x = val_col + width - 1;
-    }
-}
-
-/**
- * @brief Ritar popup-menyn för bandval när användaren trycker Enter i bandfältet.
- */
-void draw_band_popup_list(int row, const char *current_band, int band_selecting) {
-    if (!band_selecting) return;
-
-    int list_w = 14;
-    int list_h = BAND_OPTION_COUNT + 2;
-    int pop_x = COLS - list_w - 4;
-    int pop_y = row + 1;
-    if (pop_y + list_h >= LINES) {
-        pop_y = row - list_h;
-    }
-
-    draw_box_with_title(pop_y, pop_x, list_h, list_w, "Band", 1);
-
-    for (int i = 0; i < BAND_OPTION_COUNT; ++i) {
-        int is_curr = (strcasecmp(BAND_OPTIONS[i], current_band) == 0);
-        int r = pop_y + 1 + i;
-        if (is_curr) {
-            attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-            mvprintw(r, pop_x + 1, " %-8s ", BAND_OPTIONS[i]);
-            attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
-        } else {
-            attron(COLOR_PAIR(CP_FIELD_INACTIVE));
-            mvprintw(r, pop_x + 1, " %-8s ", BAND_OPTIONS[i]);
-            attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
-        }
     }
 }
 
@@ -845,10 +817,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (w_qth < 5) w_qth = 5;
     if (w_qth > 15) w_qth = 15;
 
-    /* Rad 1 (y = 2): Signal 10, RST Sänd 6, RST Mott 6, Namn 12, QTH 15 */
+    /* Rad 1 (y = 2): Signal 10, RST T 6, RST M 6, Namn 12, QTH 15 */
     draw_field_aligned(2, c1, "Signal", qso->call,     10,    (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c2, "Sänd",   qso->rst_sent,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c3, "Mott",   qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c3, "RST M",  qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c4, "Namn",   qso->name,     12,    (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c5, "QTH",    qso->qth,      w_qth, (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
@@ -881,8 +853,6 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(4, c4, "Mode",     qso->mode,        6,      (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(4, c5, lbl_not,    qso->comment,     comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
-    draw_band_popup_list(3, qso->band, band_selecting);
-
     /* RITA LOGGRADSKOMPONENTEN */
     int sw_reserved = (LINES >= 25) ? 4 : 0;
     int log_top = 6;
@@ -907,13 +877,13 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     mvprintw(log_top + 1, 38, "Frekv (MHz)");
     mvprintw(log_top + 1, 51, "%8s", "Band");
     mvprintw(log_top + 1, 62, "Mode");
-    mvprintw(log_top + 1, 68, "Sänt");
-    mvprintw(log_top + 1, 74, "Mott");
+    mvprintw(log_top + 1, 68, "RST T");
+    mvprintw(log_top + 1, 74, "RST M");
     if (COLS > 85) mvprintw(log_top + 1, 80, "Namn");
     if (COLS > 105) mvprintw(log_top + 1, 100, "QTH");
     if (COLS > 125) mvprintw(log_top + 1, 120, "Lokator");
     if (COLS >= 140) mvprintw(log_top + 1, 132, "DXCC");
-    mvprintw(log_top + 1, COLS - 3, "St");
+    mvprintw(log_top + 1, COLS - 3, "Ny");
     attroff(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
 
     /* Bygg lista av filtrerade index */
@@ -1097,6 +1067,162 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
             utf8_delete_at(buf, cursor_pos);
         } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
             utf8_insert_byte_at(buf, sizeof(buf), &cursor_pos, (char)ch);
+        }
+    }
+}
+
+/**
+ * @brief Visar och kör den interaktiva rullgardinsmenyn (drop-down) för bandval.
+ *
+ * Placeras direkt under bandfältet (rad band_row + 1). Användaren kan navigera
+ * med piltangenter upp/ned, PgUp/PgDn, Home/End eller siffror. Enter eller Mellanslag
+ * bekräftar valet. Esc avbryter utan att ändra aktuellt band eller rensa formuläret.
+ * Tab / Shift-Tab bekräftar och indikerar fältflytt.
+ *
+ * @return 0 vid avbryt (Esc), 1 vid val (Enter/Mellanslag), 2 vid Tab, 3 vid Shift-Tab.
+ */
+int run_band_dropdown(StationSettings *st, QSO *qso,
+                      FocusMode focus_mode, int active_field,
+                      int field_cursor_pos, int *time_frozen, int editing_index,
+                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      const char *search_filter, char *status_msg, size_t status_sz,
+                      const char *qrb_str, int band_row, int colon_col) {
+    int cur_idx = find_band_index(qso->band);
+    if (cur_idx < 0) cur_idx = 0;
+    int sel_idx = cur_idx;
+
+    int list_w = 14;
+    int pop_x = colon_col;
+    if (pop_x + list_w >= COLS) {
+        pop_x = COLS - list_w - 1;
+    }
+    if (pop_x < 1) pop_x = 1;
+
+    int pop_y = band_row + 1;
+    int avail_h = (LINES - 1) - pop_y;
+    int visible_items = BAND_OPTION_COUNT;
+    if (visible_items + 2 > avail_h) {
+        visible_items = avail_h - 2;
+        if (visible_items < 4) visible_items = 4;
+    }
+    int list_h = visible_items + 2;
+
+    int scroll_offset = 0;
+
+    curs_set(0);
+
+    while (1) {
+        if (sel_idx < scroll_offset) {
+            scroll_offset = sel_idx;
+        } else if (sel_idx >= scroll_offset + visible_items) {
+            scroll_offset = sel_idx - visible_items + 1;
+        }
+        if (scroll_offset < 0) scroll_offset = 0;
+        if (scroll_offset + visible_items > BAND_OPTION_COUNT) {
+            scroll_offset = BAND_OPTION_COUNT - visible_items;
+            if (scroll_offset < 0) scroll_offset = 0;
+        }
+
+        int cur_y = 0, cur_x = 0;
+        draw_main_screen(st, qso, focus_mode, active_field, 1,
+                         field_cursor_pos, *time_frozen, editing_index,
+                         log_list, selected_log_pos, log_scroll_offset,
+                         search_filter, status_msg, qrb_str,
+                         &cur_y, &cur_x);
+
+        /* Rita popup-ram */
+        draw_box_with_title(pop_y, pop_x, list_h, list_w, "Band", 1);
+
+        /* Rita rullningsindikatorer i ramen om listan är beskuren */
+        if (scroll_offset > 0) {
+            mvprintw(pop_y, pop_x + list_w - 2, "^");
+        }
+        if (scroll_offset + visible_items < BAND_OPTION_COUNT) {
+            mvprintw(pop_y + list_h - 1, pop_x + list_w - 2, "v");
+        }
+
+        /* Rita alternativen */
+        for (int i = 0; i < visible_items; ++i) {
+            int item_idx = scroll_offset + i;
+            if (item_idx >= BAND_OPTION_COUNT) break;
+            int r = pop_y + 1 + i;
+            int is_sel = (item_idx == sel_idx);
+
+            if (is_sel) {
+                attron(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
+                mvprintw(r, pop_x + 1, " > %-6s < ", BAND_OPTIONS[item_idx]);
+                attroff(COLOR_PAIR(CP_LOG_SELECTED) | A_BOLD);
+            } else {
+                attron(COLOR_PAIR(CP_FIELD_INACTIVE));
+                mvprintw(r, pop_x + 1, "   %-6s   ", BAND_OPTIONS[item_idx]);
+                attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
+            }
+        }
+
+        refresh();
+
+        int ch = getch();
+        if (ch == ERR) continue;
+
+        if (ch == 27) {
+            /* Avbryt bandval utan att ändra något */
+            copy_str(status_msg, status_sz, "Bandval avbrutet.");
+            curs_set(1);
+            return 0;
+        } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ') {
+            /* Bekräfta val */
+            if (!*time_frozen) {
+                get_utc_strings(qso->date, sizeof(qso->date),
+                                qso->time_utc, sizeof(qso->time_utc), NULL, 0);
+                *time_frozen = 1;
+            }
+            set_band_choice(qso, st, sel_idx);
+            snprintf(status_msg, status_sz, "Band valt: %s (%s MHz)", qso->band, qso->freq);
+            curs_set(1);
+            return 1;
+        } else if (ch == '\t') {
+            /* Bekräfta och gå framåt */
+            if (!*time_frozen) {
+                get_utc_strings(qso->date, sizeof(qso->date),
+                                qso->time_utc, sizeof(qso->time_utc), NULL, 0);
+                *time_frozen = 1;
+            }
+            set_band_choice(qso, st, sel_idx);
+            snprintf(status_msg, status_sz, "Band valt: %s (%s MHz)", qso->band, qso->freq);
+            curs_set(1);
+            return 2;
+        } else if (ch == KEY_BTAB) {
+            /* Bekräfta och gå bakåt */
+            if (!*time_frozen) {
+                get_utc_strings(qso->date, sizeof(qso->date),
+                                qso->time_utc, sizeof(qso->time_utc), NULL, 0);
+                *time_frozen = 1;
+            }
+            set_band_choice(qso, st, sel_idx);
+            snprintf(status_msg, status_sz, "Band valt: %s (%s MHz)", qso->band, qso->freq);
+            curs_set(1);
+            return 3;
+        } else if (ch == KEY_UP || ch == 'k') {
+            sel_idx = (sel_idx - 1 + BAND_OPTION_COUNT) % BAND_OPTION_COUNT;
+        } else if (ch == KEY_DOWN || ch == 'j') {
+            sel_idx = (sel_idx + 1) % BAND_OPTION_COUNT;
+        } else if (ch == KEY_PPAGE) {
+            sel_idx -= visible_items;
+            if (sel_idx < 0) sel_idx = 0;
+        } else if (ch == KEY_NPAGE) {
+            sel_idx += visible_items;
+            if (sel_idx >= BAND_OPTION_COUNT) sel_idx = BAND_OPTION_COUNT - 1;
+        } else if (ch == KEY_HOME) {
+            sel_idx = 0;
+        } else if (ch == KEY_END) {
+            sel_idx = BAND_OPTION_COUNT - 1;
+        } else if (ch >= '0' && ch <= '9') {
+            for (int b = 0; b < BAND_OPTION_COUNT; ++b) {
+                if (BAND_OPTIONS[b][0] == (char)ch) {
+                    sel_idx = b;
+                    break;
+                }
+            }
         }
     }
 }

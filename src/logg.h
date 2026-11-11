@@ -38,6 +38,7 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
 
 /* Radio- och bandhantering */
 void persist_qso_radio_settings(const QSO *qso, StationSettings *st);
+void set_band_choice(QSO *qso, StationSettings *st, int idx);
 void step_band_choice(QSO *qso, StationSettings *st, int delta);
 
 void apply_field_defaults_on_leave(QSO *qso, int leaving_field,

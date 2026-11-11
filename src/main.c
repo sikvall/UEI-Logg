@@ -531,29 +531,30 @@ int main(void) {
                 snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
             }
             continue;
-        } else if (active_field == FLD_BAND && (ch == '\n' || ch == '\r' || ch == KEY_ENTER)) {
-            band_selecting = !band_selecting;
-            if (band_selecting) {
-                copy_str(status_msg, sizeof(status_msg), "Välj band med piltangenterna, tryck Enter när du är klar.");
-            } else {
-                snprintf(status_msg, sizeof(status_msg), "Band valt: %s (%s MHz)", current_qso.band, current_qso.freq);
+        } else if (active_field == FLD_BAND && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || (ch >= '0' && ch <= '9'))) {
+            if (ch >= '0' && ch <= '9') {
+                for (int b = 0; b < BAND_OPTION_COUNT; ++b) {
+                    if (BAND_OPTIONS[b][0] == (char)ch) {
+                        copy_str(current_qso.band, sizeof(current_qso.band), BAND_OPTIONS[b]);
+                        break;
+                    }
+                }
             }
-        } else if (active_field == FLD_BAND && band_selecting && (ch == KEY_LEFT || ch == KEY_UP)) {
-            if (!time_frozen) {
-                get_utc_strings(current_qso.date, sizeof(current_qso.date),
-                                current_qso.time_utc, sizeof(current_qso.time_utc),
-                                NULL, 0);
-                time_frozen = 1;
+            int ret = run_band_dropdown(&station, &current_qso, focus_mode, active_field,
+                                        field_cursor_pos, &time_frozen, editing_index,
+                                        &log_list, selected_log_pos, &log_scroll_offset,
+                                        active_filter, status_msg, sizeof(status_msg),
+                                        current_qrb, 3, 69);
+            if (ret == 2) {
+                active_field = (active_field + 1) % QSO_FIELD_COUNT;
+                preferred_col = field_default_col(active_field);
+                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            } else if (ret == 3) {
+                active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
+                preferred_col = field_default_col(active_field);
+                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
             }
-            step_band_choice(&current_qso, &station, -1);
-        } else if (active_field == FLD_BAND && band_selecting && (ch == KEY_RIGHT || ch == KEY_DOWN || ch == ' ')) {
-            if (!time_frozen) {
-                get_utc_strings(current_qso.date, sizeof(current_qso.date),
-                                current_qso.time_utc, sizeof(current_qso.time_utc),
-                                NULL, 0);
-                time_frozen = 1;
-            }
-            step_band_choice(&current_qso, &station, +1);
+            continue;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2) || ch == 19) {
             /* Enter i övriga fält eller F2 loggar och sparar QSO:t */
             band_selecting = 0;

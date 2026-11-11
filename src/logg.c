@@ -563,6 +563,20 @@ void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
 }
 
 /**
+ * @brief Sätter band och standardfrekvens givet index i BAND_OPTIONS (0..BAND_OPTION_COUNT-1).
+ * @param qso Aktuellt QSO.
+ * @param st Stationsinställningar.
+ * @param idx Index i BAND_OPTIONS.
+ */
+void set_band_choice(QSO *qso, StationSettings *st, int idx) {
+    if (idx >= 0 && idx < BAND_OPTION_COUNT) {
+        copy_str(qso->band, sizeof(qso->band), BAND_OPTIONS[idx]);
+        copy_str(qso->freq, sizeof(qso->freq), BAND_DEFAULT_FREQ[idx]);
+        persist_qso_radio_settings(qso, st);
+    }
+}
+
+/**
  * @brief Stegar bandvalet i listan (+1 eller -1) och sätter motsvarande standardfrekvens i MHz.
  * @param qso Aktuellt QSO.
  * @param st Stationsinställningar.
@@ -590,9 +604,7 @@ void step_band_choice(QSO *qso, StationSettings *st, int delta) {
     } else {
         idx = (idx + delta + BAND_OPTION_COUNT) % BAND_OPTION_COUNT;
     }
-    copy_str(qso->band, sizeof(qso->band), BAND_OPTIONS[idx]);
-    copy_str(qso->freq, sizeof(qso->freq), BAND_DEFAULT_FREQ[idx]);
-    persist_qso_radio_settings(qso, st);
+    set_band_choice(qso, st, idx);
 }
 
 /**

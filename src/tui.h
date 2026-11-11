@@ -63,7 +63,6 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
 void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int is_active, int band_selecting,
                                 int *cur_y, int *cur_x);
-void draw_band_popup_list(int row, const char *current_band, int band_selecting);
 void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter);
 void draw_space_weather_box(int top_y, int width);
 void draw_main_screen(const StationSettings *st, const QSO *qso,
@@ -74,9 +73,15 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       const char *qrb_str,
                       int *cur_y, int *cur_x);
 
-/* Hjälpskärm och sökruta */
+/* Hjälpskärm, sökruta och band-dropdown */
 void run_help_modal(const StationSettings *st);
 int run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz);
+int run_band_dropdown(StationSettings *st, QSO *qso,
+                      FocusMode focus_mode, int active_field,
+                      int field_cursor_pos, int *time_frozen, int editing_index,
+                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      const char *search_filter, char *status_msg, size_t status_sz,
+                      const char *qrb_str, int band_row, int colon_col);
 
 /* Navigering och fälthantering */
 char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len);
