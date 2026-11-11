@@ -454,7 +454,7 @@ void draw_top_bar(const StationSettings *st) {
  */
 int get_avail_log_rows(void) {
     int top_reserved = 6; /* Topbar (1) + Input box (5) */
-    int bot_reserved = 2; /* Statusrad (1) + F-tangentrad (1) */
+    int bot_reserved = 1; /* Endast F-tangentrad (1) */
     int sw_reserved  = (LINES >= 25) ? 4 : 0;
     int avail = LINES - top_reserved - bot_reserved - sw_reserved;
     return (avail > 0) ? avail : 1;
@@ -802,11 +802,13 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     int input_h = 5;
     draw_box_with_title(1, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
 
+    int badge_w = 13;
     if (editing_index >= 0) {
         char edit_tag[48];
         snprintf(edit_tag, sizeof(edit_tag), "[REDIGERAR QSO #%d]", editing_index + 1);
+        badge_w = utf8_display_width(edit_tag) + 3;
         attron(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-        mvprintw(1, COLS - utf8_display_width(edit_tag) - 3, "%s", edit_tag);
+        mvprintw(1, COLS - badge_w, "%s", edit_tag);
         attroff(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
     } else if (time_frozen) {
         attron(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
@@ -816,6 +818,20 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         attron(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
         mvprintw(1, COLS - 13, "[LIVE UTC]");
         attroff(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
+    }
+
+    /* Statusmeddelande i fönsterlisten: tre tecken till höger om "QSO-inmatning" */
+    if (status_msg != NULL && status_msg[0] != '\0') {
+        int stat_col = 19;
+        int badge_col = COLS - badge_w;
+        int max_msg = badge_col - stat_col - 2;
+        if (max_msg > 0) {
+            int is_err = (strstr(status_msg, "Fel:") != NULL || strstr(status_msg, "VARNING") != NULL);
+            int color = is_err ? CP_STATUS_WARN : CP_STATUS_OK;
+            attron(COLOR_PAIR(color) | A_BOLD);
+            mvprintw(1, stat_col, " %.*s ", max_msg, status_msg);
+            attroff(COLOR_PAIR(color) | A_BOLD);
+        }
     }
 
     /* Kolumnpositioner för kolon i inmatningsfält */
@@ -870,7 +886,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* RITA LOGGRADSKOMPONENTEN */
     int sw_reserved = (LINES >= 25) ? 4 : 0;
     int log_top = 6;
-    int log_h = LINES - log_top - 2 - sw_reserved;
+    int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
 
     char log_title[64];
@@ -978,24 +994,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         draw_space_weather_box(sw_top, COLS);
     }
 
-    /* RITA STATUSRAD OCH F-TANGENTER */
-    int stat_y = LINES - 2;
-    attron(COLOR_PAIR(CP_MAIN_BG));
-    mvhline(stat_y, 0, ' ', COLS);
-    attroff(COLOR_PAIR(CP_MAIN_BG));
-
-    if (status_msg != NULL && status_msg[0] != '\0') {
-        int is_err = (strstr(status_msg, "Fel:") != NULL || strstr(status_msg, "VARNING") != NULL);
-        int color = is_err ? CP_STATUS_WARN : CP_STATUS_OK;
-        attron(COLOR_PAIR(color) | A_BOLD);
-        mvprintw(stat_y, 2, "Status: %s", status_msg);
-        attroff(COLOR_PAIR(color) | A_BOLD);
-    } else {
-        attron(COLOR_PAIR(CP_LABEL));
-        mvprintw(stat_y, 2, "Redo.");
-        attroff(COLOR_PAIR(CP_LABEL));
-    }
-
+    /* RITA F-TANGENTRAD ALLRA LÄNGST NED */
     draw_bottom_fkey_bar(0, focus_mode, search_filter);
 
     move(*cur_y, *cur_x);
