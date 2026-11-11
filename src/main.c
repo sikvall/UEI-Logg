@@ -139,8 +139,29 @@ int main(void) {
         idle_ticks_on_grid = 0;
 
         /* GLOBALA FUNKTIONSTANGENTER */
-        if (ch == KEY_F(1) || ch == 27) {
-            /* F1 eller ESC: Rensa formuläret och låt UTC-klockan ticka igen */
+        if (ch == 27) {
+            /* ESC: Återställ sökning om aktiv, annars lämna loggläge eller rensa formulär */
+            if (search_filter[0] != '\0') {
+                search_filter[0] = '\0';
+                selected_log_pos = 0;
+                log_scroll_offset = 0;
+                copy_str(status_msg, sizeof(status_msg), "Sökning återställd – hela loggen visas.");
+                continue;
+            }
+            if (focus_mode == FOCUS_LOG) {
+                focus_mode = FOCUS_INPUT;
+                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
+                continue;
+            }
+            focus_mode = FOCUS_INPUT;
+            band_selecting = 0;
+            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            preferred_col = 0;
+            copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
+            continue;
+        } else if (ch == KEY_F(1)) {
+            /* F1: Rensa formuläret och låt UTC-klockan ticka igen */
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
             reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
@@ -150,9 +171,20 @@ int main(void) {
         } else if (ch == KEY_F(3) || ch == 6) {
             /* F3 eller Ctrl+F: Sök i logglistan */
             band_selecting = 0;
-            run_search_bar(&station, search_filter, sizeof(search_filter));
+            int confirmed = run_search_bar(&station, search_filter, sizeof(search_filter));
             selected_log_pos = 0;
             log_scroll_offset = 0;
+            if (confirmed) {
+                if (search_filter[0] != '\0') {
+                    int max_f = (int)log_list.count > 0 ? (int)log_list.count : 1;
+                    int *tmp = malloc((size_t)max_f * sizeof(int));
+                    int hits = tmp ? build_filtered_indices(&log_list, search_filter, tmp, max_f) : 0;
+                    free(tmp);
+                    snprintf(status_msg, sizeof(status_msg), "Sökning '%s': %d träffar. (Esc återställer)", search_filter, hits);
+                } else {
+                    copy_str(status_msg, sizeof(status_msg), "Sökning återställd – hela loggen visas.");
+                }
+            }
             continue;
         } else if (ch == KEY_F(4) || ch == 15) {
             /* F4 eller Ctrl+O: Växla fokus mellan inmatningsfält och loggrader */

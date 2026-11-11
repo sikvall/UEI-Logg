@@ -76,7 +76,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
 /* Hjälpskärm och sökruta */
 void run_help_modal(const StationSettings *st);
-void run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz);
+int run_search_bar(const StationSettings *st, char *search_filter, size_t filter_sz);
 
 /* Navigering och fälthantering */
 char *get_qso_field_ptr(QSO *qso, int idx, size_t *max_len);
