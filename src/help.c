@@ -4,7 +4,7 @@
  *
  * Visar omfattande hjälp indelad i sex informativa flikar:
  * 1. Globala snabbkommandon
- * 2. QSO-inmatning & markör/överskrivningsregler
+ * 2. QSO-inmatning & fältrensning/redigeringsregler
  * 3. Uppslagsfunktioner (Logg -> SM Callbook -> QRZ.COM)
  * 4. Loggrader, redigering och statusmarkering
  * 5. Inställningar, fildialog och ADIF import/export
@@ -60,10 +60,11 @@ static const HelpTopic HELP_TOPICS[] = {
         "[2] Inmatning",
         "QSO-inmatning & Formulärregler",
         {
-            "Markör och överskrivning:",
-            "  * När ett fält väljs ställs markören alltid på det första tecknet (pos 0).",
-            "  * När du skriver skrivs befintliga tecken i fältet över.",
-            "  * Backspace raderar tecknet till vänster, Delete raderar tecknet under markören.",
+            "Markör och fältrensning:",
+            "  * När ett fält väljs ställs markören på det första tecknet (pos 0).",
+            "  * När du börjar skriva i ett fält rensas fältet innan första bokstaven visas.",
+            "  * Delete (DEL) i ett inmatningsfält rensar hela fältet.",
+            "  * Backspace raderar tecknet till vänster om markören.",
             "",
             "Fältordning och format (4 rader):",
             "  * Rad 1: Signal (10), RST T (6), RST R (6), Namn (14)",

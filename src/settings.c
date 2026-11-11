@@ -919,7 +919,8 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
                 utf8_backspace_at(buf, &cursor_pos);
             } else if (ch == KEY_DC) {
-                utf8_delete_at(buf, cursor_pos);
+                buf[0] = '\0';
+                cursor_pos = 0;
             } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
                 if ((active == 5 || active == 6) && strlen(buf) >= 32) {
                     continue;

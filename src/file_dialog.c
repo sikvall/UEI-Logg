@@ -451,7 +451,8 @@ int run_file_dialog(const char *title, const char *start_dir, const char *ext_fi
             } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
                 utf8_backspace_at(fname_buf, &fname_cursor_pos);
             } else if (ch == KEY_DC) {
-                utf8_delete_at(fname_buf, fname_cursor_pos);
+                fname_buf[0] = '\0';
+                fname_cursor_pos = 0;
             } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
                 utf8_insert_byte_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, (char)ch);
             }

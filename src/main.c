@@ -61,6 +61,7 @@ int main(void) {
     int band_selecting = 0;
     int preferred_col = 0;
     int field_cursor_pos = 0;
+    int field_fresh = 1;
     int editing_index = -1;
     int idle_ticks_on_call = 0;
     int idle_ticks_on_qth = 0;
@@ -152,12 +153,14 @@ int main(void) {
             if (focus_mode == FOCUS_LOG) {
                 focus_mode = FOCUS_INPUT;
                 field_cursor_pos = 0;
+                field_fresh = 1;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
                 continue;
             }
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
             reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            field_fresh = 1;
             preferred_col = 0;
             copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
             continue;
@@ -166,6 +169,7 @@ int main(void) {
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
             reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            field_fresh = 1;
             preferred_col = 0;
             copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
             continue;
@@ -208,6 +212,7 @@ int main(void) {
             } else {
                 focus_mode = FOCUS_INPUT;
                 field_cursor_pos = 0;
+                field_fresh = 1;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
             }
             continue;
@@ -412,6 +417,7 @@ int main(void) {
                     band_selecting = 0;
                     preferred_col = 0;
                     field_cursor_pos = 0;
+                    field_fresh = 1;
                     focus_mode = FOCUS_INPUT;
                     compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
                     if (strcmp(current_qrb, "-") == 0 && current_qso.distance[0] != '\0') {
@@ -705,10 +711,12 @@ int main(void) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
                 field_cursor_pos = 0;
+                field_fresh = 1;
             } else if (ret == 3) {
                 active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
                 field_cursor_pos = 0;
+                field_fresh = 1;
             }
             continue;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2) || ch == 19) {
@@ -728,6 +736,7 @@ int main(void) {
                 log_scroll_offset = 0;
             }
             preferred_col = field_default_col(active_field);
+            field_fresh = 1;
         } else if (ch == '\t' || ch == KEY_RIGHT) {
             /* Tab / Högerpil stegar till nästa inmatningsfält */
             band_selecting = 0;
@@ -738,6 +747,7 @@ int main(void) {
             active_field = (active_field + 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_BTAB || ch == KEY_LEFT) {
             /* Shift-Tab / Vänsterpil stegar till föregående fält */
             band_selecting = 0;
@@ -748,6 +758,7 @@ int main(void) {
             active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_DOWN) {
             /* Pil ned går till fältet rakt under */
             band_selecting = 0;
@@ -758,6 +769,7 @@ int main(void) {
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, +1, preferred_col);
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_UP) {
             /* Pil upp går till fältet rakt ovanför */
             band_selecting = 0;
@@ -768,6 +780,7 @@ int main(void) {
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, -1, preferred_col);
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1 || ch == KEY_CTRL_HOME) {
             /* Home: hoppa till Signal (FLD_CALL) */
             band_selecting = 0;
@@ -778,6 +791,7 @@ int main(void) {
             active_field = FLD_CALL;
             preferred_col = 0;
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1 || ch == KEY_CTRL_END) {
             /* End: hoppa till Not (FLD_COMM) */
             band_selecting = 0;
@@ -788,6 +802,7 @@ int main(void) {
             active_field = FLD_COMM;
             preferred_col = 4;
             field_cursor_pos = 0;
+            field_fresh = 1;
         } else if (ch == KEY_PPAGE) {
             /* PgUp: bläddra loggraderna uppåt */
             int avail = get_avail_log_rows();
@@ -810,6 +825,7 @@ int main(void) {
             size_t max_len = 0;
             char *field_ptr = get_qso_field_ptr(&current_qso, active_field, &max_len);
             if (field_ptr != NULL) {
+                field_fresh = 0;
                 utf8_backspace_at(field_ptr, &field_cursor_pos);
                 if (active_field == FLD_CALL) {
                     last_smcb_call[0] = '\0';
@@ -842,13 +858,17 @@ int main(void) {
                 }
             }
         } else if (active_field != FLD_BAND && ch == KEY_DC) {
+            /* Trycka DEL i ett inmatningsfält ska rensa hela fältet */
             size_t max_len = 0;
             char *field_ptr = get_qso_field_ptr(&current_qso, active_field, &max_len);
             if (field_ptr != NULL) {
-                utf8_delete_at(field_ptr, field_cursor_pos);
+                field_ptr[0] = '\0';
+                field_cursor_pos = 0;
+                field_fresh = 0;
                 if (active_field == FLD_CALL) {
                     last_smcb_call[0] = '\0';
                     lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
+                    copy_str(current_qrb, sizeof(current_qrb), "-");
                 }
                 if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
                     resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
@@ -889,12 +909,22 @@ int main(void) {
             size_t max_len = 0;
             char *field_ptr = get_qso_field_ptr(&current_qso, active_field, &max_len);
             if (field_ptr != NULL) {
+                /* När man börjar skriva i ett fält ska fältet rensas innan första bokstaven visas */
+                if (field_fresh) {
+                    field_ptr[0] = '\0';
+                    field_cursor_pos = 0;
+                    field_fresh = 0;
+                    if (active_field == FLD_CALL) {
+                        last_smcb_call[0] = '\0';
+                    }
+                }
+
                 char c = (char)ch;
                 if ((active_field == FLD_CALL || active_field == FLD_MODE || active_field == FLD_GRID) &&
                     (unsigned char)c < 128) {
                     c = (char)toupper((unsigned char)c);
                 }
-                utf8_overwrite_byte_at(field_ptr, max_len, &field_cursor_pos, c);
+                utf8_insert_byte_at(field_ptr, max_len, &field_cursor_pos, c);
 
                 if (active_field == FLD_CALL) {
                     last_smcb_call[0] = '\0';

@@ -415,11 +415,11 @@ void draw_top_bar(const StationSettings *st) {
     attroff(COLOR_PAIR(CP_TOPBAR));
 
     attron(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-    mvprintw(0, 1, "qsolog");
+    mvprintw(0, 1, "UEI-Logg");
     attroff(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
 
     attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-    mvprintw(0, 8, "v1.0");
+    mvprintw(0, 10, "v1.0");
     attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
     char station_info[128];
@@ -1067,7 +1067,8 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
         } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
             utf8_backspace_at(buf, &cursor_pos);
         } else if (ch == KEY_DC) {
-            utf8_delete_at(buf, cursor_pos);
+            buf[0] = '\0';
+            cursor_pos = 0;
         } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
             utf8_insert_byte_at(buf, sizeof(buf), &cursor_pos, (char)ch);
         }
