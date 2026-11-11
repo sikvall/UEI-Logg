@@ -13,6 +13,7 @@
 #include "space_weather.h"
 #include "tui.h"
 #include "util.h"
+#include "help.h"
 #include <curl/curl.h>
 #include <locale.h>
 #include <stdio.h>
@@ -150,7 +151,7 @@ int main(void) {
             }
             if (focus_mode == FOCUS_LOG) {
                 focus_mode = FOCUS_INPUT;
-                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                field_cursor_pos = 0;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
                 continue;
             }
@@ -206,7 +207,7 @@ int main(void) {
                 }
             } else {
                 focus_mode = FOCUS_INPUT;
-                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                field_cursor_pos = 0;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
             }
             continue;
@@ -402,7 +403,7 @@ int main(void) {
                     active_field = FLD_CALL;
                     band_selecting = 0;
                     preferred_col = 0;
-                    sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                    field_cursor_pos = 0;
                     focus_mode = FOCUS_INPUT;
                     compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
                     if (strcmp(current_qrb, "-") == 0 && current_qso.distance[0] != '\0') {
@@ -419,40 +420,128 @@ int main(void) {
 
         /* FOKUS I INMATNINGSFÄLTEN (FOCUS_INPUT) */
         if (ch == KEY_F(5)) {
-            /* F5: Manuellt uppslag (SMCB för svenska signaler, QRZ.COM för övriga) */
+            /* F5: Manuellt uppslag: Logg -> SM Callbook (om på & svensk) -> QRZ.COM (om på) */
             band_selecting = 0;
             if (current_qso.call[0] == '\0') {
                 copy_str(status_msg, sizeof(status_msg), "Ange en anropssignal först.");
                 continue;
             }
 
+            /* 1. Kontrollera alltid den lokala loggen först */
+            char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
+            if (find_call_in_log(&log_list, current_qso.call, log_name, sizeof(log_name),
+                                 log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
+                if (log_name[0] != '\0') copy_str(current_qso.name, sizeof(current_qso.name), log_name);
+                if (log_qth[0] != '\0')  copy_str(current_qso.qth, sizeof(current_qso.qth), log_qth);
+                if (log_grid[0] != '\0') copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), log_grid);
+                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                field_cursor_pos = 0;
+                snprintf(status_msg, sizeof(status_msg), "Logg: %s%s%s%s%s%s",
+                         log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth,
+                         (log_grid[0] && (log_name[0] || log_qth[0])) ? " (" : (log_grid[0] ? "(" : ""),
+                         log_grid, log_grid[0] ? ")" : "");
+                continue;
+            }
+
+            /* 2. Ej i loggen: prova aktiverade onlinetjänster */
             char base_call[32];
             int is_swedish = extract_swedish_base_call(current_qso.call, base_call, sizeof(base_call));
 
             if (is_swedish) {
-                copy_str(status_msg, sizeof(status_msg), "Söker i SM Callbook...");
-                draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
-                                 field_cursor_pos, time_frozen, editing_index,
-                                 &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
-                refresh();
+                if (station.smcb_enabled) {
+                    copy_str(status_msg, sizeof(status_msg), "Söker i SM Callbook...");
+                    draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
+                                     field_cursor_pos, time_frozen, editing_index,
+                                     &log_list, selected_log_pos, &log_scroll_offset,
+                                     active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                    refresh();
 
-                char sm_name[64] = "", sm_qth[64] = "";
-                int sm_hit = lookup_sm_callbook(base_call, sm_name, sizeof(sm_name), sm_qth, sizeof(sm_qth));
-                if (sm_hit) {
-                    copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
-                    copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
-                    store_smcb_cache(base_call, sm_name, sm_qth, 1);
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                    if (active_field == FLD_NAME) field_cursor_pos = utf8_display_width(current_qso.name);
-                    if (active_field == FLD_QTH)  field_cursor_pos = utf8_display_width(current_qso.qth);
-                    snprintf(status_msg, sizeof(status_msg), "SMCB: %s, %s", sm_name, sm_qth);
-                } else {
+                    char sm_name[64] = "", sm_qth[64] = "";
+                    int sm_hit = lookup_sm_callbook(base_call, sm_name, sizeof(sm_name), sm_qth, sizeof(sm_qth));
+                    if (sm_hit) {
+                        copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
+                        copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
+                        store_smcb_cache(base_call, sm_name, sm_qth, 1);
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        field_cursor_pos = 0;
+                        snprintf(status_msg, sizeof(status_msg), "SMCB: %s, %s", sm_name, sm_qth);
+                        continue;
+                    }
                     store_smcb_cache(base_call, "", "", 0);
-                    snprintf(status_msg, sizeof(status_msg), "SMCB: Ingen träff för %s", base_call);
+
+                    /* Ingen träff i SMCB -> testa QRZ.COM om aktiverat */
+                    if (station.qrz_enabled && station.qrz_username[0] != '\0' && station.qrz_password[0] != '\0') {
+                        copy_str(status_msg, sizeof(status_msg), "SMCB: Ingen träff -> Söker i QRZ.COM...");
+                        draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
+                                         field_cursor_pos, time_frozen, editing_index,
+                                         &log_list, selected_log_pos, &log_scroll_offset,
+                                         active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                        refresh();
+
+                        char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
+                        int qrz_hit = qrz_lookup(station.qrz_username, station.qrz_password, current_qso.call,
+                                                 qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
+                                                 qrz_grid, sizeof(qrz_grid));
+                        if (qrz_hit) {
+                            copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
+                            copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
+                            if (qrz_grid[0] != '\0') {
+                                copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
+                            }
+                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                            field_cursor_pos = 0;
+                            if (qrz_grid[0] != '\0') {
+                                snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
+                            } else {
+                                snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
+                            }
+                            continue;
+                        }
+                    }
+                    snprintf(status_msg, sizeof(status_msg), "Ingen träff för %s i SMCB%s",
+                             base_call, station.qrz_enabled ? " eller QRZ" : "");
+                } else if (station.qrz_enabled) {
+                    /* SMCB är avstängt, men QRZ.COM är aktiverat */
+                    if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
+                        copy_str(status_msg, sizeof(status_msg), "SM Callbook är av. QRZ.COM användarnamn/lösen saknas (F12).");
+                        continue;
+                    }
+                    copy_str(status_msg, sizeof(status_msg), "Söker i QRZ.COM (SMCB av)...");
+                    draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
+                                     field_cursor_pos, time_frozen, editing_index,
+                                     &log_list, selected_log_pos, &log_scroll_offset,
+                                     active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                    refresh();
+
+                    char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
+                    int qrz_hit = qrz_lookup(station.qrz_username, station.qrz_password, current_qso.call,
+                                             qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
+                                             qrz_grid, sizeof(qrz_grid));
+                    if (qrz_hit) {
+                        copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
+                        copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
+                        if (qrz_grid[0] != '\0') {
+                            copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
+                        }
+                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        field_cursor_pos = 0;
+                        if (qrz_grid[0] != '\0') {
+                            snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
+                        } else {
+                            snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
+                        }
+                    } else {
+                        snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
+                    }
+                } else {
+                    copy_str(status_msg, sizeof(status_msg), "Både SM Callbook och QRZ.COM är inaktiverade i inställningarna (F12).");
                 }
             } else {
-                /* Icke-svensk signal: sök via QRZ.COM */
+                /* Icke-svensk signal: sök via QRZ.COM om det är på */
+                if (!station.qrz_enabled) {
+                    copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
+                    continue;
+                }
                 if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
                     copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
                     continue;
@@ -476,9 +565,7 @@ int main(void) {
                         copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
                     }
                     compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                    if (active_field == FLD_NAME) field_cursor_pos = utf8_display_width(current_qso.name);
-                    if (active_field == FLD_QTH)  field_cursor_pos = utf8_display_width(current_qso.qth);
-                    if (active_field == FLD_GRID) field_cursor_pos = utf8_display_width(current_qso.gridsquare);
+                    field_cursor_pos = 0;
                     if (qrz_grid[0] != '\0') {
                         snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
                     } else {
@@ -494,6 +581,10 @@ int main(void) {
             band_selecting = 0;
             if (current_qso.call[0] == '\0') {
                 copy_str(status_msg, sizeof(status_msg), "Ange en anropssignal först.");
+                continue;
+            }
+            if (!station.qrz_enabled) {
+                copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
                 continue;
             }
             if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
@@ -519,9 +610,7 @@ int main(void) {
                     copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
                 }
                 compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                if (active_field == FLD_NAME) field_cursor_pos = utf8_display_width(current_qso.name);
-                if (active_field == FLD_QTH)  field_cursor_pos = utf8_display_width(current_qso.qth);
-                if (active_field == FLD_GRID) field_cursor_pos = utf8_display_width(current_qso.gridsquare);
+                field_cursor_pos = 0;
                 if (qrz_grid[0] != '\0') {
                     snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
                 } else {
@@ -548,11 +637,11 @@ int main(void) {
             if (ret == 2) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
-                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                field_cursor_pos = 0;
             } else if (ret == 3) {
                 active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
-                sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+                field_cursor_pos = 0;
             }
             continue;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2) || ch == 19) {
@@ -576,7 +665,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             active_field = (active_field + 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_BTAB || ch == KEY_LEFT) {
             /* Shift-Tab / Vänsterpil stegar till föregående fält */
             band_selecting = 0;
@@ -586,7 +675,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_DOWN) {
             /* Pil ned går till fältet rakt under */
             band_selecting = 0;
@@ -596,7 +685,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, +1, preferred_col);
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_UP) {
             /* Pil upp går till fältet rakt ovanför */
             band_selecting = 0;
@@ -606,7 +695,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, -1, preferred_col);
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1 || ch == KEY_CTRL_HOME) {
             /* Home: hoppa till Signal (FLD_CALL) */
             band_selecting = 0;
@@ -616,7 +705,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             active_field = FLD_CALL;
             preferred_col = 0;
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1 || ch == KEY_CTRL_END) {
             /* End: hoppa till Not (FLD_COMM) */
             band_selecting = 0;
@@ -626,7 +715,7 @@ int main(void) {
                                           current_qrb, sizeof(current_qrb));
             active_field = FLD_COMM;
             preferred_col = 4;
-            sync_cursor_to_field_end(&current_qso, active_field, &field_cursor_pos);
+            field_cursor_pos = 0;
         } else if (ch == KEY_PPAGE) {
             /* PgUp: bläddra loggraderna uppåt */
             int avail = get_avail_log_rows();
@@ -733,7 +822,7 @@ int main(void) {
                     (unsigned char)c < 128) {
                     c = (char)toupper((unsigned char)c);
                 }
-                utf8_insert_byte_at(field_ptr, max_len, &field_cursor_pos, c);
+                utf8_overwrite_byte_at(field_ptr, max_len, &field_cursor_pos, c);
 
                 if (active_field == FLD_CALL) {
                     last_smcb_call[0] = '\0';

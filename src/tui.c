@@ -591,6 +591,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         items[count++] = (FKeyItem){"F2", "Spara"};
         items[count++] = (FKeyItem){"F5", "Import"};
         items[count++] = (FKeyItem){"F6", "Export"};
+        items[count++] = (FKeyItem){"F9", "Hjälp"};
         items[count++] = (FKeyItem){"Esc", "Stäng"};
     } else {
         if (focus_mode == FOCUS_LOG) {
@@ -822,10 +823,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (w_qth < 5) w_qth = 5;
     if (w_qth > 15) w_qth = 15;
 
-    /* Rad 1 (y = 2): Signal 10, RST T 6, RST M 6, Namn 12, QTH 15, QRB */
+    /* Rad 1 (y = 2): Signal 10, RST T 6, RST R 6, Namn 12, QTH 15, QRB */
     draw_field_aligned(2, c1, "Signal", qso->call,     10,    (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c3, "RST M",  qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c3, "RST R",  qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c4, "Namn",   qso->name,     12,    (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(2, c5, "QTH",    qso->qth,      w_qth, (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
@@ -886,7 +887,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     mvprintw(log_top + 1, 49, "%7s", "Band");
     mvprintw(log_top + 1, 58, "Mode");
     mvprintw(log_top + 1, 64, "RST T");
-    mvprintw(log_top + 1, 71, "RST M");
+    mvprintw(log_top + 1, 71, "RST R");
 
     int w_name = 0, w_qth_col = 0, w_loc = 0, w_dxcc = 0;
     if (max_col >= 78 + 4) {
@@ -1006,55 +1007,6 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     refresh();
 }
 
-/**
- * @brief Visar och kör hjälprutan (F9) med kortkommandon och instruktioner.
- * @param st Min stations inställningar.
- */
-void run_help_modal(const StationSettings *st) {
-    (void)st;
-    while (1) {
-        erase();
-        int dialog_w = 68;
-        int dialog_h = 23;
-        int top_y = (LINES - dialog_h) / 2;
-        int left_x = (COLS - dialog_w) / 2;
-        if (top_y < 0) top_y = 0;
-        if (left_x < 0) left_x = 0;
-
-        draw_box_with_title(top_y, left_x, dialog_h, dialog_w, "Snabbhjälp – Tangentbordskommandon", 1);
-
-        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(top_y + 2,  left_x + 3, "Globalt:");
-        mvprintw(top_y + 3,  left_x + 3, "  F1           - Rensa inmatningsformulär");
-        mvprintw(top_y + 4,  left_x + 3, "  ESC          - Återställ sökning / lämna loggläge");
-        mvprintw(top_y + 5,  left_x + 3, "  F2 el. Enter - Logga och spara QSO");
-        mvprintw(top_y + 6,  left_x + 3, "  F3 el. ^F    - Sök i logglistan");
-        mvprintw(top_y + 7,  left_x + 3, "  F4 el. ^O    - Växla fokus mellan fält och loggrader");
-        mvprintw(top_y + 8,  left_x + 3, "  F9           - Denna hjälptext");
-        mvprintw(top_y + 9,  left_x + 3, "  F10 el. ^Q   - Avsluta programmet");
-        mvprintw(top_y + 10, left_x + 3, "  F12          - Inställningar & import/export");
-
-        mvprintw(top_y + 12, left_x + 3, "I inmatningsfälten:");
-        mvprintw(top_y + 13, left_x + 3, "  F5           - Manuellt uppslag (SMCB för SM, QRZ för övriga)");
-        mvprintw(top_y + 14, left_x + 3, "  F6           - Manuellt uppslag via QRZ.COM");
-
-        mvprintw(top_y + 16, left_x + 3, "I loggraderna (F4):");
-        mvprintw(top_y + 17, left_x + 3, "  Piltangenter - Bläddra mellan rader");
-        mvprintw(top_y + 18, left_x + 3, "  Insert (INS) - Markera / avmarkera rad");
-        mvprintw(top_y + 19, left_x + 3, "  F5 / F6      - Markera som hanterad (✓) / ny (✗)");
-        mvprintw(top_y + 20, left_x + 3, "  F8           - Radera markerade / aktuell rad");
-        mvprintw(top_y + 21, left_x + 3, "  Enter        - Redigera valt QSO");
-        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-        attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(top_y + dialog_h - 1, left_x + (dialog_w - 22) / 2, " Tryck valfri tangent ");
-        attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-
-        refresh();
-        int ch = getch();
-        if (ch != ERR) break;
-    }
-}
 
 /**
  * @brief Visar och hanterar en sökdialog i fönstrets nederkant för att filtrera loggrader (F3).

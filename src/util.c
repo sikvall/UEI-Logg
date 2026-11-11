@@ -246,6 +246,38 @@ void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch) {
 }
 
 /**
+ * @brief Skriver över tecknet vid angiven markörposition i en UTF-8-sträng med en byte/ett ASCII-tecken.
+ * Om markören är i slutet av eller bortom strängen läggs tecknet till i slutet.
+ * @param str Strängen som redigeras.
+ * @param max_size Maximal storlek på strängens buffer i bytes inklusive null-terminator.
+ * @param char_pos Pekare till markörens aktuella teckenposition (ökas med 1).
+ * @param ch Tecknet som ska skrivas.
+ */
+void utf8_overwrite_byte_at(char *str, size_t max_size, int *char_pos, char ch) {
+    if (str == NULL || char_pos == NULL || max_size < 2) return;
+    if (*char_pos < 0) *char_pos = 0;
+
+    size_t cur_len = strlen(str);
+    size_t byte_idx = utf8_char_to_byte(str, *char_pos);
+
+    if (byte_idx < cur_len) {
+        /* Ersätt befintligt tecken vid byte_idx med ch (1 byte) */
+        size_t next_byte = utf8_char_to_byte(str, *char_pos + 1);
+        size_t cur_char_bytes = (next_byte > byte_idx) ? (next_byte - byte_idx) : 1;
+        if (cur_char_bytes != 1) {
+            memmove(str + byte_idx + 1, str + byte_idx + cur_char_bytes, cur_len - (byte_idx + cur_char_bytes) + 1);
+        }
+        str[byte_idx] = ch;
+    } else {
+        /* Markören är i slutet: lägg till i slutet om plats finns */
+        if (cur_len + 1 >= max_size) return;
+        str[cur_len] = ch;
+        str[cur_len + 1] = '\0';
+    }
+    (*char_pos)++;
+}
+
+/**
  * @brief Skiftlägesokänslig sökning (case-insensitive substring check) för UTF-8-strängar.
  * @param haystack Strängen att söka i.
  * @param needle Delsträngen att söka efter.

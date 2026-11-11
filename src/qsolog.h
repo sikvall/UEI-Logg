@@ -1,3 +1,8 @@
+/**
+ * @file qsolog.h
+ * @brief Globala definitioner, strukturer och konstanter för UEI-Logg / qsolog.
+ */
+
 #ifndef QSOLOG_H
 #define QSOLOG_H
 
@@ -49,84 +54,96 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom och Retro Ambra) */
+/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra m.fl.) */
 extern const char * const THEME_NAMES[];
 #define THEME_COUNT 8
 
-/* Fokusläge (F4 växlar mellan inmatning och loggrader) */
+/**
+ * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).
+ */
 typedef enum {
-    FOCUS_INPUT = 0,
-    FOCUS_LOG   = 1
+    FOCUS_INPUT = 0, /**< Tangentbordsfokus i QSO-inmatningsfälten */
+    FOCUS_LOG   = 1  /**< Tangentbordsfokus i listan över tidigare loggrader */
 } FocusMode;
 
-/* Exportläge för ADIF-export */
+/**
+ * @brief Exportläge vid skapande av ADIF-filer.
+ */
 enum {
-    EXPORT_MODE_ALL      = 0,
-    EXPORT_MODE_MARKED   = 1,
-    EXPORT_MODE_ONLY_NEW = 2
+    EXPORT_MODE_ALL      = 0, /**< Exportera alla QSO-poster */
+    EXPORT_MODE_MARKED   = 1, /**< Exportera endast rader markerade med INS */
+    EXPORT_MODE_ONLY_NEW = 2  /**< Exportera endast nya/ohanerande rader */
 };
 
-/* Fältindex i visnings- och Tab/Pil-ordning */
+/**
+ * @brief Index för inmatningsfälten i visnings- och tabulatorordning.
+ */
 enum {
-    FLD_CALL = 0,
-    FLD_RSTS = 1,
-    FLD_RSTR = 2,
-    FLD_NAME = 3,
-    FLD_QTH  = 4,
-    FLD_DATE = 5,
-    FLD_TIME = 6,
-    FLD_FREQ = 7,
-    FLD_BAND = 8,
-    FLD_GRID = 9,
-    FLD_DXCC = 10,
-    FLD_MODE = 11,
-    FLD_COMM = 12
+    FLD_CALL = 0,  /**< Signal (10 tecken) */
+    FLD_RSTS = 1,  /**< RST T / sänd rapport (6 tecken) */
+    FLD_RSTR = 2,  /**< RST R / mottagen rapport (6 tecken) */
+    FLD_NAME = 3,  /**< Namn (12 tecken) */
+    FLD_QTH  = 4,  /**< QTH (15 tecken) */
+    FLD_DATE = 5,  /**< Datum (YYYY-MM-DD) */
+    FLD_TIME = 6,  /**< Tid UTC (HH:MM) */
+    FLD_FREQ = 7,  /**< Frekvens i MHz */
+    FLD_BAND = 8,  /**< Amatörband (t.ex. 20m) */
+    FLD_GRID = 9,  /**< Maidenhead-lokator (6 tecken) */
+    FLD_DXCC = 10, /**< DXCC-land */
+    FLD_MODE = 11, /**< Trafiksätt (t.ex. SSB, CW, FT8) */
+    FLD_COMM = 12  /**< Notering / kommentar */
 };
 
-/* Inställningar för egen station */
+/**
+ * @brief Konfiguration för min egen station (station.conf).
+ */
 typedef struct {
-    char call[32];       /* ADIF: STATION_CALLSIGN - Egen anropssignal */
-    char name[64];       /* ADIF: MY_NAME          - Eget namn */
-    char qth[64];        /* ADIF: MY_CITY          - Eget QTH */
-    char gridsquare[16]; /* ADIF: MY_GRIDSQUARE    - Egen lokator */
-    char timezone[32];   /* Lokal tidszon (t.ex. UTC+1, CET) */
-    char qrz_username[36]; /* station.conf: QRZ_USER - QRZ.COM Användarnamn (max 32 tecken) */
-    char qrz_password[36]; /* station.conf: QRZ_PASS - QRZ.COM Lösenord (max 32 tecken) */
-    int  qrz_enabled;    /* Slå upp automatiskt via QRZ.COM (0=Av, 1=På) */
-    int  theme;          /* Valt färgschema (0..THEME_COUNT-1) */
-    int  smcb_enabled;   /* Slå upp svenska signaler via SM Callbook (0=Av, 1=På) */
-    int  auto_rst_59;    /* Fyll i 59 / 59 automatiskt i RST vid nytt QSO (0=Av, 1=På) */
-    int  filter_log;     /* Filtrera loggrader efter anropssignal vid inmatning (0=Av, 1=På) */
-    char last_freq[32];  /* Senast använda frekvens (sparas i station.conf) */
-    char last_band[16];  /* Senast använda band (sparas i station.conf) */
-    char last_mode[16];  /* Senast använda trafikslag (sparas i station.conf) */
+    char call[32];         /**< Egen anropssignal (ADIF: STATION_CALLSIGN) */
+    char name[64];         /**< Eget namn (ADIF: MY_NAME) */
+    char qth[64];          /**< Eget QTH (ADIF: MY_CITY) */
+    char gridsquare[16];   /**< Egen lokator (ADIF: MY_GRIDSQUARE) */
+    char timezone[32];     /**< Lokal tidszon (t.ex. UTC+1, Europe/Stockholm) */
+    char qrz_username[36]; /**< QRZ.COM användarnamn */
+    char qrz_password[36]; /**< QRZ.COM lösenord */
+    int  qrz_enabled;      /**< 1 om automatisk QRZ-uppslagning är aktiv */
+    int  theme;            /**< Index för aktivt färgschema (0..THEME_COUNT-1) */
+    int  smcb_enabled;     /**< 1 om automatisk SM Callbook-uppslagning är aktiv */
+    int  auto_rst_59;      /**< 1 om RST förifylls automatiskt med 59/599 vid nytt QSO */
+    int  filter_log;       /**< 1 om loggrader filtreras automatiskt efter inmatad signal */
+    char last_freq[32];    /**< Senast använda frekvens */
+    char last_band[16];    /**< Senast använda band */
+    char last_mode[16];    /**< Senast använda mode */
 } StationSettings;
 
-/* Data för ett QSO */
+/**
+ * @brief Data för ett enskilt QSO (kontakt).
+ */
 typedef struct {
-    char call[32];       /* ADIF: CALL       - Anropssignal */
-    char name[64];       /* ADIF: NAME       - Namn */
-    char date[16];       /* ADIF: QSO_DATE   - Datum (YYYY-MM-DD) */
-    char time_utc[16];   /* ADIF: TIME_ON    - Tid UTC (HH:MM) */
-    char gridsquare[16]; /* ADIF: GRIDSQUARE - Lokator */
-    char freq[32];       /* ADIF: FREQ       - Frekvens (MHz) */
-    char band[16];       /* ADIF: BAND       - Band (160m..23cm) */
-    char mode[16];       /* ADIF: MODE       - Trafiksätt (t.ex. SSB, CW) */
-    char rst_sent[16];   /* ADIF: RST_SENT   - RST T (sänd) */
-    char rst_rcvd[16];   /* ADIF: RST_RCVD   - RST M (mottagen) */
-    char qth[64];        /* ADIF: QTH        - QTH */
-    char dxcc[64];       /* ADIF: COUNTRY    - DXCC */
-    char comment[256];   /* ADIF: COMMENT    - Kommentar */
-    char distance[16];   /* ADIF: DISTANCE   - Avstånd i km */
-    int  handled;        /* ADIF: APP_QSOLOG_HANDLED - 0 = ny, 1 = hanterad */
-    int  marked;         /* 1 om markerad i logglistan */
+    char call[32];       /**< Motstationens anropssignal (ADIF: CALL) */
+    char name[64];       /**< Motstationens operatörsnamn (ADIF: NAME) */
+    char date[16];       /**< QSO-datum i format YYYY-MM-DD (ADIF: QSO_DATE) */
+    char time_utc[16];   /**< QSO-tid i UTC format HH:MM (ADIF: TIME_ON) */
+    char gridsquare[16]; /**< Motstationens Maidenhead-lokator (ADIF: GRIDSQUARE) */
+    char freq[32];       /**< Frekvens i MHz (ADIF: FREQ) */
+    char band[16];       /**< Amatörband (ADIF: BAND) */
+    char mode[16];       /**< Trafiksätt (ADIF: MODE) */
+    char rst_sent[16];   /**< Sänd rapport RST T (ADIF: RST_SENT) */
+    char rst_rcvd[16];   /**< Mottagen rapport RST R (ADIF: RST_RCVD) */
+    char qth[64];        /**< Motstationens ort eller land (ADIF: QTH) */
+    char dxcc[64];       /**< DXCC-land (ADIF: COUNTRY) */
+    char comment[256];   /**< Kommentar eller notering (ADIF: COMMENT) */
+    char distance[16];   /**< Beräknat avstånd i km (ADIF: DISTANCE) */
+    int  handled;        /**< Hanteringsstatus: 0 = ny (✗), 1 = hanterad (✓) */
+    int  marked;         /**< 1 om raden är tillfälligt markerad med INS */
 } QSO;
 
-/* Dynamisk lista av tidigare loggade QSO ("Loggrader") */
+/**
+ * @brief Dynamisk lista av lagrade QSO-poster (Loggrader).
+ */
 typedef struct {
-    QSO *items;
-    size_t count;
-    size_t capacity;
+    QSO *items;      /**< Pekare till allokerad array av QSO:n */
+    size_t count;    /**< Antal poster i listan */
+    size_t capacity; /**< Allokerad kapacitet */
 } QSOList;
 
 #endif /* QSOLOG_H */
