@@ -692,7 +692,7 @@ int main(void) {
                                         field_cursor_pos, &time_frozen, editing_index,
                                         &log_list, selected_log_pos, &log_scroll_offset,
                                         active_filter, status_msg, sizeof(status_msg),
-                                        current_qrb, 3, 69);
+                                        current_qrb, 4, 33);
             if (ret == 2) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);

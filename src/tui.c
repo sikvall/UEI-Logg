@@ -544,7 +544,7 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
     attroff(COLOR_PAIR(CP_LABEL));
 
     int val_col = colon_col + 2;
-    int width = 10;
+    int width = 8;
 
     char formatted[16];
     format_band_display(val, formatted, sizeof(formatted));
@@ -561,7 +561,7 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
     for (int i = 0; i < width; ++i) {
         mvaddch(row, val_col + i, ' ');
     }
-    mvprintw(row, val_col, " %-6s %s", formatted, arrow);
+    mvprintw(row, val_col, " %-4s %s", formatted, arrow);
     attroff(COLOR_PAIR(color) | attr);
 
     if (is_active) {
@@ -772,7 +772,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_top_bar(st);
 
     /* RITA INMATNINGSSEKTIONEN */
-    int input_h = 5;
+    int input_h = 6;
     draw_box_with_title(1, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
 
     int badge_w = 13;
@@ -808,60 +808,61 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
 
     /* Kolumnpositioner för kolon i inmatningsfält */
-    int c1 = 8;
-    int c2 = 25;
-    int c3 = 38;
-    int c4 = 51;
-    int c5 = 69;
+    int c1 = 9;
+    int c2 = 33;
+    int c3 = 51;
+    int c4 = 65;
 
+    int form_w_name = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    if (form_w_name < 6) form_w_name = 6;
+    if (form_w_name > 16) form_w_name = 16;
+
+    int form_w_dxcc = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    if (form_w_dxcc < 6) form_w_dxcc = 6;
+    if (form_w_dxcc > 16) form_w_dxcc = 16;
+
+    int form_w_qth = (COLS >= 88) ? 15 : 14;
+
+    /* Rad 1 (y = 2): Signal, RST T, RST R, Namn */
+    draw_field_aligned(2, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c3, "RST R",  qso->rst_rcvd,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(2, c4, "Namn",   qso->name,     form_w_name, (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
+
+    /* Rad 2 (y = 3): QTH, Lokator, QRB, DXCC */
+    draw_field_aligned(3, c1, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(3, c2, "Lokator", qso->gridsquare, 6,           (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
+
+    /* QRB mellan Lokator och DXCC på rad 2 */
     int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
-    int w_qth = (COLS >= 88) ? 15 : (COLS - (c5 + 2) - 1);
-    if (has_qrb && COLS < 102) {
-        w_qth = COLS - (c5 + 2) - 13;
-        if (w_qth < 6) w_qth = 6;
-    }
-    if (w_qth < 5) w_qth = 5;
-    if (w_qth > 15) w_qth = 15;
+    const char *qrb_val = has_qrb ? qrb_str : "-";
+    int lbl_qrb_x = c3 - 3; /* "QRB" är 3 tecken */
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    mvprintw(3, lbl_qrb_x, "QRB:");
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    int qrb_color = has_qrb ? CP_STATUS_OK : CP_FIELD_INACTIVE;
+    attron(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
+    mvprintw(3, c3 + 2, "%-8.8s", qrb_val);
+    attroff(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
 
-    /* Rad 1 (y = 2): Signal 10, RST T 6, RST R 6, Namn 12, QTH 15, QRB */
-    draw_field_aligned(2, c1, "Signal", qso->call,     10,    (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c3, "RST R",  qso->rst_rcvd,  6,    (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c4, "Namn",   qso->name,     12,    (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c5, "QTH",    qso->qth,      w_qth, (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(3, c4, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
 
-    /* QRB / avstånd till höger om QTH på rad 1 */
-    int qrb_col = (c5 + 2) + w_qth + 2;
-    if (has_qrb && COLS >= qrb_col + 7) {
-        attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(2, qrb_col, "QRB: ");
-        attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        attron(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
-        int max_qrb_w = COLS - qrb_col - 6;
-        if (max_qrb_w > 0) {
-            printw("%.*s", max_qrb_w, qrb_str);
-        }
-        attroff(COLOR_PAIR(CP_STATUS_OK) | A_BOLD);
-    }
+    /* Rad 3 (y = 4): Frekvens, Band, Mode */
+    draw_field_aligned(4, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
+    draw_band_selector_aligned(4, c2, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
+    draw_field_aligned(4, c3, "Mode",     qso->mode,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 2 (y = 3): Datum, UTC, Frekvens, Band */
-    draw_field_aligned(3, c1, "Datum",    qso->date,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, c2, "UTC",      qso->time_utc,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, c4, "Frekvens", qso->freq,     10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
-    draw_band_selector_aligned(3, c5, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
-
-    /* Rad 3 (y = 4): Lokator, DXCC, Mode, Notering som tar upp resten av sista raden */
-    int comm_w = COLS - (c5 + 2) - 1;
+    /* Rad 4 (y = 5): Datum, UTC, Notering */
+    int comm_w = COLS - (c3 + 2) - 1;
     if (comm_w < 5) comm_w = 5;
     const char *lbl_not = (COLS >= 88) ? "Notering" : "Not";
-    draw_field_aligned(4, c1, "Lokator",  qso->gridsquare,  6,      (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(4, c2, "DXCC",     qso->dxcc,       12,      (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(4, c4, "Mode",     qso->mode,        6,      (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(4, c5, lbl_not,    qso->comment,     comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(5, c1, "Datum",    qso->date,     10,     (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(5, c2, "UTC",      qso->time_utc,  6,     (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(5, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
     /* RITA LOGGRADSKOMPONENTEN */
     int sw_reserved = (LINES >= 25) ? 4 : 0;
-    int log_top = 6;
+    int log_top = 7;
     int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
 
@@ -1247,27 +1248,28 @@ void sync_cursor_to_field_end(QSO *qso, int active_field, int *cursor_pos) {
 }
 
 /**
- * @brief Returnerar standardkolumn (0..4) för vertikal piltangentsnavigering.
+ * @brief Returnerar standardkolumn (0..3) för vertikal piltangentsnavigering.
  */
 int field_default_col(int fld) {
     switch (fld) {
-        case FLD_CALL: case FLD_DATE: case FLD_GRID: return 0;
-        case FLD_RSTS: case FLD_TIME: case FLD_DXCC: return 1;
-        case FLD_RSTR:                               return 2;
-        case FLD_NAME: case FLD_FREQ: case FLD_MODE: return 3;
-        case FLD_QTH:  case FLD_BAND: case FLD_COMM: return 4;
+        case FLD_CALL: case FLD_QTH:  case FLD_FREQ: case FLD_DATE: return 0;
+        case FLD_RSTS: case FLD_GRID: case FLD_BAND: case FLD_TIME: return 1;
+        case FLD_RSTR:                case FLD_MODE:                return 2;
+        case FLD_NAME: case FLD_DXCC:                               return 3;
+        case FLD_COMM:                                              return 2;
         default: return 0;
     }
 }
 
 /**
- * @brief Returnerar radindex (0..2) i inmatningsformuläret för ett givet fält.
+ * @brief Returnerar radindex (0..3) i inmatningsformuläret för ett givet fält.
  */
 int field_row_index(int fld) {
     switch (fld) {
-        case FLD_CALL: case FLD_RSTS: case FLD_RSTR: case FLD_NAME: case FLD_QTH: return 0;
-        case FLD_DATE: case FLD_TIME: case FLD_FREQ: case FLD_BAND: return 1;
-        case FLD_GRID: case FLD_DXCC: case FLD_MODE: case FLD_COMM: return 2;
+        case FLD_CALL: case FLD_RSTS: case FLD_RSTR: case FLD_NAME: return 0;
+        case FLD_QTH:  case FLD_GRID: case FLD_DXCC:                return 1;
+        case FLD_FREQ: case FLD_BAND: case FLD_MODE:                return 2;
+        case FLD_DATE: case FLD_TIME: case FLD_COMM:                return 3;
         default: return 0;
     }
 }
@@ -1276,16 +1278,17 @@ int field_row_index(int fld) {
  * @brief Stegar aktivt fält uppåt (-1) eller nedåt (+1) baserat på kolumnprioritet.
  */
 int step_field_vertical(int current_field, int dir, int pref_col) {
-    static const int grid[3][5] = {
-        { FLD_CALL, FLD_RSTS, FLD_RSTR, FLD_NAME, FLD_QTH },
-        { FLD_DATE, FLD_TIME, FLD_TIME, FLD_FREQ, FLD_BAND },
-        { FLD_GRID, FLD_DXCC, FLD_DXCC, FLD_MODE, FLD_COMM }
+    static const int grid[4][4] = {
+        { FLD_CALL, FLD_RSTS, FLD_RSTR, FLD_NAME },
+        { FLD_QTH,  FLD_GRID, FLD_DXCC, FLD_DXCC },
+        { FLD_FREQ, FLD_BAND, FLD_MODE, FLD_MODE },
+        { FLD_DATE, FLD_TIME, FLD_COMM, FLD_COMM }
     };
     int r = field_row_index(current_field);
-    int nr = (r + dir + 3) % 3;
+    int nr = (r + dir + 4) % 4;
     int c = pref_col;
     if (c < 0) c = 0;
-    if (c > 4) c = 4;
+    if (c > 3) c = 3;
     return grid[nr][c];
 }
 

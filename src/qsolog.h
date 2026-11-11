@@ -76,22 +76,22 @@ enum {
 };
 
 /**
- * @brief Index för inmatningsfälten i visnings- och tabulatorordning.
+ * @brief Index för inmatningsfälten i visnings- och tabulatorordning (4 rader).
  */
 enum {
-    FLD_CALL = 0,  /**< Signal (10 tecken) */
-    FLD_RSTS = 1,  /**< RST T / sänd rapport (6 tecken) */
-    FLD_RSTR = 2,  /**< RST R / mottagen rapport (6 tecken) */
-    FLD_NAME = 3,  /**< Namn (12 tecken) */
-    FLD_QTH  = 4,  /**< QTH (15 tecken) */
-    FLD_DATE = 5,  /**< Datum (YYYY-MM-DD) */
-    FLD_TIME = 6,  /**< Tid UTC (HH:MM) */
-    FLD_FREQ = 7,  /**< Frekvens i MHz */
-    FLD_BAND = 8,  /**< Amatörband (t.ex. 20m) */
-    FLD_GRID = 9,  /**< Maidenhead-lokator (6 tecken) */
-    FLD_DXCC = 10, /**< DXCC-land */
-    FLD_MODE = 11, /**< Trafiksätt (t.ex. SSB, CW, FT8) */
-    FLD_COMM = 12  /**< Notering / kommentar */
+    FLD_CALL = 0,  /**< Rad 1: Signal (10 tecken) */
+    FLD_RSTS = 1,  /**< Rad 1: RST T / sänd rapport (6 tecken) */
+    FLD_RSTR = 2,  /**< Rad 1: RST R / mottagen rapport (6 tecken) */
+    FLD_NAME = 3,  /**< Rad 1: Namn (12-16 tecken) */
+    FLD_QTH  = 4,  /**< Rad 2: QTH (14-15 tecken) */
+    FLD_GRID = 5,  /**< Rad 2: Maidenhead-lokator (6 tecken) */
+    FLD_DXCC = 6,  /**< Rad 2: DXCC-land (12-16 tecken) */
+    FLD_FREQ = 7,  /**< Rad 3: Frekvens i MHz */
+    FLD_BAND = 8,  /**< Rad 3: Amatörband (dropdown) */
+    FLD_MODE = 9,  /**< Rad 3: Trafiksätt (t.ex. SSB, CW, FT8) */
+    FLD_DATE = 10, /**< Rad 4: Datum (YYYY-MM-DD) */
+    FLD_TIME = 11, /**< Rad 4: Tid UTC (HH:MM) */
+    FLD_COMM = 12  /**< Rad 4: Notering / kommentar */
 };
 
 /**
