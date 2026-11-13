@@ -894,6 +894,8 @@ static int cmd_stat(const char *target_file) {
     int pad_fn = 56 - fn_w;
     if (pad_fn < 0) pad_fn = 0;
 
+    char sz_line[128];
+    snprintf(sz_line, sizeof(sz_line), "%s (%s rader)", str_sz, num_lines);
     int sz_w = utf8_display_width(sz_line);
     int pad_sz = 56 - sz_w;
     if (pad_sz < 0) pad_sz = 0;
