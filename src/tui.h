@@ -102,6 +102,15 @@ void draw_box_with_title(int y, int x, int h, int w, const char *title, int has_
 void draw_top_bar(const StationSettings *st);
 
 /**
+ * @brief Ritar den lilla statistikrutan ovanför QSO-inmatningen (2 rader data i ram).
+ * Visar QSO, Stationer, DXCC, Lokatorer, Bandland och Rate (senaste 60 min).
+ * @param top_y Översta raden för rutan.
+ * @param width Rutans bredd.
+ * @param log_list Pekare till logglistan.
+ */
+void draw_stats_box(int top_y, int width, const QSOList *log_list);
+
+/**
  * @brief Ritar ett högerjusterat inmatningsfält med etikett, värde och aktiv markör.
  * @param row Rad i fönstret.
  * @param colon_col Kolumn för kolonet efter fältetiketten.

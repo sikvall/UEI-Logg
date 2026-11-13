@@ -16,8 +16,220 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
+
+static LogStats s_cached_stats;
+static size_t s_cached_count = (size_t)-1;
+static time_t s_cached_minute = 0;
+static const QSOList *s_cached_ptr = NULL;
 
 char g_log_filename[256] = DEFAULT_LOG_FILE;
+
+void invalidate_log_stats_cache(void) {
+    s_cached_count = (size_t)-1;
+    s_cached_minute = 0;
+    s_cached_ptr = NULL;
+}
+
+static int cmp_str_ptrs(const void *a, const void *b) {
+    const char * const *sa = (const char * const *)a;
+    const char * const *sb = (const char * const *)b;
+    return strcmp(*sa, *sb);
+}
+
+static time_t parse_qso_time_utc(const char *date_str, const char *time_str) {
+    if (!date_str || !time_str || date_str[0] == '\0' || time_str[0] == '\0') return 0;
+    int year = 0, mon = 0, day = 0;
+    if (sscanf(date_str, "%d-%d-%d", &year, &mon, &day) != 3) {
+        if (sscanf(date_str, "%4d%2d%2d", &year, &mon, &day) != 3) {
+            return 0;
+        }
+    }
+    int hour = 0, min = 0, sec = 0;
+    if (strchr(time_str, ':') != NULL) {
+        if (sscanf(time_str, "%d:%d:%d", &hour, &min, &sec) < 2) {
+            if (sscanf(time_str, "%d:%d", &hour, &min) != 2) return 0;
+        }
+    } else {
+        if (strlen(time_str) >= 4) {
+            if (sscanf(time_str, "%2d%2d", &hour, &min) != 2) return 0;
+        } else {
+            return 0;
+        }
+    }
+    struct tm tm_utc;
+    memset(&tm_utc, 0, sizeof(tm_utc));
+    tm_utc.tm_year = year - 1900;
+    tm_utc.tm_mon  = mon - 1;
+    tm_utc.tm_mday = day;
+    tm_utc.tm_hour = hour;
+    tm_utc.tm_min  = min;
+    tm_utc.tm_sec  = sec;
+    return timegm(&tm_utc);
+}
+
+void compute_log_stats(const QSOList *list, LogStats *stats) {
+    if (!stats) return;
+    memset(stats, 0, sizeof(LogStats));
+    if (!list) return;
+
+    time_t now = time(NULL);
+    time_t cur_minute = now / 60;
+
+    if (list == s_cached_ptr && list->count == s_cached_count && cur_minute == s_cached_minute) {
+        *stats = s_cached_stats;
+        return;
+    }
+
+    size_t n = list->count;
+    stats->total_qsos = (int)n;
+    if (n == 0) {
+        s_cached_stats = *stats;
+        s_cached_count = 0;
+        s_cached_minute = cur_minute;
+        s_cached_ptr = list;
+        return;
+    }
+
+    char (*calls)[32] = malloc(n * sizeof(*calls));
+    const char **call_ptrs = malloc(n * sizeof(char *));
+    size_t call_cnt = 0;
+
+    char (*dxccs)[64] = malloc(n * sizeof(*dxccs));
+    const char **dxcc_ptrs = malloc(n * sizeof(char *));
+    size_t dxcc_cnt = 0;
+
+    char (*grids)[8] = malloc(n * sizeof(*grids));
+    const char **grid_ptrs = malloc(n * sizeof(char *));
+    size_t grid_cnt = 0;
+
+    char (*bandlands)[96] = malloc(n * sizeof(*bandlands));
+    const char **bandland_ptrs = malloc(n * sizeof(char *));
+    size_t bandland_cnt = 0;
+
+    int rate_cnt = 0;
+
+    for (size_t i = 0; i < n; ++i) {
+        const QSO *q = &list->items[i];
+
+        /* Station (unik signal) */
+        if (calls && call_ptrs && q->call[0] != '\0') {
+            copy_str(calls[call_cnt], sizeof(calls[0]), q->call);
+            trim_str(calls[call_cnt]);
+            to_upper_str(calls[call_cnt]);
+            if (calls[call_cnt][0] != '\0') {
+                call_ptrs[call_cnt] = calls[call_cnt];
+                call_cnt++;
+            }
+        }
+
+        /* DXCC */
+        char ent[64] = "";
+        if (q->dxcc[0] != '\0') {
+            copy_str(ent, sizeof(ent), q->dxcc);
+        } else if (q->call[0] != '\0') {
+            lookup_dxcc(q->call, ent, sizeof(ent));
+        }
+        trim_str(ent);
+        to_upper_str(ent);
+
+        if (dxccs && dxcc_ptrs && ent[0] != '\0' && strcmp(ent, "-") != 0) {
+            copy_str(dxccs[dxcc_cnt], sizeof(dxccs[0]), ent);
+            dxcc_ptrs[dxcc_cnt] = dxccs[dxcc_cnt];
+            dxcc_cnt++;
+        }
+
+        /* Lokatorruta (4 tecken, t.ex. JO65) */
+        if (grids && grid_ptrs && q->gridsquare[0] != '\0') {
+            if (is_valid_locator(q->gridsquare) >= 4) {
+                const char *p = q->gridsquare;
+                while (*p == ' ' || *p == '\t') p++;
+                grids[grid_cnt][0] = (char)toupper((unsigned char)p[0]);
+                grids[grid_cnt][1] = (char)toupper((unsigned char)p[1]);
+                grids[grid_cnt][2] = p[2];
+                grids[grid_cnt][3] = p[3];
+                grids[grid_cnt][4] = '\0';
+                grid_ptrs[grid_cnt] = grids[grid_cnt];
+                grid_cnt++;
+            }
+        }
+
+        /* Bandland (DXCC + Band) */
+        if (bandlands && bandland_ptrs && ent[0] != '\0' && strcmp(ent, "-") != 0 && q->band[0] != '\0') {
+            char bnd[16];
+            copy_str(bnd, sizeof(bnd), q->band);
+            trim_str(bnd);
+            to_upper_str(bnd);
+            if (bnd[0] != '\0') {
+                snprintf(bandlands[bandland_cnt], sizeof(bandlands[0]), "%s#%s", ent, bnd);
+                bandland_ptrs[bandland_cnt] = bandlands[bandland_cnt];
+                bandland_cnt++;
+            }
+        }
+
+        /* Rate: antalet loggade QSO de senaste 60 minuterna */
+        time_t qt = parse_qso_time_utc(q->date, q->time_utc);
+        if (qt > 0) {
+            double diff = difftime(now, qt);
+            if (diff >= -120.0 && diff <= 3600.0) {
+                rate_cnt++;
+            }
+        }
+    }
+
+    /* Sortera och räkna unika element */
+    if (call_ptrs && call_cnt > 0) {
+        qsort(call_ptrs, call_cnt, sizeof(char *), cmp_str_ptrs);
+        int u = 0;
+        for (size_t i = 0; i < call_cnt; ++i) {
+            if (i == 0 || strcmp(call_ptrs[i], call_ptrs[i - 1]) != 0) u++;
+        }
+        stats->unique_stations = u;
+    }
+
+    if (dxcc_ptrs && dxcc_cnt > 0) {
+        qsort(dxcc_ptrs, dxcc_cnt, sizeof(char *), cmp_str_ptrs);
+        int u = 0;
+        for (size_t i = 0; i < dxcc_cnt; ++i) {
+            if (i == 0 || strcmp(dxcc_ptrs[i], dxcc_ptrs[i - 1]) != 0) u++;
+        }
+        stats->unique_dxcc = u;
+    }
+
+    if (grid_ptrs && grid_cnt > 0) {
+        qsort(grid_ptrs, grid_cnt, sizeof(char *), cmp_str_ptrs);
+        int u = 0;
+        for (size_t i = 0; i < grid_cnt; ++i) {
+            if (i == 0 || strcmp(grid_ptrs[i], grid_ptrs[i - 1]) != 0) u++;
+        }
+        stats->unique_grids = u;
+    }
+
+    if (bandland_ptrs && bandland_cnt > 0) {
+        qsort(bandland_ptrs, bandland_cnt, sizeof(char *), cmp_str_ptrs);
+        int u = 0;
+        for (size_t i = 0; i < bandland_cnt; ++i) {
+            if (i == 0 || strcmp(bandland_ptrs[i], bandland_ptrs[i - 1]) != 0) u++;
+        }
+        stats->unique_bandland = u;
+    }
+
+    stats->rate_last_hour = rate_cnt;
+
+    free(calls);
+    free(call_ptrs);
+    free(dxccs);
+    free(dxcc_ptrs);
+    free(grids);
+    free(grid_ptrs);
+    free(bandlands);
+    free(bandland_ptrs);
+
+    s_cached_stats = *stats;
+    s_cached_count = n;
+    s_cached_minute = cur_minute;
+    s_cached_ptr = list;
+}
 
 /**
  * @brief Skriver en enskild ADIF-tagg till en fil om värdet inte är tomt.
@@ -208,6 +420,7 @@ void qso_list_push(QSOList *list, const QSO *qso) {
         list->capacity = new_cap;
     }
     list->items[list->count++] = *qso;
+    invalidate_log_stats_cache();
 }
 
 /**
@@ -221,6 +434,7 @@ void qso_list_delete_at(QSOList *list, size_t index) {
         list->items[i] = list->items[i + 1];
     }
     list->count--;
+    invalidate_log_stats_cache();
 }
 
 /**
@@ -242,6 +456,7 @@ int qso_list_delete_marked(QSOList *list) {
         }
     }
     list->count = write_idx;
+    invalidate_log_stats_cache();
     return deleted;
 }
 
@@ -327,6 +542,7 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
     }
 
     free(content);
+    invalidate_log_stats_cache();
 }
 
 /**
@@ -726,6 +942,7 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
     if (*editing_index >= 0 && (size_t)(*editing_index) < log_list->count) {
         int idx = *editing_index;
         log_list->items[idx] = *qso;
+        invalidate_log_stats_cache();
         if (save_all_qsos_adif(LOG_FILE, log_list, st) == 0) {
             snprintf(status_msg, status_sz, "Uppdaterade QSO #%d med %s", idx + 1, qso->call);
             reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);

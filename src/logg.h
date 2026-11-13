@@ -15,6 +15,31 @@ extern "C" {
 #endif
 
 /**
+ * @brief Sammanställd statistik för loggen.
+ */
+typedef struct {
+    int total_qsos;       /**< Totalt antal loggade samtal */
+    int unique_stations;  /**< Antal unika anropssignaler */
+    int unique_dxcc;      /**< Antal unika DXCC-entiteter körda */
+    int unique_grids;     /**< Antal unika lokatorrutor (4 tecken) */
+    int unique_bandland;  /**< Antal unika kombinationer av DXCC och band */
+    int rate_last_hour;   /**< Antal loggade QSO de senaste 60 minuterna */
+} LogStats;
+
+/**
+ * @brief Beräknar statistik över loggen för presentationsrutan.
+ * Uppdateras automatiskt varje minut för Rate och vid loggändringar.
+ * @param list Pekare till logglistan.
+ * @param stats Pekare till LogStats-struktur som fylls i.
+ */
+void compute_log_stats(const QSOList *list, LogStats *stats);
+
+/**
+ * @brief Invaliderar cachen för loggstatistik så att nästa anrop beräknar om direkt.
+ */
+void invalidate_log_stats_cache(void);
+
+/**
  * @brief Lägger till ett QSO i slutet av QSO-listan (dynamisk array).
  * @param list Pekare till QSO-listan.
  * @param qso Det QSO som ska läggas till.

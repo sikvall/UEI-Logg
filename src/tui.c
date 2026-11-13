@@ -452,15 +452,76 @@ void draw_top_bar(const StationSettings *st) {
 }
 
 /**
+ * @brief Ritar den lilla statistikrutan ovanför QSO-inmatningen (2 rader data i ram).
+ * Visar QSO, Stationer, DXCC, Lokatorer, Bandland och Rate (senaste 60 min).
+ * Sätter etiketten på första raden och siffran på den andra.
+ * @param top_y Översta raden för rutan.
+ * @param width Rutans bredd.
+ * @param log_list Pekare till logglistan.
+ */
+void draw_stats_box(int top_y, int width, const QSOList *log_list) {
+    draw_box_with_title(top_y, 0, 4, width, "Statistik", 0);
+
+    LogStats stats;
+    compute_log_stats(log_list, &stats);
+
+    const char *labels[] = {
+        "QSO",
+        (width >= 75) ? "Stationer" : "Stat.",
+        "DXCC",
+        (width >= 75) ? "Lokatorer" : "Lok.",
+        "Bandland",
+        "Rate"
+    };
+
+    int vals[] = {
+        stats.total_qsos,
+        stats.unique_stations,
+        stats.unique_dxcc,
+        stats.unique_grids,
+        stats.unique_bandland,
+        stats.rate_last_hour
+    };
+
+    int inner_w = width - 2;
+    if (inner_w < 12) return;
+
+    int r_lbl = top_y + 1;
+    int r_val = top_y + 2;
+
+    for (int i = 0; i < 6; ++i) {
+        int cx = 1 + (inner_w * (2 * i + 1)) / 12;
+
+        /* Etikett på rad 1 */
+        int llen = utf8_display_width(labels[i]);
+        int lx = cx - llen / 2;
+        if (lx < 1) lx = 1;
+        attron(COLOR_PAIR(CP_LABEL));
+        mvprintw(r_lbl, lx, "%s", labels[i]);
+        attroff(COLOR_PAIR(CP_LABEL));
+
+        /* Siffra på rad 2 */
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", vals[i]);
+        int vlen = (int)strlen(buf);
+        int vx = cx - vlen / 2;
+        if (vx < 1) vx = 1;
+        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+        mvprintw(r_val, vx, "%s", buf);
+        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    }
+}
+
+/**
  * @brief Beräknar tillgängligt antal synliga rader för logglistan.
- * Om fönstret har minst 25 rader dras 4 rader av för rymdvädersrutan.
- * Vid färre än 25 rader döljs rymdvädret och loggraderna får hela höjden.
+ * Om fönstret har minst 28 rader dras 4 rader av för rymdvädersrutan.
+ * Vid färre än 28 rader döljs rymdvädret och loggraderna får hela höjden.
  * @return Antal synliga rader i loggen.
  */
 int get_avail_log_rows(void) {
-    int top_reserved = 7; /* Topbar (1) + Input box (6) */
-    int bot_reserved = 1; /* Endast F-tangentrad (1) */
-    int sw_reserved  = (LINES >= 25) ? 4 : 0;
+    int top_reserved = 11; /* Topbar (1) + Stats box (4) + Input box (6) */
+    int bot_reserved = 1;  /* Endast F-tangentrad (1) */
+    int sw_reserved  = (LINES >= 28) ? 4 : 0;
     int log_h = LINES - top_reserved - bot_reserved - sw_reserved;
     int avail = log_h - 2; /* minus ram och kolumnrubriker */
     return (avail > 0) ? avail : 1;
@@ -736,9 +797,15 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     draw_top_bar(st);
 
-    /* RITA INMATNINGSSEKTIONEN */
+    /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (rad 1..4) */
+    int stat_top = 1;
+    int stat_h = 4;
+    draw_stats_box(stat_top, COLS, log_list);
+
+    /* RITA INMATNINGSSEKTIONEN (rad 5..10) */
+    int input_top = stat_top + stat_h; /* 5 */
     int input_h = 6;
-    draw_box_with_title(1, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
+    draw_box_with_title(input_top, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
 
     int badge_w = 13;
     if (editing_index >= 0) {
@@ -746,15 +813,15 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         snprintf(edit_tag, sizeof(edit_tag), "[REDIGERAR QSO #%d]", editing_index + 1);
         badge_w = utf8_display_width(edit_tag) + 3;
         attron(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-        mvprintw(1, COLS - badge_w, "%s", edit_tag);
+        mvprintw(input_top, COLS - badge_w, "%s", edit_tag);
         attroff(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
     } else if (time_frozen) {
         attron(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
-        mvprintw(1, COLS - 13, "[TID FRYST]");
+        mvprintw(input_top, COLS - 13, "[TID FRYST]");
         attroff(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
     } else {
         attron(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
-        mvprintw(1, COLS - 13, "[LIVE UTC]");
+        mvprintw(input_top, COLS - 13, "[LIVE UTC]");
         attroff(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
     }
 
@@ -767,16 +834,16 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             int is_err = (strstr(status_msg, "Fel:") != NULL || strstr(status_msg, "VARNING") != NULL);
             int color = is_err ? CP_STATUS_WARN : CP_STATUS_OK;
             attron(COLOR_PAIR(color) | A_BOLD);
-            mvprintw(1, stat_col, " %.*s ", max_msg, status_msg);
+            mvprintw(input_top, stat_col, " %.*s ", max_msg, status_msg);
             attroff(COLOR_PAIR(color) | A_BOLD);
         }
     }
 
     /* Kolumnpositioner för kolon i inmatningsfält */
     int c1 = 9;
-    int c2 = 33;
-    int c3 = 51;
-    int c4 = 65;
+    int c2 = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
+    int c3 = (COLS >= 95) ? 51 : (COLS >= 85 ? 49 : 45);
+    int c4 = (COLS >= 95) ? 65 : (COLS >= 85 ? 63 : 59);
 
     int form_w_name = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
     if (form_w_name < 6) form_w_name = 6;
@@ -788,46 +855,46 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     int form_w_qth = (COLS >= 88) ? 15 : 14;
 
-    /* Rad 1 (y = 2): Signal, RST T, RST R, Namn */
-    draw_field_aligned(2, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c2, "RST T",  qso->rst_sent,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c3, "RST R",  qso->rst_rcvd,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(2, c4, "Namn",   qso->name,     form_w_name, (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
+    /* Rad 1 (y = 6): Signal, RST T, RST R, Namn */
+    draw_field_aligned(input_top + 1, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 1, c2, "RST T",  qso->rst_sent,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTS), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 1, c3, "RST R",  qso->rst_rcvd,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 1, c4, "Namn",   qso->name,     form_w_name, (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 2 (y = 3): QTH, Lokator, QRB, DXCC */
-    draw_field_aligned(3, c1, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(3, c2, "Lokator", qso->gridsquare, 6,           (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
+    /* Rad 2 (y = 7): QTH, Lokator, QRB, DXCC */
+    draw_field_aligned(input_top + 2, c1, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 2, c2, "Lokator", qso->gridsquare, 6,           (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
 
     /* QRB mellan Lokator och DXCC på rad 2 */
     int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
     const char *qrb_val = has_qrb ? qrb_str : "-";
     int lbl_qrb_x = c3 - 3; /* "QRB" är 3 tecken */
     attron(COLOR_PAIR(CP_LABEL));
-    mvprintw(3, lbl_qrb_x, "QRB:");
+    mvprintw(input_top + 2, lbl_qrb_x, "QRB:");
     attroff(COLOR_PAIR(CP_LABEL));
     int qrb_color = has_qrb ? CP_STATUS_OK : CP_FIELD_INACTIVE;
     attron(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
-    mvprintw(3, c3 + 2, "%-8.8s", qrb_val);
+    mvprintw(input_top + 2, c3 + 2, "%-8.8s", qrb_val);
     attroff(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
 
-    draw_field_aligned(3, c4, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 2, c4, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 3 (y = 4): Frekvens, Band, Mode */
-    draw_field_aligned(4, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
-    draw_band_selector_aligned(4, c2, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
-    draw_field_aligned(4, c3, "Mode",     qso->mode,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
+    /* Rad 3 (y = 8): Frekvens, Band, Mode */
+    draw_field_aligned(input_top + 3, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
+    draw_band_selector_aligned(input_top + 3, c2, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
+    draw_field_aligned(input_top + 3, c3, "Mode",     qso->mode,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 4 (y = 5): Datum, UTC, Notering */
+    /* Rad 4 (y = 9): Datum, UTC, Notering */
     int comm_w = COLS - (c3 + 2) - 1;
     if (comm_w < 5) comm_w = 5;
     const char *lbl_not = (COLS >= 88) ? "Notering" : "Not";
-    draw_field_aligned(5, c1, "Datum",    qso->date,     10,     (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(5, c2, "UTC",      qso->time_utc,  6,     (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
-    draw_field_aligned(5, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 4, c1, "Datum",    qso->date,     10,     (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 4, c2, "UTC",      qso->time_utc,  6,     (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 4, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
     /* RITA LOGGRADSKOMPONENTEN */
-    int sw_reserved = (LINES >= 25) ? 4 : 0;
-    int log_top = 7;
+    int sw_reserved = (LINES >= 28) ? 4 : 0;
+    int log_top = input_top + input_h; /* 11 */
     int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
 
@@ -1014,8 +1081,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
     if (filtered_indices) free(filtered_indices);
 
-    /* RITA RYMDVÄDERSKOMPONENTEN (endast om LINES >= 25) */
-    if (LINES >= 25) {
+    /* RITA RYMDVÄDERSKOMPONENTEN (endast om LINES >= 28) */
+    if (LINES >= 28) {
         int sw_top = log_top + log_h;
         draw_space_weather_box(sw_top, COLS);
     }
