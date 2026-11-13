@@ -128,7 +128,7 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
                         int *cur_y, int *cur_x);
 
 /**
- * @brief Ritar bandväljarfältet med pilar och dropdown-indikator.
+ * @brief Ritar bandväljarfältet.
  * @param row Rad i fönstret.
  * @param colon_col Kolumn för kolon efter etiketten.
  * @param val Aktuellt valt band.

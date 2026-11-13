@@ -603,7 +603,7 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
 }
 
 /**
- * @brief Ritar det anpassade bandvalsfältet med pilindikator (v eller ^).
+ * @brief Ritar det anpassade bandvalsfältet.
  */
 void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int is_active, int band_selecting,
@@ -625,18 +625,16 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
         attr |= A_REVERSE;
     }
 
-    const char *arrow = band_selecting ? "^" : "v";
-
     attron(COLOR_PAIR(color) | attr);
     for (int i = 0; i < width; ++i) {
         mvaddch(row, val_col + i, ' ');
     }
-    mvprintw(row, val_col, " %-4s %s", formatted, arrow);
+    mvprintw(row, val_col, "%-8s", formatted);
     attroff(COLOR_PAIR(color) | attr);
 
     if (is_active) {
         *cur_y = row;
-        *cur_x = val_col + width - 1;
+        *cur_x = val_col;
     }
 }
 
