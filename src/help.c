@@ -196,12 +196,13 @@ static const HelpTopic HELP_TOPICS[] = {
             "Aurora / Polarsken:",
             "  * Vid förhöjd aurora-aktivitet uppstår möjlighet till norrskensstuds på 6m och 2m.",
             "",
-            "Fönsteranpassning:",
+            "Fönsteranpassning & Inställningar:",
             "  * Rymdvädersrutan visas när fönstret har minst 25 rader (döljs vid < 25).",
             "  * Statistikrutan visas när fönstret har minst 30 rader (döljs vid < 30).",
+            "  * Statistikrutan kan även stängas av helt via inställningsmenyn (F12).",
             NULL
         },
-        22
+        23
     }
 };
 

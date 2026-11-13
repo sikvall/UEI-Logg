@@ -7,6 +7,7 @@
 ## Innehållsförteckning
 
 - [Funktioner](#funktioner)
+- [Statistikruta och Rymdvädersruta](#statistikruta-och-rymdvädersruta)
 - [Systemkrav och förutsättningar](#systemkrav-och-förutsättningar)
 - [Installation av nödvändiga utvecklingspaket](#installation-av-nödvändiga-utvecklingspaket)
 - [Kompilering och bygge](#kompilering-och-bygge)
@@ -30,6 +31,46 @@
 - **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer) och bäring via Maidenhead-lokatorer.
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
 - **Flera färgscheman**: Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix m.fl.
+
+---
+
+## Statistikruta och Rymdvädersruta
+
+UEI-Logg har två specialkomponenter i användargränssnittet som presenterar realtidsinformation och automatiskt anpassar sig efter terminalfönstrets höjd och användarens inställningar:
+
+### 1. Live-statistikrutan (övre delen)
+
+Statistikrutan är placerad högst upp i programmet, direkt ovanför QSO-inmatningsfältet, och ger operatören en samlad översikt över loggbokens innehåll och aktivitet i realtid.
+
+- **Visningsvillkor**: Visas när terminalfönstret har minst 30 rader (`LINES >= 30`) och reglaget **Statistikruta** är aktiverat i inställningsdialogen (F12). Om terminalen är mindre än 30 rader eller om reglaget stängs av, döljs rutan automatiskt så att logghistoriken får maximalt utrymme (4 extra rader).
+- **Innehåll och fält**:
+  - **QSO**: Totalt antal loggade kontakter i den aktuella loggboken.
+  - **Stationer**: Antal unika anropssignaler (stationer) som körts.
+  - **DXCC**: Antal unika DXCC-entiteter och länder som bekräftats i loggen.
+  - **Lokatorer**: Antal unika 4-teckens Maidenhead-rutor (t.ex. `JO65`, `JP80`).
+  - **Bandland**: Antal unika kombinationer av DXCC-land och amatörband (t.ex. Sverige på 80 m räknas separat från Sverige på 20 m).
+  - **Rate**: Genomsnittlig QSO-takt, beräknad som antalet loggade QSO under de senaste 60 minuterna (uppdateras dynamiskt varje minut i bakgrunden).
+
+### 2. Rymdvädersrutan (nedre delen)
+
+Rymdvädersrutan är placerad längst ner i terminalfönstret (ovanför funktionstangentraden) och presenterar aktuella jonosfäriska, sol- och geomagnetiska förhållanden för HF-amatörbanden.
+
+- **Visningsvillkor**: Visas när terminalfönstret har minst 25 rader (`LINES >= 25`). Vid lägre fönsterhöjder döljs den automatiskt så att formulär och logghistorik prioriteras.
+- **Asynkron datahämtning**: Data hämtas i bakgrunden via en separat POSIX-tråd från `hf.avitec.se` och uppdateras automatiskt utan att störa eller fördröja pågående QSO-inmatning.
+- **Presentation och nyckelvärden**:
+  - **SFI (Solar Flux Index)**: Solens radiostrålning vid 2,8 GHz (10,7 cm). Högre värden (>100–150) indikerar god jonisering och förbättrade dagsförhållanden på de högre HF-banden (20 m till 10 m).
+  - **SSN (Sunspot Number)**: Aktuellt solfläckstal. Fler solfläckar ger generellt starkare jonisering i jonosfärens F-skikt och högre maximal användbar frekvens (MUF).
+  - **A-index**: Globalt geomagnetiskt dygnsvärde (linjär skala). Låga värden (0–7) innebär lugna magnetiska förhållanden.
+  - **K-index**: Planetärt och lokalt geomagnetiskt index för de senaste 3 timmarna (skala 0–9, mätt bl.a. i Kiruna):
+    - *0–2 (Grönt)*: Lugna och stabila geomagnetiska förhållanden. Mycket goda HF-signaler och lågt atmosfäriskt brus.
+    - *3–4 (Gult)*: Oroligt/aktiverat magnetfält. Risk för fading och dämpning, särskilt på polar- och nordliga signalvägar.
+    - *5–9 (Rött)*: Geomagnetisk storm (G1–G5). Kraftig absorption, störd polarkalott och radioutslag (men ger möjlighet till polarskensreflektion/aurorastuds på 6 m och 2 m).
+  - **Solflares (Röntgenstrålning)**: Senaste solutbrott i klasserna A, B, C, M och X. Kraftiga M- och X-flares kan orsaka omedelbar D-skiktsabsorption (Radio Blackout) på dagssidan.
+  - **HF-konditioner per band**: Färgkodad sammanställning av aktuella signalförhållanden (*Bra* / *Måttlig* / *Dålig*) uppdelat på dag och natt för:
+    - 80 m – 40 m
+    - 30 m – 20 m
+    - 17 m – 15 m
+    - 12 m – 10 m
 
 ---
 
