@@ -5,3 +5,7 @@ dxcc
 *.o
 *.adi
 *.bak
+manual/*.aux
+manual/*.log
+manual/*.out
+manual/*.toc

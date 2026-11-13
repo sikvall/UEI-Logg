@@ -1,0 +1,382 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[swedish]{babel}
+\usepackage{amsmath}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+\usepackage[
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue!60!black,
+    citecolor=black
+]{hyperref}
+
+\setlist{itemsep=2pt, topsep=3pt}
+
+\title{
+    \vspace{-1cm}
+    \LARGE\textbf{UEI-Logg v1.0}\\[0.3cm]
+    \large Användarmanual och Teknisk Referens
+}
+\author{UEI-Logg Projektet}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: asynkrona signaluppslag via QRZ.com och SM Callbook, beräkning av avstånd och bäring (QRB), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
+\end{abstract}
+
+\vspace{0.5cm}
+\tableofcontents
+\newpage
+
+\section{Introduktion}
+\label{sec:intro}
+
+UEI-Logg är utvecklat för radioamatörer som vill ha ett resurssnålt, blixtsnabbt och helt tangentbordsstyrt program för sin radiologgbok. Gränssnittet bygger på GNU \texttt{ncursesw} med fullt stöd för UTF-8 och boxgrafik.
+
+Programmets styrkor:
+\begin{itemize}
+    \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar.
+    \item \textbf{Smart fälthantering:} Skrivning i förifyllt fält rensar automatiskt gammal text; \texttt{Delete} tömmer hela fältet direkt.
+    \item \textbf{Automatisk DXCC och QRB:} Identifierar direkt land, zon och räknar ut avstånd (km) och kompassbäring utifrån motstationens lokator.
+    \item \textbf{Callbook-integration:} Bakgrundsuppslag mot både lokal SSA/SM Callbook och QRZ.com XML Logbook Service.
+    \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata samt HF-konditioner från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
+    \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
+    \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
+    \item \textbf{DXCC-hjälpverktyg:} Fristående terminalprogram (\texttt{dxcc}) för databasuppdatering och statistik.
+\end{itemize}
+
+\section{Installation och Bygge}
+\label{sec:install}
+
+UEI-Logg är skrivet i standard C (C11) och kompileras enkelt med GCC eller Clang på Linux.
+
+\subsection{Förutsättningar}
+Följande utvecklingspaket behövs:
+\begin{itemize}
+    \item \textbf{Kompilator:} GCC eller Clang med C11-stöd.
+    \item \textbf{ncursesw:} GNU ncurses med wide-character-stöd (\texttt{libncursesw5-dev} eller motsvarande).
+    \item \textbf{libcurl:} cURL-klientbibliotek för HTTPS-anrop (\texttt{libcurl4-openssl-dev}).
+    \item \textbf{pthread och libm:} Standard POSIX trådar och matematikbibliotek.
+    \item \textbf{pdfLaTeX:} TeX Live för att bygga denna användarmanual.
+\end{itemize}
+
+\subsection{Kompilering med Make}
+Projektet levereras med en färdig \texttt{Makefile}:
+
+\begin{verbatim}
+# Bygg både huvudprogrammet (ueilog) och hjälpverktyget (dxcc)
+make
+
+# Bygg endast hjälpverktyget dxcc
+make dxcc
+
+# Bygg användarmanualen till PDF via pdflatex
+make manual
+
+# Rensa kompilerade filer och byggd manual
+make clean
+\end{verbatim}
+
+\subsection{Starta Programmet}
+Kör programmet direkt från terminalen:
+\begin{verbatim}
+./ueilog
+\end{verbatim}
+
+\textbf{Tips för terminalstorlek:} Minsta rekommenderade terminalstorlek är $80 \times 25$ tecken. Har terminalen minst 30 rader visas även statistikrutan högst upp. I mindre fönster anpassas layouten automatiskt så att inmatning och loggrutor alltid förblir läsbara.
+
+\section{Användargränssnittets Layout}
+\label{sec:layout}
+
+Huvudskärmen i UEI-Logg är indelad i fem tydliga komponenter uppifrån och ned:
+
+\subsection{1. Titelrad (Topbar)}
+Visar applikationens namn och version (\texttt{UEI-log v1.0}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator.
+
+\subsection{2. Statistikruta (Realtidsstatistik)}
+När terminalen har minst 30 rader och funktionen är påslagen i inställningarna visas en kompakt statuspanel:
+\begin{itemize}
+    \item \textbf{Totalt:} Totalt antal sparade QSO i loggboken.
+    \item \textbf{Nya:} Antal QSO som ännu inte har exporterats till ADIF.
+    \item \textbf{Idag:} Antal genomförda kontakter under innevarande dygn (UTC).
+    \item \textbf{DXCC:} Antal unika DXCC-länder i loggen.
+    \item \textbf{Band:} Sammanfattning av alla aktiva band i loggen.
+    \item \textbf{Senaste:} Anropssignal och tid för senast loggade kontakt.
+\end{itemize}
+
+\subsection{3. Inmatningsruta (QSO-registrering)}
+Inmatningsfältet är ordnat på fyra rader:
+\begin{itemize}
+    \item \textbf{Rad 1:}
+    \begin{itemize}
+        \item \texttt{Signal}: Motstationens signal (omvandlas automatiskt till versaler).
+        \item \texttt{Frekv (MHz)}: Frekvens i MHz (t.ex. \texttt{14.225} eller \texttt{7.074}).
+        \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen).
+        \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
+    \end{itemize}
+    \item \textbf{Rad 2:}
+    \begin{itemize}
+        \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
+        \item \texttt{RST R}: Mottagen rapport.
+        \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i Callbook eller QRZ).
+    \end{itemize}
+    \item \textbf{Rad 3:}
+    \begin{itemize}
+        \item \texttt{QTH}: Motstationens stad eller ort.
+        \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex. \texttt{JO89we}).
+        \item \texttt{DXCC}: Identifierat land samt beräknat avstånd och bäring (QRB).
+    \end{itemize}
+    \item \textbf{Rad 4:}
+    \begin{itemize}
+        \item \texttt{Datum}: Datum för kontakten (ÅÅÅÅ-MM-DD, standard dagens UTC-datum).
+        \item \texttt{UTC}: Tidpunkt (TT:MM:SS, standard aktuell UTC-tid).
+        \item \texttt{Notering}: Fritextfält för rigg, effekt, antenn, QSL-information eller tävlingsnummer.
+    \end{itemize}
+\end{itemize}
+
+\subsection{4. Loggradstabell (Tidigare QSO)}
+Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
+\begin{itemize}
+    \item Radnummer (\#), Datum, Tid (UTC), Signal, Frekvens, Band, Mode, Rapporter, Namn, QTH, Lokator och DXCC.
+    \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
+    \item \textbf{Statusmarkörer:} En asterisk (\texttt{*}) intill radnumret anger att kontakten är ny (oexporterad). En pil (\texttt{>}) anger att raden är manuellt markerad för export.
+\end{itemize}
+
+\subsection{5. Rymdvädersruta}
+När terminalen har minst 25 rader och funktionen är aktiverad i inställningarna visas en informationsruta med data från \texttt{hf.avitec.se}:
+\begin{itemize}
+    \item \textbf{SFI:} Solar Flux Index (solens strålning vid 10,7 cm våglängd; högre värde gynnar högre HF-band).
+    \item \textbf{SSN:} Sunspot Number (solfläckstal).
+    \item \textbf{A- och K-index:} Geomagnetisk oro i jordens magnetfält ($K \le 2$ betyder lugna förhållanden).
+    \item \textbf{Solvind:} Hastighet i km/s och partikeldensitet ($p/\text{cm}^3$).
+    \item \textbf{Röntgenflöde (X-ray):} Soleruptioner (flare-klasser A, B, C, M, X).
+    \item \textbf{HF-Konditioner:} Summerad bedömning för dag- och nattrafik på 80m--10m.
+\end{itemize}
+
+\subsection{6. Snabbvalstangentrad}
+Längst ned på skärmen visas alltid tillgängliga funktionstangenter och deras innebörd.
+
+\section{Tangentbordsnavigering och Kortkommandon}
+\label{sec:keys}
+
+All interaktion i UEI-Logg styrs via tangentbordet.
+
+\subsection{Snabbtangenter}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Tangent} & \textbf{Läge} & \textbf{Funktion} \\
+\midrule
+\texttt{Tab} / \texttt{Shift+Tab} & Inmatning & Hoppa till nästa / föregående inmatningsfält \\
+\texttt{Pilar Vänster/Höger} & Inmatning & Flytta textmarkören i det aktiva fältet \\
+\texttt{Pilar Upp/Ned} & Inmatning & Byt inmatningsrad / fält \\
+\texttt{Delete (DEL)} & Inmatning & \textbf{Rensa hela det aktiva fältet omedelbart} \\
+\texttt{F1} & Allmänt & Visa snabbhjälp och tangentbordsguide \\
+\texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
+\texttt{F3} & Allmänt & Sök och filtrera loggrader \\
+\texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
+\texttt{F5} & Loggläge & Markera samtliga QSO i loggen \\
+\texttt{F6} & Loggläge & Avmarkera alla QSO i loggen \\
+\texttt{Insert (INS)} & Loggläge & Växla markering på markerat QSO \\
+\texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
+\texttt{Home / End} & Loggläge & Hoppa direkt till äldsta / senaste QSO \\
+\texttt{F9} & Allmänt & Information om UEI-Logg och version \\
+\texttt{F10} / \texttt{Esc} & Allmänt & Avsluta programmet \\
+\texttt{F12} & Allmänt & Öppna inställningsmenyn \\
+\bottomrule
+\end{tabularx}
+\caption{Kortkommandon i UEI-Logg.}
+\end{table}
+
+\subsection{Ergonomiskt inmatningsbeteende}
+\begin{itemize}
+    \item \textbf{Rensa vid ny inmatning:} Om ett fält redan innehåller text och du trycker på en bokstav eller siffra, rensas fältet automatiskt innan det nya tecknet skrivs in. Därefter fungerar skrivningen som vanligt. Vill du istället redigera befintlig text trycker du först på en piltangent.
+    \item \textbf{DEL-tangenten:} Tryck på \texttt{Delete} för att tömma hela fältet direkt.
+    \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
+    \item \textbf{Automatisk frekvens- och bandkoppling:} När du anger en frekvens i MHz (t.ex. \texttt{14.074}) sätts automatiskt rätt band (\texttt{20m}) och lämpligt rapportförslag.
+\end{itemize}
+
+\section{Inställningar (F12)}
+\label{sec:settings}
+
+Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras stationen, anslutningar och visningslägen. Alla inställningar sparas till \texttt{station.conf} i projektkatalogen med \texttt{Enter} eller \texttt{F2}.
+
+\subsection{Konfigurationsfält}
+\begin{enumerate}
+    \item \textbf{Min signal:} Din anropssignal (används i ADIF-filer och vid QRB-beräkning).
+    \item \textbf{Mitt namn:} Operatörens namn.
+    \item \textbf{Mitt QTH:} Stationens ort.
+    \item \textbf{Min lokator:} Stationens Maidenhead-lokator (t.ex. \texttt{JO89we}), utgångspunkt för avstånd och bäring.
+    \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
+    \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
+    \item \textbf{QRZ-uppslag:} \texttt{< På >} / \texttt{< Av >}. Hämtar automatiskt motstationens namn, QTH och lokator över nätet.
+    \item \textbf{Färgtema:} Välj mellan 8 klassiska färgteman:
+    \begin{itemize}
+        \item \emph{Turbo Pascal (MC Default):} Klassisk blå/cyan/vit layout.
+        \item \emph{MC Darkfar:} Mörkblå/svart bakgrund med hög kontrast.
+        \item \emph{MC Gotar:} Svart/gul stil.
+        \item \emph{MC Sand:} Ljusgrå bakgrund med mörk text.
+        \item \emph{MC Matrix:} Retro fosforgrön terminalstil.
+        \item \emph{Ljust tema:} Modern ljusgrå och blå design.
+        \item \emph{Monokrom gråskala:} Perfekt för enkla terminaler och seriekonsoler.
+        \item \emph{Ambra:} Varm bärnstensgul CRT-retrokänsla.
+    \end{itemize}
+    \item \textbf{SM Callbook:} \texttt{< På >} / \texttt{< Av >}. Söker i den lokala databasen \texttt{smcallbook.txt}.
+    \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
+    \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
+    \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
+    \item \textbf{Rymdväderruta:} \texttt{< På (hf.avitec.se) >} / \texttt{< Av >}. Slår på eller av rymdväderspanelen. När den är avstängd ges 4 extra rader till loggradstabellen.
+    \item \textbf{Importera ADIF (F5):} Öppnar filväljare för att läsa in externa ADIF-filer.
+    \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
+    \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
+\end{enumerate}
+
+\section{ADIF Import och Export}
+\label{sec:adif}
+
+UEI-Logg har komplett stöd för standarden **ADIF 3** (Amateur Data Interchange Format).
+
+\subsection{Export av loggboken}
+Export startas med \texttt{F6} (eller via inställningsmenyn). Du kan välja mellan tre exportlägen:
+\begin{itemize}
+    \item \textbf{Endast nya (oexporterade) QSO:} Exporterar de kontakter som ännu inte exporterats tidigare. Efter export sätts posternas status till hanterade.
+    \item \textbf{Endast markerade QSO:} Exporterar de poster du manuellt markerat i loggtabellen med \texttt{Insert}-tangenten.
+    \item \textbf{Hela loggboken:} Exporterar samtliga QSO till en komplett säkerhetskopia.
+\end{itemize}
+Den inbyggda filväljaren föreslår automatiskt ett standardfilnamn baserat på signal och datum, till exempel \texttt{SM0XYZ\_20261113.adi}, och låter dig bläddra fritt bland kataloger.
+
+\subsection{Import av ADIF}
+Via \texttt{F5} i inställningsmenyn kan du läsa in loggfiler från WSJT-X, N1MM, Log4OM, MacLoggerDX eller andra loggprogram. Fält som signal, frekvens, band, mode, datum, tid, rapporter, namn, QTH och lokator importeras och kontrolleras mot dubbletter.
+
+\section{Hjälpprogrammet dxcc}
+\label{sec:dxcc}
+
+Tillsammans med UEI-Logg medföljer hjälpbinären \texttt{dxcc}. Den används i terminalen för att hantera och inspektera den lokala prefixdatabasen \texttt{dxcc.txt}.
+
+\subsection{Kommandoöversikt}
+Programmet anropas med syntaxen:
+\begin{verbatim}
+./dxcc <kommando> [argument]
+\end{verbatim}
+
+\subsubsection{dxcc update}
+Laddar ner den senaste officiella DXCC- och prefixdatabasen från ClubLog och AD1C:s Country Files via HTTPS och sparar den till \texttt{dxcc.txt}.
+\begin{verbatim}
+$ ./dxcc update
+[+] Laddar ner senaste DXCC-databasen via HTTPS...
+[+] Sparade uppdaterad databas till dxcc.txt (340 länder, 4120 prefix).
+\end{verbatim}
+
+\subsubsection{dxcc stat}
+Analyserar \texttt{dxcc.txt} och presenterar en överskådlig tabell med antal länder, prefix, kontinenter, CQ-zoner och ITU-zoner:
+\begin{verbatim}
+$ ./dxcc stat
++-------------------------------------------------------+
+|              DXCC Databas Statistik                   |
++-------------------------------------------------------+
+| Totalt antal DXCC-entiteter:                      340 |
+| Totalt antal definierade prefix:                 4120 |
+| Kontinenter representerade:                         6 |
+|   - Europa (EU):                                   68 |
+|   - Asien (AS):                                    52 |
+|   - Nordamerika (NA):                              44 |
+|   - Sydamerika (SA):                               16 |
+|   - Afrika (AF):                                   58 |
+|   - Oceanien (OC):                                 60 |
+|   - Antarktis (AN):                                 8 |
++-------------------------------------------------------+
+\end{verbatim}
+
+\subsubsection{dxcc lookup <signal/prefix>}
+Slår upp ett anrop eller ett prefix och visar entitetsnamn, kontinent, CQ-zon, ITU-zon och geografisk position:
+\begin{verbatim}
+$ ./dxcc lookup SM5UEI
+Signal/Prefix: SM5UEI
+Land:          Sweden (SM)
+Kontinent:     Europa (EU)
+CQ-Zon:        14
+ITU-Zon:       18
+\end{verbatim}
+
+\subsubsection{dxcc version och dxcc help}
+Visar versionsinformation (version 1.0) respektive fullständig kommandohjälp.
+
+\section{Rymdväder och HF-Konditioner}
+\label{sec:spaceweather}
+
+HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar uppdaterade rymdvädersdata i bakgrunden från \texttt{hf.avitec.se}.
+
+\subsection{Betydelse av parametrarna}
+\begin{itemize}
+    \item \textbf{SFI (Solar Flux Index):} 10,7 cm radioflöde. Värden över 120--150 indikerar god jonisation för högre band (20m, 17m, 15m, 12m, 10m).
+    \item \textbf{SSN (Sunspot Number):} Solfläckstalet. Högre SSN medför högre brytfrekvens (MUF) i F2-skiktet.
+    \item \textbf{K-index:} Mått på geomagnetisk oro ($0\dots 9$). $K \le 2$ ger stabila, tysta HF-band; $K \ge 5$ indikerar geomagnetisk storm med kraftig absorption och fading.
+    \item \textbf{A-index:} Dygnsmedelvärde av den geomagnetiska aktiviteten ($0\dots 400$).
+    \item \textbf{Solvind:} Hastighet i km/s och densitet i partiklar per kubikcentimeter. Höga hastigheter ($>600\,\text{km/s}$) vid koronahål utlöser ofta stormar.
+    \item \textbf{Röntgenflöde (X-ray):} Solflares i klasserna C, M och X kan orsaka plötsliga blackout-perioder på dagsljusets HF-band (SID / D-skiktsabsorption).
+\end{itemize}
+
+\section{Filstruktur och Teknisk Översikt}
+\label{sec:tech}
+
+\subsection{Viktiga filer i projektet}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Fil / Katalog} & \textbf{Beskrivning} \\
+\midrule
+\texttt{src/main.c} & Huvudloop, händelselyssnare och tangentbordsstyrning. \\
+\texttt{src/tui.c} / \texttt{tui.h} & Terminalgränssnitt i ncurses, färgteman och rutfördelning. \\
+\texttt{src/logg.c} / \texttt{logg.h} & QSO-datastrukturer, filsparning och ADIF import/export. \\
+\texttt{src/settings.c} & Inställningsmodal (F12) och konfiguration. \\
+\texttt{src/space\_weather.c} & Asynkron HTTP-hämtning av rymdväder från \texttt{hf.avitec.se}. \\
+\texttt{src/dxcc.c} / \texttt{dxcc.h} & Prefixsökning och prefixprefixregler för länder. \\
+\texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
+\texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
+\texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Data Service. \\
+\texttt{src/callbook.c} & Snabb sökning i SSA/SM Callbook. \\
+\texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
+\texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
+\texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
+\texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
+\texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
+\texttt{smcallbook.txt} & Databas över svenska radioamatörer. \\
+\bottomrule
+\end{tabularx}
+\caption{Projektets filstruktur.}
+\end{table}
+
+\subsection{Beräkning av QRB}
+Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$). Resultatet visas direkt i fältet \texttt{DXCC} i inmatningsrutan.
+
+\section{Sammanfattning}
+\label{sec:summary}
+
+UEI-Logg v1.0 erbjuder ett blixtsnabbt, tillförlitligt och tangentbordsoptimerat verktyg för amatörradiologgning. Kombinationen av retro-layout, realtidsstatistik, rymdvädersbevakning och automatisk uppslagning gör programmet väl lämpat för såväl daglig trafik som intensiva tävlingar.
+
+\vspace{1cm}
+\begin{center}
+\textbf{73 de UEI-Logg Teamet!}
+\end{center}
+
+\end{document}

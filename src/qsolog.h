@@ -43,9 +43,9 @@ extern char g_log_filename[256];
 #endif
 
 #define MIN_COLS 60
-#define MIN_LINES 20
+#define MIN_LINES 21
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 16
+#define STATION_FIELD_COUNT 17
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001
@@ -116,6 +116,7 @@ typedef struct {
     int  auto_rst_59;      /**< 1 om RST förifylls automatiskt med 59/599 vid nytt QSO */
     int  filter_log;       /**< 1 om loggrader filtreras automatiskt efter inmatad signal */
     int  show_stats;       /**< 1 om statistikrutan ovanför QSO-inmatningen ska visas (default 1) */
+    int  show_space_weather; /**< 1 om rymdvädersrutan längst ned ska visas (default 1) */
     char last_freq[32];    /**< Senast använda frekvens */
     char last_band[16];    /**< Senast använda band */
     char last_mode[16];    /**< Senast använda mode */

@@ -525,7 +525,8 @@ int get_avail_log_rows(const StationSettings *st) {
     int stats_reserved = (show_stats && LINES >= 30) ? 4 : 0;
     int top_reserved   = 1 + stats_reserved + 6; /* Topbar (1) + Stats (0 el. 4) + Input box (6) */
     int bot_reserved   = 1;                      /* Endast F-tangentrad (1) */
-    int sw_reserved    = (LINES >= 25) ? 4 : 0;  /* Rymdvädersbox (0 el. 4) */
+    int show_sw        = (st == NULL || st->show_space_weather);
+    int sw_reserved    = (show_sw && LINES >= 25) ? 4 : 0;  /* Rymdvädersbox (0 el. 4) */
     int log_h = LINES - top_reserved - bot_reserved - sw_reserved;
     int avail = log_h - 2; /* minus ram och kolumnrubriker */
     return (avail > 0) ? avail : 1;
@@ -895,7 +896,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(input_top + 4, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
     /* RITA LOGGRADSKOMPONENTEN */
-    int sw_reserved = (LINES >= 25) ? 4 : 0;
+    int show_sw = (st == NULL || st->show_space_weather);
+    int sw_reserved = (show_sw && LINES >= 25) ? 4 : 0;
     int log_top = input_top + input_h;
     int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
@@ -1083,8 +1085,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
     if (filtered_indices) free(filtered_indices);
 
-    /* RITA RYMDVÄDERSKOMPONENTEN (endast om LINES >= 25) */
-    if (LINES >= 25) {
+    /* RITA RYMDVÄDERSKOMPONENTEN (endast om show_sw och LINES >= 25) */
+    if (show_sw && LINES >= 25) {
         int sw_top = log_top + log_h;
         draw_space_weather_box(sw_top, COLS);
     }
