@@ -53,6 +53,10 @@ void tui_init(void) {
     define_key("\033[5~",   KEY_PPAGE);
     define_key("\033[6~",   KEY_NPAGE);
     timeout(250);
+
+    /* Sätt terminalens fönstertitel om terminalemulatorn stöder OSC */
+    printf("\033]0;UEI-log v1.0\007");
+    fflush(stdout);
 }
 
 /**
@@ -415,11 +419,11 @@ void draw_top_bar(const StationSettings *st) {
     attroff(COLOR_PAIR(CP_TOPBAR));
 
     attron(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
-    mvprintw(0, 1, "UEI-Logg");
+    mvprintw(0, 1, "UEI-log");
     attroff(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
 
     attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-    mvprintw(0, 10, "v1.0");
+    mvprintw(0, 9, "v1.0");
     attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
     char station_info[128];
@@ -431,7 +435,7 @@ void draw_top_bar(const StationSettings *st) {
     snprintf(station_info, sizeof(station_info), "%s (%s)", clean_call[0] ? clean_call : "SM5UEI", my_qth);
 
     int info_col = (COLS - utf8_display_width(station_info)) / 2;
-    if (info_col > 15) {
+    if (info_col > 14) {
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
         mvprintw(0, info_col, "%s", station_info);
         attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
