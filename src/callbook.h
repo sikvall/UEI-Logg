@@ -29,9 +29,15 @@ int extract_swedish_base_call(const char *call_in, char *base_out, size_t out_sz
  * @param name_sz Storlek på namnbuffer.
  * @param qth_out Buffer för operatörens QTH/ort.
  * @param qth_sz Storlek på QTH-buffer.
- * @return 1 om träff erhölls, annars 0.
+ * @return 1 om träff erhölls, 0 om signal ej hittades, -1 om blockerat av SSA:s webbläsarkontroll.
  */
 int lookup_sm_callbook(const char *call_in, char *name_out, size_t name_sz, char *qth_out, size_t qth_sz);
+
+/**
+ * @brief Kontrollerar om senaste anropet mot SM Callbook blockerades av SSA:s webbläsarkontroll.
+ * @return 1 om blockerad (HTTP 403 / anti-bot), annars 0.
+ */
+int is_smcb_blocked(void);
 
 /**
  * @brief Slår upp i intern minnescache för SM Callbook.

@@ -675,6 +675,7 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
             return;
         }
         if (was_cached) {
+            int is_blocked = is_smcb_blocked();
             /* SMCB har ingen träff: prova QRZ.COM om det är aktiverat */
             if (st->qrz_enabled && st->qrz_username[0] != '\0') {
                 int qrz_cached = 0;
@@ -696,11 +697,19 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
                 }
                 if (!qrz_cached) {
                     start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
-                    snprintf(status_msg, status_sz, "SMCB: Ingen träff -> QRZ: Slår upp %s...", qso->call);
+                    if (is_blocked) {
+                        snprintf(status_msg, status_sz, "SMCB blockerat -> QRZ: Slår upp %s...", qso->call);
+                    } else {
+                        snprintf(status_msg, status_sz, "SMCB: Ingen träff -> QRZ: Slår upp %s...", qso->call);
+                    }
                     return;
                 }
             }
-            snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", base_call);
+            if (is_blocked) {
+                snprintf(status_msg, status_sz, "SMCB: Blockerat av SSA webbläsarkontroll (använd QRZ.COM)");
+            } else {
+                snprintf(status_msg, status_sz, "SMCB: Ingen träff för %s", base_call);
+            }
             return;
         }
 

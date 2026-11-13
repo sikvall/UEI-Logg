@@ -27,6 +27,14 @@ typedef struct {
 static SmcbCacheEntry g_smcb_cache[128];
 static size_t g_smcb_cache_count = 0;
 static pthread_mutex_t g_smcb_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int g_smcb_blocked = 0;
+
+int is_smcb_blocked(void) {
+    pthread_mutex_lock(&g_smcb_mutex);
+    int b = g_smcb_blocked;
+    pthread_mutex_unlock(&g_smcb_mutex);
+    return b;
+}
 
 /* Delat tillstånd för asynkront SM Callbook-uppslag i bakgrunden */
 typedef struct {
@@ -148,12 +156,29 @@ static int fetch_sm_callbook_once(const char *query_call,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
 
     CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK || buf.data == NULL) {
         free(buf.data);
         return 0;
     }
+
+    /* Kontrollera om SSA:s webbläsarskydd (wp_js_guard / "Kontrollerar webbläsaren") blockerar anropet */
+    if (http_code == 403 ||
+        strstr(buf.data, "Kontrollerar webbläsaren") != NULL ||
+        strstr(buf.data, "wp_js_guard") != NULL) {
+        pthread_mutex_lock(&g_smcb_mutex);
+        g_smcb_blocked = 1;
+        pthread_mutex_unlock(&g_smcb_mutex);
+        free(buf.data);
+        return -1;
+    }
+
+    pthread_mutex_lock(&g_smcb_mutex);
+    g_smcb_blocked = 0;
+    pthread_mutex_unlock(&g_smcb_mutex);
 
     /* Tolka HTML-svaret från SM Callbook */
     int found = 0;
@@ -288,15 +313,23 @@ int lookup_sm_callbook(const char *call_in,
     }
 
     char alt_call[32] = "";
-    if (fetch_sm_callbook_once(base_call, name_out, name_sz, qth_out, qth_sz,
-                               alt_call, sizeof(alt_call))) {
+    int rc = fetch_sm_callbook_once(base_call, name_out, name_sz, qth_out, qth_sz,
+                                    alt_call, sizeof(alt_call));
+    if (rc == 1) {
         return 1;
+    }
+    if (rc == -1) {
+        return -1;
     }
 
     if (alt_call[0] != '\0' && strcasecmp(alt_call, base_call) != 0) {
-        if (fetch_sm_callbook_once(alt_call, name_out, name_sz, qth_out, qth_sz,
-                                   NULL, 0)) {
+        int rc2 = fetch_sm_callbook_once(alt_call, name_out, name_sz, qth_out, qth_sz,
+                                         NULL, 0);
+        if (rc2 == 1) {
             return 1;
+        }
+        if (rc2 == -1) {
+            return -1;
         }
     }
 
@@ -509,6 +542,13 @@ void poll_smcb_background_result(QSO *qso, const StationSettings *st,
         }
         if (updated || status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
             snprintf(status_msg, status_sz, "SMCB: %s, %s", res_name, res_qth);
+        }
+    } else if (res_found == -1) {
+        if (st && st->qrz_enabled && st->qrz_username[0] != '\0') {
+            start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
+            snprintf(status_msg, status_sz, "SMCB blockerat -> QRZ: Slår upp %s...", qso->call);
+        } else if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
+            snprintf(status_msg, status_sz, "SMCB: Blockerat av SSA webbläsarkontroll (använd QRZ.COM)");
         }
     } else {
         if (st && st->qrz_enabled && st->qrz_username[0] != '\0') {

@@ -834,7 +834,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         int badge_col = COLS - badge_w;
         int max_msg = badge_col - stat_col - 2;
         if (max_msg > 0) {
-            int is_err = (strstr(status_msg, "Fel:") != NULL || strstr(status_msg, "VARNING") != NULL);
+            int is_err = (strstr(status_msg, "Fel:") != NULL ||
+                          strstr(status_msg, "VARNING") != NULL ||
+                          strstr(status_msg, "Blockerat") != NULL ||
+                          strstr(status_msg, "blockerat") != NULL);
             int color = is_err ? CP_STATUS_WARN : CP_STATUS_OK;
             attron(COLOR_PAIR(color) | A_BOLD);
             mvprintw(input_top, stat_col, " %.*s ", max_msg, status_msg);
