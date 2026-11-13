@@ -1073,14 +1073,17 @@ static int cmd_lookup(const char *target_file, const char *call_in) {
  * @brief Visar hjälptext för kommandot.
  */
 static void show_help(const char *prog_name) {
-    printf("\033[1;37mUEI-Logg DXCC-verktyg v1.0\033[0m\n");
+    printf("\033[1;37mUEI-Logg DXCC-verktyg (dxcc) version 1.0\033[0m\n");
     printf("Hantering, uppdatering och statistikanalys av DXCC-databasen (%s)\n\n", DEFAULT_DXCC_FILE);
     printf("\033[1mAnvändning:\033[0m\n");
+    printf("  %s help                         Visa denna hjälptext\n", prog_name);
+    printf("  %s version                      Visa versionsinformation (version 1.0)\n", prog_name);
     printf("  %s update [källa / URL / fil]   Ladda ner och uppdatera %s från nätet\n", prog_name, DEFAULT_DXCC_FILE);
     printf("  %s stat [filnamn]               Visa utförlig statistik och tabeller för %s\n", prog_name, DEFAULT_DXCC_FILE);
-    printf("  %s lookup <signal>              Slå upp DXCC-land för en anropssignal\n", prog_name);
-    printf("  %s help                         Visa denna hjälptext\n\n", prog_name);
+    printf("  %s lookup <signal>              Slå upp DXCC-land för en anropssignal\n\n", prog_name);
     printf("\033[1mExempel:\033[0m\n");
+    printf("  %s help                         Visa hjälptext och tillgängliga kommandon\n", prog_name);
+    printf("  %s version                      Visa version (version 1.0)\n", prog_name);
     printf("  %s update                       Uppdatera med senaste data från Country Files (AD1C)\n", prog_name);
     printf("  %s stat                         Presentera tabeller över länder, prefix och zoner\n", prog_name);
     printf("  %s lookup SM5UEI                Visa DXCC-tillhörighet för SM5UEI\n\n", prog_name);
@@ -1094,7 +1097,13 @@ int main(int argc, char **argv) {
     int ret = 0;
     if (argc < 2) {
         show_help(argv[0]);
-        ret = 1;
+        ret = 0;
+    } else if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+        show_help(argv[0]);
+        ret = 0;
+    } else if (strcmp(argv[1], "version") == 0 || strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0) {
+        printf("dxcc version 1.0\n");
+        ret = 0;
     } else if (strcmp(argv[1], "update") == 0 || strcmp(argv[1], "--update") == 0) {
         const char *src = (argc >= 3) ? argv[2] : NULL;
         ret = cmd_update(src);
@@ -1108,9 +1117,6 @@ int main(int argc, char **argv) {
         } else {
             ret = cmd_lookup(DEFAULT_DXCC_FILE, argv[2]);
         }
-    } else if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
-        show_help(argv[0]);
-        ret = 0;
     } else {
         fprintf(stderr, "Okänt kommando: '%s'\n\n", argv[1]);
         show_help(argv[0]);

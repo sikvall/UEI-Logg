@@ -8,11 +8,14 @@ SRCS = src/main.c src/tui.c src/logg.c src/settings.c src/callbook.c src/dxcc.c 
 OBJS = $(SRCS:.c=.o)
 HEADERS = $(wildcard src/*.h)
 
+# Standardmål: Bygg både huvudprogrammet (ueilog) och hjälpbinären (dxcc)
 all: $(TARGET) $(TOOL_TARGET)
 
+# Huvudprogrammet UEI-Logg
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
 
+# Hjälpprogrammet dxcc (uppdatering och statistik för dxcc.txt)
 $(TOOL_TARGET): src/dxcc_tool.o src/util.o
 	$(CC) $(CFLAGS) -o $(TOOL_TARGET) src/dxcc_tool.o src/util.o -lcurl -lm
 
