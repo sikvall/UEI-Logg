@@ -17,6 +17,8 @@
 #include <string.h>
 #include <strings.h>
 
+char g_log_filename[256] = DEFAULT_LOG_FILE;
+
 /**
  * @brief Skriver en enskild ADIF-tagg till en fil om värdet inte är tomt.
  * Exempel: <CALL:6>SM5UEI

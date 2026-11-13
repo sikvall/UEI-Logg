@@ -24,7 +24,34 @@
  * @brief Programmets huvudfunktion: initierar delsystem, laddar data och driver händelseloopen.
  * @return 0 vid normal avslutning.
  */
-int main(void) {
+int main(int argc, char *argv[]) {
+    /* Behandla kommandoradsargument */
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--logfile") == 0) {
+            if (i + 1 < argc) {
+                copy_str(g_log_filename, sizeof(g_log_filename), argv[++i]);
+            } else {
+                fprintf(stderr, "Fel: %s kräver ett filnamn som argument.\n", argv[i]);
+                return 1;
+            }
+        } else if (strncmp(argv[i], "--logfile=", 10) == 0) {
+            copy_str(g_log_filename, sizeof(g_log_filename), argv[i] + 10);
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Användning: ueilog [alternativ]\n\n"
+                   "Alternativ:\n"
+                   "  -l, --logfile <filnamn>  Använd angiven ADIF-fil som loggbok (skapas om den saknas)\n"
+                   "  -h, --help               Visa denna hjälpinformation\n"
+                   "  -v, --version            Visa versionsinformation\n");
+            return 0;
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            printf("UEI-log v1.0\n");
+            return 0;
+        } else {
+            fprintf(stderr, "Okänt argument: %s\nKör 'ueilog --help' för information om tillåtna argument.\n", argv[i]);
+            return 1;
+        }
+    }
+
     /* Sätt UTF-8 locale för korrekt teckenbredd och teckenuppsättning */
     setlocale(LC_ALL, "");
 
@@ -38,7 +65,19 @@ int main(void) {
     StationSettings station;
     load_station_settings(CONFIG_FILE, &station);
 
-    /* Läs in loggboken från qsolog.adi */
+    /* Kontrollera om loggfilen finns, annars skapas den med giltig ADIF-header */
+    FILE *chk_fp = fopen(g_log_filename, "r");
+    if (chk_fp != NULL) {
+        fclose(chk_fp);
+    } else {
+        FILE *new_fp = fopen(g_log_filename, "w");
+        if (new_fp != NULL) {
+            write_adif_header(new_fp);
+            fclose(new_fp);
+        }
+    }
+
+    /* Läs in loggboken från loggfilen */
     QSOList log_list = {NULL, 0, 0};
     load_qsos_from_adif(LOG_FILE, &log_list);
 
@@ -72,7 +111,11 @@ int main(void) {
     int log_scroll_offset = 0;
     char search_filter[32] = "";
     char last_smcb_call[32] = "";
-    char status_msg[128] = "";
+    char status_msg[256] = "";
+    if (strcmp(g_log_filename, DEFAULT_LOG_FILE) != 0) {
+        snprintf(status_msg, sizeof(status_msg), "Loggfil: %.*s (%zu QSO inlästa).",
+                 120, g_log_filename, log_list.count);
+    }
 
     reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
 
@@ -702,11 +745,12 @@ int main(void) {
                     }
                 }
             }
+            int band_col = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
             int ret = run_band_dropdown(&station, &current_qso, focus_mode, active_field,
                                         field_cursor_pos, &time_frozen, editing_index,
                                         &log_list, selected_log_pos, &log_scroll_offset,
                                         active_filter, status_msg, sizeof(status_msg),
-                                        current_qrb, 4, 33);
+                                        current_qrb, 8, band_col);
             if (ret == 2) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);

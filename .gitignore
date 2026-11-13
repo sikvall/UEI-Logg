@@ -1,5 +1,7 @@
 station.conf
 ueilog
 qsolog
+dxcc
 *.o
 *.adi
+*.bak

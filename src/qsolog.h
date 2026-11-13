@@ -27,8 +27,13 @@
 #define PATH_MAX 4096
 #endif
 
+#ifndef DEFAULT_LOG_FILE
+#define DEFAULT_LOG_FILE "qsolog.adi"
+#endif
+
+extern char g_log_filename[256];
 #ifndef LOG_FILE
-#define LOG_FILE "qsolog.adi"
+#define LOG_FILE g_log_filename
 #endif
 #ifndef CONFIG_FILE
 #define CONFIG_FILE "station.conf"
