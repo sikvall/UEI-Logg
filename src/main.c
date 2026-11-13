@@ -607,7 +607,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-            int band_row = (LINES >= 25) ? 8 : 4;
+            int band_row = (LINES >= 30) ? 8 : 4;
             int band_col = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
             int ret = run_band_dropdown(&station, &current_qso, focus_mode, active_field,
                                         field_cursor_pos, &time_frozen, editing_index,

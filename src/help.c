@@ -59,14 +59,14 @@ static const HelpTopic HELP_TOPICS[] = {
         "[2] Inmatning",
         "QSO-inmatning & Formulärregler",
         {
-            "Statistikruta (visas vid fönsterhöjd >= 25 rader):",
+            "Statistikruta (visas vid fönsterhöjd >= 30 rader):",
             "  * QSO: Totalt antal loggade kontakter i loggboken.",
             "  * Stationer: Antal unika anropssignaler.",
             "  * DXCC: Antal unika DXCC-entiteter körda.",
             "  * Lokatorer: Antal unika 4-teckens Maidenhead-rutor (t.ex. JO65).",
             "  * Bandland: Antal unika kombinationer av DXCC och amatörband.",
             "  * Rate: Antal loggade QSO de senaste 60 minuterna (uppdateras varje minut).",
-            "  * Vid skärmhöjd < 25 rader döljs statistik- och rymdvädersrutan.",
+            "  * Vid skärmhöjd < 30 rader döljs statistikrutan för mer plats.",
             "",
             "Markör och fältrensning:",
             "  * När ett fält väljs ställs markören på det första tecknet (pos 0).",
@@ -197,8 +197,8 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Vid förhöjd aurora-aktivitet uppstår möjlighet till norrskensstuds på 6m och 2m.",
             "",
             "Fönsteranpassning:",
-            "  * Rymdvädret och statistikrutan visas när fönstret har minst 25 rader.",
-            "  * Vid fönsterhöjd under 25 rader döljs båda rutorna för maximal loggyta.",
+            "  * Rymdvädersrutan visas när fönstret har minst 25 rader (döljs vid < 25).",
+            "  * Statistikrutan visas när fönstret har minst 30 rader (döljs vid < 30).",
             NULL
         },
         22

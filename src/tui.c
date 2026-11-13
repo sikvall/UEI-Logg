@@ -514,12 +514,13 @@ void draw_stats_box(int top_y, int width, const QSOList *log_list) {
 
 /**
  * @brief Beräknar tillgängligt antal synliga rader för logglistan.
- * Om fönstret har minst 25 rader visas statistikrutan (4 rader) och rymdvädersrutan (4 rader).
+ * Om fönstret har minst 30 rader visas statistikrutan (4 rader).
+ * Om fönstret har minst 25 rader visas rymdvädersrutan (4 rader).
  * Vid färre än 25 rader döljs båda rutorna så att loggraderna och inmatningen får full höjd.
  * @return Antal synliga rader i loggen.
  */
 int get_avail_log_rows(void) {
-    int stats_reserved = (LINES >= 25) ? 4 : 0;
+    int stats_reserved = (LINES >= 30) ? 4 : 0;
     int top_reserved   = 1 + stats_reserved + 6; /* Topbar (1) + Stats (0 el. 4) + Input box (6) */
     int bot_reserved   = 1;                      /* Endast F-tangentrad (1) */
     int sw_reserved    = (LINES >= 25) ? 4 : 0;  /* Rymdvädersbox (0 el. 4) */
@@ -797,8 +798,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     draw_top_bar(st);
 
-    /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (endast om LINES >= 25) */
-    int stat_h = (LINES >= 25) ? 4 : 0;
+    /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (endast om LINES >= 30) */
+    int stat_h = (LINES >= 30) ? 4 : 0;
     if (stat_h > 0) {
         draw_stats_box(1, COLS, log_list);
     }
