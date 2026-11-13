@@ -40,8 +40,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "F2 el. Enter - Logga och spara pågående QSO till loggboken",
             "F3 el. ^F    - Sök och filtrera rader i logglistan i realtid",
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
-            "F5           - Manuellt uppslag (Lokal logg -> SM Callbook -> QRZ.COM)",
-            "F6           - Manuellt uppslag direkt via QRZ.COM",
+            "F5           - Manuellt uppslag (SM Callbook vid svensk signal, annars QRZ.COM)",
             "F9           - Denna hjälpdialog (tillgänglig i logg- och inställningsskärm)",
             "F10 el. ^Q   - Avsluta UEI-Logg på ett säkert sätt",
             "F12          - Stationsinställningar, ADIF-filhantering & färgscheman",
@@ -60,6 +59,15 @@ static const HelpTopic HELP_TOPICS[] = {
         "[2] Inmatning",
         "QSO-inmatning & Formulärregler",
         {
+            "Statistikruta (visas vid fönsterhöjd >= 25 rader):",
+            "  * QSO: Totalt antal loggade kontakter i loggboken.",
+            "  * Stationer: Antal unika anropssignaler.",
+            "  * DXCC: Antal unika DXCC-entiteter körda.",
+            "  * Lokatorer: Antal unika 4-teckens Maidenhead-rutor (t.ex. JO65).",
+            "  * Bandland: Antal unika kombinationer av DXCC och amatörband.",
+            "  * Rate: Antal loggade QSO de senaste 60 minuterna (uppdateras varje minut).",
+            "  * Vid skärmhöjd < 25 rader döljs statistik- och rymdvädersrutan.",
+            "",
             "Markör och fältrensning:",
             "  * När ett fält väljs ställs markören på det första tecknet (pos 0).",
             "  * När du börjar skriva i ett fält rensas fältet innan första bokstaven visas.",
@@ -80,7 +88,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Auto-RST: sätter automatiskt 59 (telefoni/digi) eller 599 (CW) om aktiverat.",
             NULL
         },
-        17
+        27
     },
     {
         "[3] Uppslag",
@@ -97,9 +105,10 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Information om Namn, QTH och Lokator fylls automatiskt i vid träff.",
             "",
             "Manuellt uppslag:",
-            "  * F5: Slår upp direkt mot aktiv tjänst (Lokal logg -> SMCB -> QRZ).",
-            "        Skriver över eventuellt befintliga fält med de nya uppgifterna.",
-            "  * F6: Slår upp anropssignalen direkt mot QRZ.COM oavsett nationalitet.",
+            "  * F5: Slår upp mot SM Callbook om signalen är svensk och SMCB är på.",
+            "        Vid träff fylls namn och QTH i och uppslaget är klart.",
+            "  * Vid bom i SMCB, utländsk signal eller om SMCB är avslaget provas",
+            "        QRZ.COM om QRZ är aktiverat och inloggningsuppgifter är ifyllda.",
             "",
             "Konfiguration (F12):",
             "  * Både SM Callbook och QRZ.COM kan aktiveras eller stängas av individuellt.",
@@ -156,9 +165,14 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Töm loggbok:",
             "  * Möjlighet att rensa loggboken inför nya tävlingar eller tester (med bekräftelse).",
+            "",
+            "DXCC-verktyg och kommandorad:",
+            "  * ueilog --logfile <filnamn> : Välj specifik ADIF-loggfil vid start.",
+            "  * dxcc update : Uppdatera dxcc.txt från cty.csv online.",
+            "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        19
+        24
     },
     {
         "[6] Rymdväder",
@@ -181,9 +195,13 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Aurora / Polarsken:",
             "  * Vid förhöjd aurora-aktivitet uppstår möjlighet till norrskensstuds på 6m och 2m.",
+            "",
+            "Fönsteranpassning:",
+            "  * Rymdvädret och statistikrutan visas när fönstret har minst 25 rader.",
+            "  * Vid fönsterhöjd under 25 rader döljs båda rutorna för maximal loggyta.",
             NULL
         },
-        18
+        22
     }
 };
 

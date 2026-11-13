@@ -514,14 +514,15 @@ void draw_stats_box(int top_y, int width, const QSOList *log_list) {
 
 /**
  * @brief Beräknar tillgängligt antal synliga rader för logglistan.
- * Om fönstret har minst 28 rader dras 4 rader av för rymdvädersrutan.
- * Vid färre än 28 rader döljs rymdvädret och loggraderna får hela höjden.
+ * Om fönstret har minst 25 rader visas statistikrutan (4 rader) och rymdvädersrutan (4 rader).
+ * Vid färre än 25 rader döljs båda rutorna så att loggraderna och inmatningen får full höjd.
  * @return Antal synliga rader i loggen.
  */
 int get_avail_log_rows(void) {
-    int top_reserved = 11; /* Topbar (1) + Stats box (4) + Input box (6) */
-    int bot_reserved = 1;  /* Endast F-tangentrad (1) */
-    int sw_reserved  = (LINES >= 28) ? 4 : 0;
+    int stats_reserved = (LINES >= 25) ? 4 : 0;
+    int top_reserved   = 1 + stats_reserved + 6; /* Topbar (1) + Stats (0 el. 4) + Input box (6) */
+    int bot_reserved   = 1;                      /* Endast F-tangentrad (1) */
+    int sw_reserved    = (LINES >= 25) ? 4 : 0;  /* Rymdvädersbox (0 el. 4) */
     int log_h = LINES - top_reserved - bot_reserved - sw_reserved;
     int avail = log_h - 2; /* minus ram och kolumnrubriker */
     return (avail > 0) ? avail : 1;
@@ -680,7 +681,6 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
             items[count++] = (FKeyItem){"F5", "Uppslag"};
-            items[count++] = (FKeyItem){"F6", "QRZ"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
             items[count++] = (FKeyItem){"F10", "Avsluta"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
@@ -797,13 +797,14 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     draw_top_bar(st);
 
-    /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (rad 1..4) */
-    int stat_top = 1;
-    int stat_h = 4;
-    draw_stats_box(stat_top, COLS, log_list);
+    /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (endast om LINES >= 25) */
+    int stat_h = (LINES >= 25) ? 4 : 0;
+    if (stat_h > 0) {
+        draw_stats_box(1, COLS, log_list);
+    }
 
-    /* RITA INMATNINGSSEKTIONEN (rad 5..10) */
-    int input_top = stat_top + stat_h; /* 5 */
+    /* RITA INMATNINGSSEKTIONEN */
+    int input_top = 1 + stat_h;
     int input_h = 6;
     draw_box_with_title(input_top, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
 
@@ -893,8 +894,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(input_top + 4, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
     /* RITA LOGGRADSKOMPONENTEN */
-    int sw_reserved = (LINES >= 28) ? 4 : 0;
-    int log_top = input_top + input_h; /* 11 */
+    int sw_reserved = (LINES >= 25) ? 4 : 0;
+    int log_top = input_top + input_h;
     int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
 
@@ -1081,8 +1082,8 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
     if (filtered_indices) free(filtered_indices);
 
-    /* RITA RYMDVÄDERSKOMPONENTEN (endast om LINES >= 28) */
-    if (LINES >= 28) {
+    /* RITA RYMDVÄDERSKOMPONENTEN (endast om LINES >= 25) */
+    if (LINES >= 25) {
         int sw_top = log_top + log_h;
         draw_space_weather_box(sw_top, COLS);
     }

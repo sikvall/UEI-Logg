@@ -477,173 +477,63 @@ int main(int argc, char *argv[]) {
 
         /* FOKUS I INMATNINGSFÄLTEN (FOCUS_INPUT) */
         if (ch == KEY_F(5)) {
-            /* F5: Manuellt uppslag: Logg -> SM Callbook (om på & svensk) -> QRZ.COM (om på) */
+            /* F5: Manuellt uppslag (SMCB vid svensk signal & påslaget, annars QRZ.COM om på & inloggning ifylld) */
             band_selecting = 0;
             if (current_qso.call[0] == '\0') {
                 copy_str(status_msg, sizeof(status_msg), "Ange en anropssignal först.");
                 continue;
             }
 
-            /* 1. Kontrollera alltid den lokala loggen först */
-            char log_name[64] = "", log_qth[64] = "", log_grid[16] = "";
-            if (find_call_in_log(&log_list, current_qso.call, log_name, sizeof(log_name),
-                                 log_qth, sizeof(log_qth), log_grid, sizeof(log_grid))) {
-                if (strcmp(log_name, "-SK-") == 0) {
-                    copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
-                    current_qso.qth[0] = '\0';
-                    copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
-                    copy_str(current_qrb, sizeof(current_qrb), "-");
-                    field_cursor_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Logg: SILENT KEY (-SK-)");
-                    continue;
-                }
-                if (log_name[0] != '\0') copy_str(current_qso.name, sizeof(current_qso.name), log_name);
-                if (log_qth[0] != '\0')  copy_str(current_qso.qth, sizeof(current_qso.qth), log_qth);
-                if (log_grid[0] != '\0') copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), log_grid);
-                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                field_cursor_pos = 0;
-                snprintf(status_msg, sizeof(status_msg), "Logg: %s%s%s%s%s%s",
-                         log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth,
-                         (log_grid[0] && (log_name[0] || log_qth[0])) ? " (" : (log_grid[0] ? "(" : ""),
-                         log_grid, log_grid[0] ? ")" : "");
-                continue;
-            }
-
-            /* 2. Ej i loggen: prova aktiverade onlinetjänster */
             char base_call[32];
             int is_swedish = extract_swedish_base_call(current_qso.call, base_call, sizeof(base_call));
+            int smcb_queried = 0;
 
-            if (is_swedish) {
-                if (station.smcb_enabled) {
-                    copy_str(status_msg, sizeof(status_msg), "Söker i SM Callbook...");
-                    draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
-                                     field_cursor_pos, time_frozen, editing_index,
-                                     &log_list, selected_log_pos, &log_scroll_offset,
-                                     active_filter, status_msg, current_qrb, &cur_y, &cur_x);
-                    refresh();
+            /* Om det är en svensk signal OCH SM Callbook är påslaget: slå på SM Callbook */
+            if (is_swedish && station.smcb_enabled) {
+                smcb_queried = 1;
+                copy_str(status_msg, sizeof(status_msg), "Söker i SM Callbook...");
+                draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
+                                 field_cursor_pos, time_frozen, editing_index,
+                                 &log_list, selected_log_pos, &log_scroll_offset,
+                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                refresh();
 
-                    char sm_name[64] = "", sm_qth[64] = "";
-                    int sm_hit = lookup_sm_callbook(base_call, sm_name, sizeof(sm_name), sm_qth, sizeof(sm_qth));
-                    if (sm_hit) {
-                        if (strcmp(sm_name, "-SK-") == 0) {
-                            copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
-                            current_qso.qth[0] = '\0';
-                            copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
-                            store_smcb_cache(base_call, "-SK-", "", 1);
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            field_cursor_pos = 0;
-                            copy_str(status_msg, sizeof(status_msg), "SMCB: SILENT KEY (-SK-)");
-                            continue;
-                        }
-                        copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
-                        copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
-                        store_smcb_cache(base_call, sm_name, sm_qth, 1);
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                char sm_name[64] = "", sm_qth[64] = "";
+                int sm_hit = lookup_sm_callbook(base_call, sm_name, sizeof(sm_name), sm_qth, sizeof(sm_qth));
+                if (sm_hit) {
+                    /* Om det är träff så räcker det */
+                    if (strcmp(sm_name, "-SK-") == 0) {
+                        copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
+                        current_qso.qth[0] = '\0';
+                        copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
+                        store_smcb_cache(base_call, "-SK-", "", 1);
+                        copy_str(current_qrb, sizeof(current_qrb), "-");
                         field_cursor_pos = 0;
-                        snprintf(status_msg, sizeof(status_msg), "SMCB: %s, %s", sm_name, sm_qth);
+                        copy_str(status_msg, sizeof(status_msg), "SMCB: SILENT KEY (-SK-)");
                         continue;
                     }
-                    store_smcb_cache(base_call, "", "", 0);
+                    copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
+                    copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
+                    store_smcb_cache(base_call, sm_name, sm_qth, 1);
+                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    field_cursor_pos = 0;
+                    snprintf(status_msg, sizeof(status_msg), "SMCB: %s, %s", sm_name, sm_qth);
+                    continue;
+                }
+                store_smcb_cache(base_call, "", "", 0);
+            }
 
-                    /* Ingen träff i SMCB -> testa QRZ.COM om aktiverat */
-                    if (station.qrz_enabled && station.qrz_username[0] != '\0' && station.qrz_password[0] != '\0') {
-                        copy_str(status_msg, sizeof(status_msg), "SMCB: Ingen träff -> Söker i QRZ.COM...");
-                        draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
-                                         field_cursor_pos, time_frozen, editing_index,
-                                         &log_list, selected_log_pos, &log_scroll_offset,
-                                         active_filter, status_msg, current_qrb, &cur_y, &cur_x);
-                        refresh();
+            /* Om inte träff i SMCB, inte svensk signal, eller om SMCB är avslagen: prova QRZ.COM */
+            int qrz_ready = station.qrz_enabled &&
+                            (station.qrz_username[0] != '\0') &&
+                            (station.qrz_password[0] != '\0');
 
-                        char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
-                        int qrz_hit = qrz_lookup(station.qrz_username, station.qrz_password, current_qso.call,
-                                                 qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
-                                                 qrz_grid, sizeof(qrz_grid));
-                        if (qrz_hit) {
-                            if (strcmp(qrz_name, "-SK-") == 0) {
-                                copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
-                                current_qso.qth[0] = '\0';
-                                current_qso.gridsquare[0] = '\0';
-                                copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
-                                copy_str(current_qrb, sizeof(current_qrb), "-");
-                                field_cursor_pos = 0;
-                                copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
-                                continue;
-                            }
-                            copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
-                            copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
-                            if (qrz_grid[0] != '\0') {
-                                copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
-                            }
-                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                            field_cursor_pos = 0;
-                            if (qrz_grid[0] != '\0') {
-                                snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
-                            } else {
-                                snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
-                            }
-                            continue;
-                        }
-                    }
-                    snprintf(status_msg, sizeof(status_msg), "Ingen träff för %s i SMCB%s",
-                             base_call, station.qrz_enabled ? " eller QRZ" : "");
-                } else if (station.qrz_enabled) {
-                    /* SMCB är avstängt, men QRZ.COM är aktiverat */
-                    if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
-                        copy_str(status_msg, sizeof(status_msg), "SM Callbook är av. QRZ.COM användarnamn/lösen saknas (F12).");
-                        continue;
-                    }
-                    copy_str(status_msg, sizeof(status_msg), "Söker i QRZ.COM (SMCB av)...");
-                    draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
-                                     field_cursor_pos, time_frozen, editing_index,
-                                     &log_list, selected_log_pos, &log_scroll_offset,
-                                     active_filter, status_msg, current_qrb, &cur_y, &cur_x);
-                    refresh();
-
-                    char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
-                    int qrz_hit = qrz_lookup(station.qrz_username, station.qrz_password, current_qso.call,
-                                             qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
-                                             qrz_grid, sizeof(qrz_grid));
-                    if (qrz_hit) {
-                        if (strcmp(qrz_name, "-SK-") == 0) {
-                            copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
-                            current_qso.qth[0] = '\0';
-                            current_qso.gridsquare[0] = '\0';
-                            copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            field_cursor_pos = 0;
-                            copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
-                            continue;
-                        }
-                        copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
-                        copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
-                        if (qrz_grid[0] != '\0') {
-                            copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
-                        }
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                        field_cursor_pos = 0;
-                        if (qrz_grid[0] != '\0') {
-                            snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
-                        } else {
-                            snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
-                        }
-                    } else {
-                        snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
-                    }
+            if (qrz_ready) {
+                if (smcb_queried) {
+                    copy_str(status_msg, sizeof(status_msg), "SMCB: Ingen träff -> Söker i QRZ.COM...");
                 } else {
-                    copy_str(status_msg, sizeof(status_msg), "Både SM Callbook och QRZ.COM är inaktiverade i inställningarna (F12).");
+                    copy_str(status_msg, sizeof(status_msg), "Söker i QRZ.COM...");
                 }
-            } else {
-                /* Icke-svensk signal: sök via QRZ.COM om det är på */
-                if (!station.qrz_enabled) {
-                    copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
-                    continue;
-                }
-                if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
-                    copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
-                    continue;
-                }
-
-                copy_str(status_msg, sizeof(status_msg), "Söker i QRZ.COM...");
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
@@ -678,62 +568,34 @@ int main(int argc, char *argv[]) {
                         snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
                     }
                 } else {
-                    snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
-                }
-            }
-            continue;
-        } else if (ch == KEY_F(6)) {
-            /* F6: Manuellt uppslag direkt via QRZ.COM */
-            band_selecting = 0;
-            if (current_qso.call[0] == '\0') {
-                copy_str(status_msg, sizeof(status_msg), "Ange en anropssignal först.");
-                continue;
-            }
-            if (!station.qrz_enabled) {
-                copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
-                continue;
-            }
-            if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
-                copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
-                continue;
-            }
-
-            copy_str(status_msg, sizeof(status_msg), "Söker i QRZ.COM...");
-            draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
-                             field_cursor_pos, time_frozen, editing_index,
-                             &log_list, selected_log_pos, &log_scroll_offset,
-                             active_filter, status_msg, current_qrb, &cur_y, &cur_x);
-            refresh();
-
-            char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
-            int qrz_hit = qrz_lookup(station.qrz_username, station.qrz_password, current_qso.call,
-                                     qrz_name, sizeof(qrz_name), qrz_qth, sizeof(qrz_qth),
-                                     qrz_grid, sizeof(qrz_grid));
-            if (qrz_hit) {
-                if (strcmp(qrz_name, "-SK-") == 0) {
-                    copy_str(current_qso.name, sizeof(current_qso.name), "-SK-");
-                    current_qso.qth[0] = '\0';
-                    current_qso.gridsquare[0] = '\0';
-                    copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
-                    copy_str(current_qrb, sizeof(current_qrb), "-");
-                    field_cursor_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
-                    continue;
-                }
-                copy_str(current_qso.name, sizeof(current_qso.name), qrz_name);
-                copy_str(current_qso.qth, sizeof(current_qso.qth), qrz_qth);
-                if (qrz_grid[0] != '\0') {
-                    copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
-                }
-                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
-                field_cursor_pos = 0;
-                if (qrz_grid[0] != '\0') {
-                    snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
-                } else {
-                    snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s", qrz_name, qrz_qth);
+                    if (smcb_queried) {
+                        snprintf(status_msg, sizeof(status_msg), "Ingen träff för %s i SMCB eller QRZ.COM", current_qso.call);
+                    } else {
+                        snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
+                    }
                 }
             } else {
-                snprintf(status_msg, sizeof(status_msg), "QRZ.COM: Ingen träff för %s", current_qso.call);
+                /* QRZ.COM kunde inte sökas (inaktiverad eller uppgifter saknas) */
+                if (smcb_queried) {
+                    if (!station.qrz_enabled) {
+                        snprintf(status_msg, sizeof(status_msg), "SMCB: Ingen träff för %s (QRZ.COM ej aktiverat).", base_call);
+                    } else {
+                        snprintf(status_msg, sizeof(status_msg), "SMCB: Ingen träff för %s (QRZ användarnamn/lösen saknas).", base_call);
+                    }
+                } else if (is_swedish && !station.smcb_enabled) {
+                    if (!station.qrz_enabled) {
+                        copy_str(status_msg, sizeof(status_msg), "Både SM Callbook och QRZ.COM är inaktiverade i inställningarna (F12).");
+                    } else {
+                        copy_str(status_msg, sizeof(status_msg), "SM Callbook är av. QRZ.COM användarnamn/lösen saknas (F12).");
+                    }
+                } else {
+                    /* Icke-svensk signal */
+                    if (!station.qrz_enabled) {
+                        copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
+                    } else {
+                        copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
+                    }
+                }
             }
             continue;
         } else if (active_field == FLD_BAND && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || (ch >= '0' && ch <= '9'))) {
@@ -745,12 +607,13 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
+            int band_row = (LINES >= 25) ? 8 : 4;
             int band_col = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
             int ret = run_band_dropdown(&station, &current_qso, focus_mode, active_field,
                                         field_cursor_pos, &time_frozen, editing_index,
                                         &log_list, selected_log_pos, &log_scroll_offset,
                                         active_filter, status_msg, sizeof(status_msg),
-                                        current_qrb, 8, band_col);
+                                        current_qrb, band_row, band_col);
             if (ret == 2) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
