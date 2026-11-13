@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
                 /* Ctrl-End: gå till sista raden i hela loggen */
                 if (f_cnt > 0) {
                     selected_log_pos = f_cnt - 1;
-                    int avail = get_avail_log_rows();
+                    int avail = get_avail_log_rows(&station);
                     log_scroll_offset = f_cnt - avail;
                     if (log_scroll_offset < 0) log_scroll_offset = 0;
                 }
@@ -310,7 +310,7 @@ int main(int argc, char *argv[]) {
             } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1) {
                 /* End: gå till sista raden på den sida vi ser */
                 if (f_cnt > 0) {
-                    int avail = get_avail_log_rows();
+                    int avail = get_avail_log_rows(&station);
                     int lines = 0;
                     int last_vis = log_scroll_offset;
                     for (int idx = log_scroll_offset; idx < f_cnt; ++idx) {
@@ -326,14 +326,14 @@ int main(int argc, char *argv[]) {
                 }
             } else if (ch == KEY_PPAGE) {
                 /* PgUp: bläddra en sida uppåt */
-                int avail = get_avail_log_rows();
+                int avail = get_avail_log_rows(&station);
                 selected_log_pos -= avail;
                 if (selected_log_pos < 0) selected_log_pos = 0;
                 log_scroll_offset -= avail;
                 if (log_scroll_offset < 0) log_scroll_offset = 0;
             } else if (ch == KEY_NPAGE) {
                 /* PgDown: bläddra en sida nedåt */
-                int avail = get_avail_log_rows();
+                int avail = get_avail_log_rows(&station);
                 selected_log_pos += avail;
                 if (selected_log_pos >= f_cnt) selected_log_pos = f_cnt > 0 ? f_cnt - 1 : 0;
                 if (selected_log_pos < 0) selected_log_pos = 0;
@@ -607,7 +607,8 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-            int band_row = (LINES >= 30) ? 8 : 4;
+            int stat_h = (station.show_stats && LINES >= 30) ? 4 : 0;
+            int band_row = 1 + stat_h + 3;
             int band_col = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
             int ret = run_band_dropdown(&station, &current_qso, focus_mode, active_field,
                                         field_cursor_pos, &time_frozen, editing_index,
@@ -712,7 +713,7 @@ int main(int argc, char *argv[]) {
             field_fresh = 1;
         } else if (ch == KEY_PPAGE) {
             /* PgUp: bläddra loggraderna uppåt */
-            int avail = get_avail_log_rows();
+            int avail = get_avail_log_rows(&station);
             log_scroll_offset -= avail;
             if (log_scroll_offset < 0) log_scroll_offset = 0;
             selected_log_pos -= avail;
@@ -720,7 +721,7 @@ int main(int argc, char *argv[]) {
         } else if (ch == KEY_NPAGE) {
             /* PgDown: bläddra loggraderna nedåt */
             int max_f = (int)log_list.count;
-            int avail = get_avail_log_rows();
+            int avail = get_avail_log_rows(&station);
             log_scroll_offset += avail;
             if (log_scroll_offset + avail > max_f) {
                 log_scroll_offset = max_f - avail;

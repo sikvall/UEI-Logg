@@ -69,9 +69,10 @@ void apply_color_theme(int theme_idx);
 
 /**
  * @brief Beräknar hur många rader i terminalen som är tillgängliga för loggtabellen.
+ * @param st Stationsinställningar (eller NULL för standard).
  * @return Antal synliga rader.
  */
-int get_avail_log_rows(void);
+int get_avail_log_rows(const StationSettings *st);
 
 /**
  * @brief Bygger en array med index över loggrader som matchar ett visst sökfilter.
