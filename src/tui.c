@@ -663,14 +663,14 @@ static int sw_tone_to_color_pair(SwTone tone) {
  * @brief Hjälpfunktion för att rita ett rymdvädersfält högerjusterat mot ett kolon.
  */
 static void print_sw_field(int row, int colon_col, const char *label, const char *val, int color_pair) {
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    attron(COLOR_PAIR(CP_LABEL));
     int llen = utf8_display_width(label);
     mvprintw(row, colon_col - llen, "%s:", label);
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    attroff(COLOR_PAIR(CP_LABEL));
 
-    attron(COLOR_PAIR(color_pair) | A_BOLD);
+    attron(COLOR_PAIR(color_pair));
     mvprintw(row, colon_col + 2, "%s", (val && val[0] != '\0') ? val : "-");
-    attroff(COLOR_PAIR(color_pair) | A_BOLD);
+    attroff(COLOR_PAIR(color_pair));
 }
 
 /**
