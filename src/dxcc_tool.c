@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <curl/curl.h>
 #include <errno.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -878,19 +879,44 @@ static int cmd_stat(const char *target_file) {
     format_thousands(total_pfx + total_exact, num_tot, sizeof(num_tot));
     format_thousands(total_lines, num_lines, sizeof(num_lines));
 
+    char src_disp[128];
+    copy_str(src_disp, sizeof(src_disp), source_info);
+    if (utf8_display_width(src_disp) > 56) {
+        if (strstr(src_disp, "https://www.country-files.com/cty/cty.csv")) {
+            copy_str(src_disp, sizeof(src_disp), "Country Files (AD1C) - country-files.com/cty/cty.csv");
+        }
+    }
+    int src_w = utf8_display_width(src_disp);
+    int pad_src = 56 - src_w;
+    if (pad_src < 0) pad_src = 0;
+
+    int fn_w = utf8_display_width(file_path);
+    int pad_fn = 56 - fn_w;
+    if (pad_fn < 0) pad_fn = 0;
+
+    int sz_w = utf8_display_width(sz_line);
+    int pad_sz = 56 - sz_w;
+    if (pad_sz < 0) pad_sz = 0;
+
+    int tm_w = utf8_display_width(time_buf);
+    int pad_tm = 56 - tm_w;
+    if (pad_tm < 0) pad_tm = 0;
+
+    int ut_w = utf8_display_width(update_time);
+    int pad_ut = 56 - ut_w;
+    if (pad_ut < 0) pad_ut = 0;
+
     /* RITA TABELL 1: Allmän databasöversikt */
     printf("\n\033[1;36m┌──────────────────────────────────────────────────────────────────────────────┐\033[0m\n");
-    printf("\033[1;36m│\033[0m \033[1;37m                       DXCC DATABASSTATISTIK                                \033[0m\033[1;36m│\033[0m\n");
+    printf("\033[1;36m│\033[0m                        \033[1;37mDXCC DATABASSTATISTIK\033[0m                                 \033[1;36m│\033[0m\n");
     printf("\033[1;36m├──────────────────────────────────────────────────────────────────────────────┤\033[0m\n");
-    printf("\033[1;36m│\033[0m  Filnamn:            %-56s\033[1;36m│\033[0m\n", file_path);
-    char sz_line[128];
-    snprintf(sz_line, sizeof(sz_line), "%s (%s rader)", str_sz, num_lines);
-    printf("\033[1;36m│\033[0m  Filstorlek:         %-56s\033[1;36m│\033[0m\n", sz_line);
-    printf("\033[1;36m│\033[0m  Senast ändrad:      %-56s\033[1;36m│\033[0m\n", time_buf);
+    printf("\033[1;36m│\033[0m  Filnamn:            %s%*s\033[1;36m│\033[0m\n", file_path, pad_fn, "");
+    printf("\033[1;36m│\033[0m  Filstorlek:         %s%*s\033[1;36m│\033[0m\n", sz_line, pad_sz, "");
+    printf("\033[1;36m│\033[0m  Senast ändrad:      %s%*s\033[1;36m│\033[0m\n", time_buf, pad_tm, "");
     if (strcmp(update_time, "Okänd") != 0) {
-        printf("\033[1;36m│\033[0m  Databas uppdaterad: %-56s\033[1;36m│\033[0m\n", update_time);
+        printf("\033[1;36m│\033[0m  Databas uppdaterad: %s%*s\033[1;36m│\033[0m\n", update_time, pad_ut, "");
     }
-    printf("\033[1;36m│\033[0m  Datakälla:          %-56s\033[1;36m│\033[0m\n", source_info);
+    printf("\033[1;36m│\033[0m  Datakälla:          %s%*s\033[1;36m│\033[0m\n", src_disp, pad_src, "");
     printf("\033[1;36m├──────────────────────────────────────────────────────────────────────────────┤\033[0m\n");
     printf("\033[1;36m│\033[0m  \033[1mAktiva DXCC-entiteter:\033[0m      \033[1;32m%5zu\033[0m                                             \033[1;36m│\033[0m\n", cstat_count);
     printf("\033[1;36m│\033[0m  \033[1mPrefixregler:\033[0m               \033[1;33m%7s\033[0m                                           \033[1;36m│\033[0m\n", num_pfx);
@@ -900,7 +926,10 @@ static int cmd_stat(const char *target_file) {
         double avg = (double)sum_pfx_len / (double)total_pfx;
         char pfx_stat_str[64];
         snprintf(pfx_stat_str, sizeof(pfx_stat_str), "%zu min / %zu max (snitt %.1f tecken)", min_pfx_len, max_pfx_len, avg);
-        printf("\033[1;36m│\033[0m  Prefixlängder:              %-56s\033[1;36m│\033[0m\n", pfx_stat_str);
+        int pfx_w = utf8_display_width(pfx_stat_str);
+        int pad_pfx = 56 - pfx_w;
+        if (pad_pfx < 0) pad_pfx = 0;
+        printf("\033[1;36m│\033[0m  Prefixlängder:      %s%*s\033[1;36m│\033[0m\n", pfx_stat_str, pad_pfx, "");
     }
     printf("\033[1;36m└──────────────────────────────────────────────────────────────────────────────┘\033[0m\n");
 
@@ -1052,17 +1081,44 @@ static int cmd_lookup(const char *target_file, const char *call_in) {
     }
 
     if (hit_country) {
-        printf("\n\033[1;36m┌────────────────────────────────────────────────────────┐\033[0m\n");
-        printf("\033[1;36m│\033[0m \033[1;37m                   DXCC-UPPSLAG                        \033[0m\033[1;36m│\033[0m\n");
-        printf("\033[1;36m├────────────────────────────────────────────────────────┤\033[0m\n");
-        printf("\033[1;36m│\033[0m  Signal:        \033[1;32m%-38s\033[0m\033[1;36m│\033[0m\n", call);
-        printf("\033[1;36m│\033[0m  DXCC-land:     \033[1;33m%-38s\033[0m\033[1;36m│\033[0m\n", hit_country);
         char type_str[64];
         snprintf(type_str, sizeof(type_str), "%s (%s)", hit_exact ? "Exakt signalundantag" : "Prefixmatch", hit_rule);
-        printf("\033[1;36m│\033[0m  Matchning:     %-38s\033[1;36m│\033[0m\n", type_str);
+
+        int call_w = utf8_display_width(call);
+        int pad_call = 39 - call_w;
+        if (pad_call < 0) pad_call = 0;
+
+        int country_w = utf8_display_width(hit_country);
+        int pad_country = 39 - country_w;
+        if (pad_country < 0) pad_country = 0;
+
+        int type_w = utf8_display_width(type_str);
+        int pad_type = 39 - type_w;
+        if (pad_type < 0) pad_type = 0;
+
+        printf("\n\033[1;36m┌────────────────────────────────────────────────────────┐\033[0m\n");
+        printf("\033[1;36m│\033[0m                      \033[1;37mDXCC-UPPSLAG                      \033[0m\033[1;36m│\033[0m\n");
+        printf("\033[1;36m├────────────────────────────────────────────────────────┤\033[0m\n");
+        printf("\033[1;36m│\033[0m  Signal:        \033[1;32m%s\033[0m%*s\033[1;36m│\033[0m\n", call, pad_call, "");
+        printf("\033[1;36m│\033[0m  DXCC-land:     \033[1;33m%s\033[0m%*s\033[1;36m│\033[0m\n", hit_country, pad_country, "");
+        printf("\033[1;36m│\033[0m  Matchning:     %s%*s\033[1;36m│\033[0m\n", type_str, pad_type, "");
         printf("\033[1;36m└────────────────────────────────────────────────────────┘\033[0m\n\n");
     } else {
-        printf("Ingen DXCC-matchning hittades för signalen '%s'.\n", call);
+        int call_w = utf8_display_width(call);
+        int pad_call = 39 - call_w;
+        if (pad_call < 0) pad_call = 0;
+
+        const char *not_found = "Ingen DXCC-matchning hittades";
+        int nf_w = utf8_display_width(not_found);
+        int pad_nf = 39 - nf_w;
+        if (pad_nf < 0) pad_nf = 0;
+
+        printf("\n\033[1;36m┌────────────────────────────────────────────────────────┐\033[0m\n");
+        printf("\033[1;36m│\033[0m                      \033[1;37mDXCC-UPPSLAG                      \033[0m\033[1;36m│\033[0m\n");
+        printf("\033[1;36m├────────────────────────────────────────────────────────┤\033[0m\n");
+        printf("\033[1;36m│\033[0m  Signal:        \033[1;32m%s\033[0m%*s\033[1;36m│\033[0m\n", call, pad_call, "");
+        printf("\033[1;36m│\033[0m  Status:        \033[1;31m%s\033[0m%*s\033[1;36m│\033[0m\n", not_found, pad_nf, "");
+        printf("\033[1;36m└────────────────────────────────────────────────────────┘\033[0m\n\n");
     }
 
     rule_list_free(&rules);
@@ -1092,6 +1148,7 @@ static void show_help(const char *prog_name) {
 }
 
 int main(int argc, char **argv) {
+    setlocale(LC_ALL, "");
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     int ret = 0;
