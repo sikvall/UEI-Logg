@@ -178,7 +178,7 @@ void draw_space_weather_box(int top_y, int width);
 void draw_main_screen(const StationSettings *st, const QSO *qso,
                       FocusMode focus_mode, int active_field, int band_selecting,
                       int field_cursor_pos, int time_frozen, int editing_index,
-                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
                       const char *qrb_str,
                       int *cur_y, int *cur_x);
@@ -215,7 +215,7 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
 int run_band_dropdown(StationSettings *st, QSO *qso,
                       FocusMode focus_mode, int active_field,
                       int field_cursor_pos, int *time_frozen, int editing_index,
-                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, char *status_msg, size_t status_sz,
                       const char *qrb_str, int band_row, int colon_col);
 

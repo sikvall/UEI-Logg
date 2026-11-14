@@ -191,7 +191,8 @@ Inmatningsfältet är ordnat på fyra rader:
 \subsection{4. Loggradstabell (Tidigare QSO)}
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
-    \item Radnummer (\#), Datum, Tid (UTC), Signal, Frekvens, Band, Mode, Rapporter, Namn, QTH, Lokator och DXCC.
+    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
+    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QTH} och slutligen \textbf{Namn}. Fältet för \textbf{QTH} har en minimibredd på 10 tecken (mindre utrymme döljer kolumnen) och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. Kärndata (signal, frekvens, band, mode, rapport och QRB) förblir alltid synliga.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
     \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
 \end{itemize}
@@ -421,8 +422,10 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \caption{Projektets filstruktur.}
 \end{table}
 
-\subsection{Beräkning av QRB}
-Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$). Resultatet visas direkt i fältet \texttt{DXCC} i inmatningsrutan.
+\subsection{Beräkning och Lagring av QRB}
+Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$).
+
+Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält vid registrering, dels i loggradstabellens dedikerade kolumn \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) mellan \texttt{QTH} och statuskolumnen \texttt{Ny}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
 
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
@@ -437,7 +440,8 @@ Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattand
     \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
     \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
     \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.
-    \item \textbf{SQLite3-databaslagring:} Verifierar schemainitiering, insert med auto-ID, kronologisk laddning, uppdatering, F7 i databasen, radering, tömning, automatisk ADIF-migrering samt import/export.
+    \item \textbf{SQLite3-databaslagring:} Omfattande backend-tester som verifierar schemainitiering, WAL-läge, tabellindex, autoincrement-ID:n, kronologisk ordning, SQL-injektionsskydd med specialtecken, hantering av tomma fält, uppdatering, selektiv status, F7 i databasen, radering, tömning, batch-inläggning inom transaktion, diskpersistens över omstart, felhantering vid stängd databas samt ADIF-migrering och import/export.
+    \item \textbf{Svenska tecken (ÅÄÖ):} Fullständig verifiering av å, ä, ö, Å, Ä, Ö i fälten Namn, QTH och Notering inklusive direkt SQLite3-persistens, uppdatering, automatisk Latin-1-sanering, ADIF-export/import, exakt UTF-8-markörpositionering (1 steg per tecken istället för byte-längd), säker teckenklippning i TUI samt skiftlägesokänslig loggfiltrering.
 \end{itemize}
 
 Testsviten körs från kommandoraden med:

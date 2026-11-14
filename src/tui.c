@@ -5,6 +5,7 @@
  */
 
 #include "tui.h"
+#include "db.h"
 #include "dxcc.h"
 #include "logg.h"
 #include "qrb.h"
@@ -785,7 +786,7 @@ void draw_space_weather_box(int top_y, int width) {
 void draw_main_screen(const StationSettings *st, const QSO *qso,
                       FocusMode focus_mode, int active_field, int band_selecting,
                       int field_cursor_pos, int time_frozen, int editing_index,
-                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
                       const char *qrb_str,
                       int *cur_y, int *cur_x) {
@@ -918,38 +919,124 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     int col_ny = COLS - 4;
     int max_col = COLS - 5;
 
+    /* Bestäm vilka kolumner som ryms.
+     * Prioritetsordning vid minskande bredd: dölj DXCC först, sedan Lokator, sedan QTH, sedan Namn.
+     * QTH tillåts expandera dynamiskt om det finns ledig plats för långa ortsnamn.
+     */
+    int w_name = 0, w_qth_col = 0, w_qrb_col = 0, w_loc = 0, w_dxcc = 0;
+    int col_name = 62;
+    int col_qth  = 0;
+    int col_qrb  = 0;
+    int col_loc  = 0;
+    int col_dxcc = 0;
+
+    const int base_name = 14;
+    const int base_qth  = 13;
+    const int base_qrb  = 6;  /* Siffra utan 'km' */
+    const int base_loc  = 8;
+    const int base_dxcc = 16;
+
+    if (max_col >= col_name + 60) {
+        /* Full bredd (>= 122): Alla kolumner visas (Namn, QTH, QRB, Lokator, DXCC) */
+        w_dxcc = base_dxcc;
+        w_loc = base_loc;
+        w_qrb_col = base_qrb;
+        w_name = base_name;
+        int extra = max_col - (col_name + 60);
+        int qth_extra = (extra > 17) ? 17 : extra;
+        w_qth_col = base_qth + qth_extra; /* Expanderar upp till max 30 tecken */
+        int rem = extra - qth_extra;
+        if (rem > 0) {
+            int name_extra = (rem > 6) ? 6 : rem;
+            w_name += name_extra;
+        }
+        col_qth  = col_name + w_name + 1;
+        col_qrb  = col_qth + w_qth_col + 1;
+        col_loc  = col_qrb + w_qrb_col + 1;
+        col_dxcc = col_loc + w_loc + 1;
+    } else if (max_col >= col_name + 43) {
+        /* DXCC döljs först (105..121): Namn, QTH, QRB, Lokator visas */
+        w_dxcc = 0;
+        w_loc = base_loc;
+        w_qrb_col = base_qrb;
+        w_name = base_name;
+        int extra = max_col - (col_name + 43);
+        w_qth_col = base_qth + extra;
+        if (w_qth_col > 30) w_qth_col = 30; /* Max 30 tecken */
+        col_qth  = col_name + w_name + 1;
+        col_qrb  = col_qth + w_qth_col + 1;
+        col_loc  = col_qrb + w_qrb_col + 1;
+    } else if (max_col >= col_name + 34) {
+        /* Lokator döljs därefter (96..104): Namn, QTH, QRB visas */
+        w_dxcc = 0;
+        w_loc = 0;
+        w_qrb_col = base_qrb;
+        w_name = base_name;
+        int extra = max_col - (col_name + 34);
+        w_qth_col = base_qth + extra;
+        if (w_qth_col > 30) w_qth_col = 30; /* Max 30 tecken */
+        col_qth  = col_name + w_name + 1;
+        col_qrb  = col_qth + w_qth_col + 1;
+    } else if (max_col >= col_name + 31) {
+        /* QTH minskas ner mot min 10 tecken (93..95) innan det döljs helt */
+        w_dxcc = 0;
+        w_loc = 0;
+        w_qrb_col = base_qrb;
+        w_name = base_name;
+        w_qth_col = max_col - (col_name + base_name + 1 + base_qrb + 1);
+        if (w_qth_col < 10) w_qth_col = 10;
+        if (w_qth_col > 30) w_qth_col = 30;
+        col_qth  = col_name + w_name + 1;
+        col_qrb  = col_qth + w_qth_col + 1;
+    } else if (max_col >= col_name + 20) {
+        /* QTH döljs då det rymmer < 10 tecken (82..92): Endast Namn och QRB ryms */
+        w_dxcc = 0;
+        w_loc = 0;
+        w_qth_col = 0;
+        w_name = base_name;
+        w_qrb_col = base_qrb;
+        col_qrb = col_name + w_name + 1;
+    } else if (max_col >= col_name + 3) {
+        /* Endast Namn ryms (delvis eller helt) */
+        w_dxcc = 0;
+        w_loc = 0;
+        w_qth_col = 0;
+        w_qrb_col = 0;
+        w_name = max_col - col_name + 1;
+        if (w_name > base_name) w_name = base_name;
+    }
+
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
     mvhline(log_top + 1, 1, ' ', COLS - 2);
     mvprintw(log_top + 1, 2, "   #");
-    mvprintw(log_top + 1, 7, "Datum");
-    mvprintw(log_top + 1, 18, "Tid");
-    mvprintw(log_top + 1, 24, "Signal");
-    mvprintw(log_top + 1, 36, "Frekv (MHz)");
-    mvprintw(log_top + 1, 49, "%7s", "Band");
-    mvprintw(log_top + 1, 58, "Mode");
-    mvprintw(log_top + 1, 64, "RST T");
-    mvprintw(log_top + 1, 71, "RST R");
+    mvprintw(log_top + 1, 7, "YYMMDD");
+    mvprintw(log_top + 1, 14, "HHMM");
+    mvprintw(log_top + 1, 19, "Signal    ");
+    mvprintw(log_top + 1, 30, "%-8s", "Frekv");
+    mvprintw(log_top + 1, 39, "%6s", "Band");
+    mvprintw(log_top + 1, 46, "Mode");
+    mvprintw(log_top + 1, 51, "%-10s", "RST");
 
-    int w_name = 0, w_qth_col = 0, w_loc = 0, w_dxcc = 0;
-    if (max_col >= 78 + 4) {
-        w_name = max_col - 78 + 1;
-        if (w_name > 16) w_name = 16;
-        mvprintw(log_top + 1, 78, "%-*.*s", w_name, w_name, "Namn");
+    char h_buf[64];
+    if (w_name > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Namn", w_name, 0);
+        mvprintw(log_top + 1, col_name, "%s", h_buf);
     }
-    if (w_name == 16 && max_col >= 96 + 4) {
-        w_qth_col = max_col - 96 + 1;
-        if (w_qth_col > 16) w_qth_col = 16;
-        mvprintw(log_top + 1, 96, "%-*.*s", w_qth_col, w_qth_col, "QTH");
+    if (w_qth_col > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QTH", w_qth_col, 0);
+        mvprintw(log_top + 1, col_qth, "%s", h_buf);
     }
-    if (w_qth_col == 16 && max_col >= 114 + 6) {
-        w_loc = max_col - 114 + 1;
-        if (w_loc > 8) w_loc = 8;
-        mvprintw(log_top + 1, 114, "%-*.*s", w_loc, w_loc, "Lokator");
+    if (w_qrb_col > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QRB", w_qrb_col, 1);
+        mvprintw(log_top + 1, col_qrb, "%s", h_buf);
     }
-    if (w_loc == 8 && max_col >= 124 + 4) {
-        w_dxcc = max_col - 124 + 1;
-        if (w_dxcc > 18) w_dxcc = 18;
-        mvprintw(log_top + 1, 124, "%-*.*s", w_dxcc, w_dxcc, "DXCC");
+    if (w_loc > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Lokator", w_loc, 0);
+        mvprintw(log_top + 1, col_loc, "%s", h_buf);
+    }
+    if (w_dxcc > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "DXCC", w_dxcc, 0);
+        mvprintw(log_top + 1, col_dxcc, "%s", h_buf);
     }
 
     mvprintw(log_top + 1, col_ny, "Ny");
@@ -1007,30 +1094,53 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
         char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
         mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
-        mvprintw(row_y, 7, "%-10s", item->date);
-        mvprintw(row_y, 18, "%-5s", item->time_utc);
-        mvprintw(row_y, 24, "%-10s", item->call);
-        mvprintw(row_y, 36, "%-10s", item->freq);
+
+        char d_str[16];
+        format_date_yymmdd(item->date, d_str, sizeof(d_str));
+        mvprintw(row_y, 7, "%-6s", d_str);
+
+        char t_str[16];
+        format_time_hhmm(item->time_utc, t_str, sizeof(t_str));
+        mvprintw(row_y, 14, "%-4s", t_str);
+
+        mvprintw(row_y, 19, "%-10s", item->call);
+        mvprintw(row_y, 30, "%-8s", item->freq);
 
         char band_dsp[16];
         format_band_display(item->band, band_dsp, sizeof(band_dsp));
-        mvprintw(row_y, 49, "%7s", band_dsp);
+        mvprintw(row_y, 39, "%6s", band_dsp);
 
-        mvprintw(row_y, 58, "%-4s", item->mode);
-        mvprintw(row_y, 64, "%-5s", item->rst_sent);
-        mvprintw(row_y, 71, "%-5s", item->rst_rcvd);
+        mvprintw(row_y, 46, "%-4s", item->mode);
 
+        char rst_str[32];
+        format_rst_combined(item->rst_sent, item->rst_rcvd, rst_str, sizeof(rst_str));
+        mvprintw(row_y, 51, "%-10.10s", rst_str);
+
+        char cell_buf[128];
         if (w_name > 0) {
-            mvprintw(row_y, 78, "%-*.*s", w_name, w_name, item->name);
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->name, w_name, 0);
+            mvprintw(row_y, col_name, "%s", cell_buf);
         }
         if (w_qth_col > 0) {
-            mvprintw(row_y, 96, "%-*.*s", w_qth_col, w_qth_col, item->qth);
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->qth, w_qth_col, 0);
+            mvprintw(row_y, col_qth, "%s", cell_buf);
+        }
+        if (w_qrb_col > 0) {
+            if (item->distance[0] == '\0' || strcmp(item->distance, "-") == 0) {
+                update_qso_qrb(st, (QSO *)item);
+            }
+            char qrb_dsp[16];
+            format_qrb_display(item, qrb_dsp, sizeof(qrb_dsp));
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), qrb_dsp, w_qrb_col, 1);
+            mvprintw(row_y, col_qrb, "%s", cell_buf);
         }
         if (w_loc > 0) {
-            mvprintw(row_y, 114, "%-*.*s", w_loc, w_loc, item->gridsquare);
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->gridsquare, w_loc, 0);
+            mvprintw(row_y, col_loc, "%s", cell_buf);
         }
         if (w_dxcc > 0) {
-            mvprintw(row_y, 124, "%-*.*s", w_dxcc, w_dxcc, item->dxcc);
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->dxcc, w_dxcc, 0);
+            mvprintw(row_y, col_dxcc, "%s", cell_buf);
         }
 
         attroff(COLOR_PAIR(row_color) | row_attr);
@@ -1060,8 +1170,15 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             int max_note_w = COLS - 19;
             if (max_note_w < 5) max_note_w = 5;
 
+            char note_buf[512];
+            utf8_pad_or_clip(note_buf, sizeof(note_buf), item->comment, max_note_w, 0);
+            size_t nlen = strlen(note_buf);
+            while (nlen > 0 && note_buf[nlen - 1] == ' ') {
+                note_buf[--nlen] = '\0';
+            }
+
             if (is_selected || is_marked) {
-                mvprintw(note_y, 7, "Notering: %.*s", max_note_w, item->comment);
+                mvprintw(note_y, 7, "Notering: %s", note_buf);
                 attroff(COLOR_PAIR(row_color) | row_attr);
             } else {
                 attroff(COLOR_PAIR(row_color) | row_attr);
@@ -1069,7 +1186,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                 mvprintw(note_y, 7, "Notering: ");
                 attroff(COLOR_PAIR(CP_LABEL));
                 attron(COLOR_PAIR(CP_LOG_ROW));
-                printw("%.*s", max_note_w, item->comment);
+                printw("%s", note_buf);
                 attroff(COLOR_PAIR(CP_LOG_ROW));
             }
 
@@ -1167,7 +1284,7 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
 int run_band_dropdown(StationSettings *st, QSO *qso,
                       FocusMode focus_mode, int active_field,
                       int field_cursor_pos, int *time_frozen, int editing_index,
-                      const QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
+                      QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, char *status_msg, size_t status_sz,
                       const char *qrb_str, int band_row, int colon_col) {
     int cur_idx = find_band_index(qso->band);

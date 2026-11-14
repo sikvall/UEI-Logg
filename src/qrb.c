@@ -4,6 +4,7 @@
  */
 
 #include "qrb.h"
+#include "db.h"
 #include "util.h"
 #include <ctype.h>
 #include <curl/curl.h>
@@ -260,4 +261,95 @@ void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *
     double dist_km = calculate_distance_km(my_lat, my_lon, tg_lat, tg_lon);
     long rounded_km = (long)(dist_km + 0.5);
     snprintf(out, out_sz, "%ld km", rounded_km);
+}
+
+/**
+ * @brief Uppdaterar QRB för ett enskilt QSO om det kan beräknas, och sparar till databasen om det ändrats.
+ * @param my_st Min stations inställningar (innehåller egen lokator).
+ * @param target_qso Motstationens QSO-post.
+ * @return 1 om QRB beräknades och sparades, annars 0.
+ */
+int update_qso_qrb(const StationSettings *my_st, QSO *target_qso) {
+    if (my_st == NULL || target_qso == NULL) return 0;
+
+    /* Om avstånd redan är sparat (ej tomt eller "-"), behöver vi inte göra något */
+    if (target_qso->distance[0] != '\0' && strcmp(target_qso->distance, "-") != 0) {
+        return 0;
+    }
+
+    double my_lat = 0, my_lon = 0;
+    int have_my_pos = 0;
+    if (locator_to_latlon(my_st->gridsquare, &my_lat, &my_lon)) {
+        have_my_pos = 1;
+    } else if (my_st->qth[0] != '\0') {
+        if (lookup_qth_cache(my_st->qth, &my_lat, &my_lon) == 1) {
+            have_my_pos = 1;
+        }
+    }
+    if (!have_my_pos) return 0;
+
+    double tg_lat = 0, tg_lon = 0;
+    int have_tg_pos = 0;
+    if (locator_to_latlon(target_qso->gridsquare, &tg_lat, &tg_lon)) {
+        have_tg_pos = 1;
+    } else if (target_qso->gridsquare[0] == '\0' && target_qso->qth[0] != '\0') {
+        if (lookup_qth_cache(target_qso->qth, &tg_lat, &tg_lon) == 1) {
+            have_tg_pos = 1;
+        }
+    }
+    if (!have_tg_pos) return 0;
+
+    double dist_km = calculate_distance_km(my_lat, my_lon, tg_lat, tg_lon);
+    long rounded_km = (long)(dist_km + 0.5);
+    if (rounded_km < 0) rounded_km = 0;
+
+    char dist_str[32];
+    snprintf(dist_str, sizeof(dist_str), "%ld", rounded_km);
+
+    if (strcmp(target_qso->distance, dist_str) != 0) {
+        copy_str(target_qso->distance, sizeof(target_qso->distance), dist_str);
+        if (db_is_open() && target_qso->id > 0) {
+            db_update_qso(target_qso);
+        }
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Går igenom en logglista och beräknar saknade QRB-värden samt sparar dem till databasen.
+ * @param my_st Min stations inställningar.
+ * @param list Logglista vars poster kontrolleras och uppdateras.
+ * @return Antal uppdaterade poster.
+ */
+int update_all_missing_qrbs(const StationSettings *my_st, QSOList *list) {
+    if (my_st == NULL || list == NULL || list->items == NULL) return 0;
+    int count = 0;
+    for (size_t i = 0; i < list->count; ++i) {
+        if (list->items[i].distance[0] == '\0' || strcmp(list->items[i].distance, "-") == 0) {
+            if (update_qso_qrb(my_st, &list->items[i])) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+/**
+ * @brief Formaterar avstånd för visning i loggtabellens QRB-kolumn (t.ex. "344 km" eller "-").
+ * @param qso QSO-post att formatera QRB för.
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_qrb_display(const QSO *qso, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    copy_str(out, out_sz, "-");
+    if (qso == NULL) return;
+
+    if (qso->distance[0] != '\0' && strcmp(qso->distance, "-") != 0) {
+        long d = atol(qso->distance);
+        if (d >= 0) {
+            snprintf(out, out_sz, "%ld", d);
+        }
+    }
 }

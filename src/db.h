@@ -118,6 +118,13 @@ int db_count_qsos(void);
  */
 int db_migrate_from_adif(const char *adif_path, const StationSettings *st);
 
+/**
+ * @brief Reparerar och saniterar alla textkolumner i qsos-tabellen till ren UTF-8.
+ * Konverterar kvardröjande ISO-8859-1 (Latin-1) tecken till UTF-8 och fixar mojibake.
+ * @return Antal uppdaterade rader, eller -1 vid databasfel.
+ */
+int db_sanitize_all_utf8(void);
+
 #ifdef __cplusplus
 }
 #endif

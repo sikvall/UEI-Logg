@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <wctype.h>
 
 /* Tillåtna amatörradioband i bandlistan och deras standardanropsfrekvenser */
 const char * const BAND_OPTIONS[] = {
@@ -229,20 +230,38 @@ void utf8_delete_at(char *str, int char_pos) {
 }
 
 /**
+ * @brief Infogar en fullständig UTF-8-teckensekvens (1-4 bytes) vid angiven markörposition.
+ * Markörens teckenposition (char_pos) ökas med exakt 1 oavsett antal bytes.
+ */
+void utf8_insert_char_at(char *str, size_t max_size, int *char_pos, const char *utf8_seq, size_t seq_len) {
+    if (str == NULL || char_pos == NULL || utf8_seq == NULL || seq_len == 0) return;
+    if (*char_pos < 0) *char_pos = 0;
+    size_t cur_len = strlen(str);
+    if (cur_len + seq_len >= max_size) return;
+    size_t byte_idx = utf8_char_to_byte(str, *char_pos);
+    memmove(str + byte_idx + seq_len, str + byte_idx, cur_len - byte_idx + 1);
+    memcpy(str + byte_idx, utf8_seq, seq_len);
+    (*char_pos)++;
+}
+
+/**
  * @brief Infogar en byte/ett ASCII-tecken vid angiven markörposition i en UTF-8-sträng.
  * @param str Strängen som redigeras.
  * @param max_size Maximal storlek på strängens buffer i bytes.
- * @param char_pos Pekare till markörens aktuella teckenposition (ökas med 1).
+ * @param char_pos Pekare till markörens aktuella teckenposition (ökas med 1 för startbyte).
  * @param ch Tecknet som ska infogas.
  */
 void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch) {
     if (str == NULL || char_pos == NULL) return;
+    if (*char_pos < 0) *char_pos = 0;
     size_t cur_len = strlen(str);
     if (cur_len + 1 >= max_size) return;
     size_t byte_idx = utf8_char_to_byte(str, *char_pos);
     memmove(str + byte_idx + 1, str + byte_idx, cur_len - byte_idx + 1);
     str[byte_idx] = ch;
-    (*char_pos)++;
+    if (((unsigned char)ch & 0xC0) != 0x80) {
+        (*char_pos)++;
+    }
 }
 
 /**
@@ -291,6 +310,24 @@ int utf8_contains_ci(const char *haystack, const char *needle) {
     size_t nlen = strlen(needle);
     if (nlen > hlen) return 0;
 
+    wchar_t *w_hay = malloc((hlen + 1) * sizeof(wchar_t));
+    wchar_t *w_ndl = malloc((nlen + 1) * sizeof(wchar_t));
+    if (w_hay != NULL && w_ndl != NULL) {
+        size_t w_hlen = mbstowcs(w_hay, haystack, hlen + 1);
+        size_t w_nlen = mbstowcs(w_ndl, needle, nlen + 1);
+        if (w_hlen != (size_t)-1 && w_nlen != (size_t)-1 && w_nlen <= w_hlen) {
+            for (size_t i = 0; i < w_hlen; ++i) w_hay[i] = towlower(w_hay[i]);
+            for (size_t i = 0; i < w_nlen; ++i) w_ndl[i] = towlower(w_ndl[i]);
+            int found = (wcsstr(w_hay, w_ndl) != NULL);
+            free(w_hay);
+            free(w_ndl);
+            return found;
+        }
+    }
+    free(w_hay);
+    free(w_ndl);
+
+    /* Reservfall för ren ASCII eller om bredteckenkonvertering fallerar */
     for (size_t i = 0; i <= hlen - nlen; ++i) {
         size_t j = 0;
         while (j < nlen && tolower((unsigned char)haystack[i + j]) == tolower((unsigned char)needle[j])) {
@@ -888,4 +925,220 @@ void get_utc_strings(char *date_buf, size_t date_sz,
         if (time_buf) strftime(time_buf, time_sz, "%H:%M", utc);
         if (top_buf)  strftime(top_buf, top_sz, "%Y-%m-%d %H:%M UTC", utc);
     }
+}
+
+void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz) {
+    if (dest == NULL || dest_sz == 0) return;
+    dest[0] = '\0';
+    if (src == NULL || src[0] == '\0') return;
+
+    char temp[512];
+    size_t slen = strlen(src);
+    if (slen >= sizeof(temp)) slen = sizeof(temp) - 1;
+    memcpy(temp, src, slen);
+    temp[slen] = '\0';
+
+    static const struct {
+        const char *bad;
+        size_t bad_len;
+        const char *good;
+    } s_mojibake_map[] = {
+        {"\xc3\x83\xc2\xa4", 4, "\xc3\xa4"}, /* ä */
+        {"\xc3\x83\xc2\xa5", 4, "\xc3\xa5"}, /* å */
+        {"\xc3\x83\xc2\xb6", 4, "\xc3\xb6"}, /* ö */
+        {"\xc3\x83\xc2\x84", 4, "\xc3\x84"}, /* Ä */
+        {"\xc3\x83\xc2\x85", 4, "\xc3\x85"}, /* Å */
+        {"\xc3\x83\xc2\x96", 4, "\xc3\x96"}, /* Ö */
+        {"\xc3\x83\xc2\xa9", 4, "\xc3\xa9"}, /* é */
+        {"\xc3\x83\xc2\xbc", 4, "\xc3\xbc"}, /* ü */
+        {"\xc3\x83\xc2",     3, ""},
+        {NULL, 0, NULL}
+    };
+
+    char buf2[512];
+    size_t b2_idx = 0;
+    for (size_t i = 0; i < slen && b2_idx + 4 < sizeof(buf2);) {
+        int matched = 0;
+        for (int m = 0; s_mojibake_map[m].bad != NULL; ++m) {
+            if (i + s_mojibake_map[m].bad_len <= slen &&
+                memcmp(temp + i, s_mojibake_map[m].bad, s_mojibake_map[m].bad_len) == 0) {
+                const char *g = s_mojibake_map[m].good;
+                size_t glen = strlen(g);
+                memcpy(buf2 + b2_idx, g, glen);
+                b2_idx += glen;
+                i += s_mojibake_map[m].bad_len;
+                matched = 1;
+                break;
+            }
+        }
+        if (!matched) {
+            buf2[b2_idx++] = temp[i++];
+        }
+    }
+    buf2[b2_idx] = '\0';
+
+    while (b2_idx > 0) {
+        if (b2_idx >= 2 && (unsigned char)buf2[b2_idx - 2] == 0xC3 && (unsigned char)buf2[b2_idx - 1] == 0x83) {
+            b2_idx -= 2;
+            buf2[b2_idx] = '\0';
+        } else if ((unsigned char)buf2[b2_idx - 1] == 0xC2 || (unsigned char)buf2[b2_idx - 1] == 0xC3) {
+            b2_idx -= 1;
+            buf2[b2_idx] = '\0';
+        } else {
+            break;
+        }
+    }
+
+    int is_valid_utf8 = 1;
+    size_t idx = 0;
+    while (idx < b2_idx) {
+        unsigned char c = (unsigned char)buf2[idx];
+        if (c < 0x80) {
+            idx++;
+        } else if ((c & 0xE0) == 0xC0) {
+            if (idx + 1 >= b2_idx || ((unsigned char)buf2[idx + 1] & 0xC0) != 0x80) {
+                is_valid_utf8 = 0;
+                break;
+            }
+            idx += 2;
+        } else if ((c & 0xF0) == 0xE0) {
+            if (idx + 2 >= b2_idx ||
+                ((unsigned char)buf2[idx + 1] & 0xC0) != 0x80 ||
+                ((unsigned char)buf2[idx + 2] & 0xC0) != 0x80) {
+                is_valid_utf8 = 0;
+                break;
+            }
+            idx += 3;
+        } else if ((c & 0xF8) == 0xF0) {
+            if (idx + 3 >= b2_idx ||
+                ((unsigned char)buf2[idx + 1] & 0xC0) != 0x80 ||
+                ((unsigned char)buf2[idx + 2] & 0xC0) != 0x80 ||
+                ((unsigned char)buf2[idx + 3] & 0xC0) != 0x80) {
+                is_valid_utf8 = 0;
+                break;
+            }
+            idx += 4;
+        } else {
+            is_valid_utf8 = 0;
+            break;
+        }
+    }
+
+    if (is_valid_utf8) {
+        copy_str(dest, dest_sz, buf2);
+        return;
+    }
+
+    size_t d_idx = 0;
+    for (size_t i = 0; i < b2_idx && d_idx + 4 < dest_sz; ++i) {
+        unsigned char b = (unsigned char)buf2[i];
+        if (b < 0x80) {
+            dest[d_idx++] = (char)b;
+        } else {
+            dest[d_idx++] = (char)(0xC0 | (b >> 6));
+            dest[d_idx++] = (char)(0x80 | (b & 0x3F));
+        }
+    }
+    dest[d_idx] = '\0';
+}
+
+void utf8_pad_or_clip(char *dest, size_t dest_sz, const char *src, int target_width, int align_right) {
+    if (dest == NULL || dest_sz == 0) return;
+    dest[0] = '\0';
+    if (target_width <= 0) return;
+
+    if (src == NULL) src = "";
+
+    char clean[512];
+    sanitize_to_utf8(src, clean, sizeof(clean));
+
+    char clipped[512];
+    size_t c_idx = 0;
+    int cur_w = 0;
+    const char *p = clean;
+    mbstate_t ps;
+    memset(&ps, 0, sizeof(ps));
+
+    while (*p != '\0' && cur_w < target_width && c_idx + 4 < sizeof(clipped)) {
+        wchar_t wc;
+        size_t len = mbrtowc(&wc, p, MB_CUR_MAX, &ps);
+        if (len == (size_t)-1 || len == (size_t)-2 || len == 0) {
+            p++;
+            memset(&ps, 0, sizeof(ps));
+        } else {
+            int w = wcwidth(wc);
+            if (w < 0) w = 1;
+            if (cur_w + w > target_width) {
+                break;
+            }
+            memcpy(clipped + c_idx, p, len);
+            c_idx += len;
+            cur_w += w;
+            p += len;
+        }
+    }
+    clipped[c_idx] = '\0';
+
+    int pad = target_width - cur_w;
+    if (pad < 0) pad = 0;
+
+    size_t d_idx = 0;
+    if (align_right && pad > 0) {
+        for (int i = 0; i < pad && d_idx + 1 < dest_sz; ++i) {
+            dest[d_idx++] = ' ';
+        }
+    }
+
+    size_t clip_len = strlen(clipped);
+    if (d_idx + clip_len < dest_sz) {
+        memcpy(dest + d_idx, clipped, clip_len);
+        d_idx += clip_len;
+    }
+
+    if (!align_right && pad > 0) {
+        for (int i = 0; i < pad && d_idx + 1 < dest_sz; ++i) {
+            dest[d_idx++] = ' ';
+        }
+    }
+    dest[d_idx] = '\0';
+}
+
+void format_date_yymmdd(const char *date_in, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    out[0] = '\0';
+    if (date_in == NULL || date_in[0] == '\0') return;
+
+    size_t len = strlen(date_in);
+    if (len == 10 && date_in[4] == '-' && date_in[7] == '-') {
+        snprintf(out, out_sz, "%c%c%c%c%c%c",
+                 date_in[2], date_in[3], date_in[5], date_in[6], date_in[8], date_in[9]);
+        return;
+    }
+    if (len == 8 && strchr(date_in, '-') == NULL) {
+        snprintf(out, out_sz, "%.6s", date_in + 2);
+        return;
+    }
+    copy_str(out, out_sz, date_in);
+    if (strlen(out) > 6) out[6] = '\0';
+}
+
+void format_time_hhmm(const char *time_in, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    out[0] = '\0';
+    if (time_in == NULL || time_in[0] == '\0') return;
+
+    if (strlen(time_in) >= 5 && time_in[2] == ':') {
+        snprintf(out, out_sz, "%c%c%c%c",
+                 time_in[0], time_in[1], time_in[3], time_in[4]);
+        return;
+    }
+    copy_str(out, out_sz, time_in);
+    if (strlen(out) > 4) out[4] = '\0';
+}
+
+void format_rst_combined(const char *rst_sent, const char *rst_rcvd, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    const char *s = (rst_sent && rst_sent[0] != '\0') ? rst_sent : "-";
+    const char *r = (rst_rcvd && rst_rcvd[0] != '\0') ? rst_rcvd : "-";
+    snprintf(out, out_sz, "%s/%s", s, r);
 }

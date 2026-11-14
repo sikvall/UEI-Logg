@@ -103,10 +103,21 @@ void utf8_backspace_at(char *str, int *char_pos);
 void utf8_delete_at(char *str, int char_pos);
 
 /**
+ * @brief Infogar en fullständig UTF-8-teckensekvens (1-4 bytes) vid angiven markörposition.
+ * Markörens teckenposition (char_pos) ökas med exakt 1 oavsett antal bytes.
+ * @param str Strängen som redigeras.
+ * @param max_size Maximal bufferstorlek inklusive null.
+ * @param char_pos Pekare till markörposition i antal tecken (ökas med 1).
+ * @param utf8_seq Pekare till UTF-8-teckensekvensen.
+ * @param seq_len Längd på teckensekvensen i bytes.
+ */
+void utf8_insert_char_at(char *str, size_t max_size, int *char_pos, const char *utf8_seq, size_t seq_len);
+
+/**
  * @brief Infogar en byte/ett ASCII-tecken vid angiven markörposition i en UTF-8-sträng (insert).
  * @param str Strängen som redigeras.
  * @param max_size Maximal bufferstorlek inklusive null.
- * @param char_pos Pekare till markörposition (ökas med 1).
+ * @param char_pos Pekare till markörposition (ökas med 1 för startbytes, ej för fortsättningsbytes).
  * @param ch Tecknet som ska infogas.
  */
 void utf8_insert_byte_at(char *str, size_t max_size, int *char_pos, char ch);
@@ -251,6 +262,52 @@ int parse_tz_offset_seconds(const char *tz_str, long *offset_sec_out);
 void get_utc_strings(char *date_buf, size_t date_sz,
                      char *time_buf, size_t time_sz,
                      char *top_buf, size_t top_sz);
+
+/**
+ * @brief Saniterar och konverterar en sträng till garanterat giltig UTF-8.
+ * Hanterar ISO-8859-1 / Windows-1252, reparerar dubbel-UTF8 mojibake (t.ex. Ã¤ -> ä)
+ * och tar bort ofullständiga flerbytessekvenser i slutet av strängen.
+ * @param src Källsträng.
+ * @param dest Målbuffer.
+ * @param dest_sz Storlek på målbuffer.
+ */
+void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz);
+
+/**
+ * @brief Klipper eller fyller ut en UTF-8-sträng så att den tar exakt target_width skärmkolumner.
+ * Klipper ALDRIG mitt i ett flerbytes UTF-8-tecken.
+ * @param dest Målbuffer.
+ * @param dest_sz Storlek på målbuffer i bytes.
+ * @param src Källsträng (UTF-8).
+ * @param target_width Önskad visningsbredd i terminalkolumner.
+ * @param align_right 0 för vänsterjustering, 1 för högerjustering.
+ */
+void utf8_pad_or_clip(char *dest, size_t dest_sz, const char *src, int target_width, int align_right);
+
+/**
+ * @brief Formaterar datumsträng till YYMMDD (6 tecken).
+ * @param date_in Indatum (t.ex. "2026-11-14").
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_date_yymmdd(const char *date_in, char *out, size_t out_sz);
+
+/**
+ * @brief Formaterar tidssträng till HHMM (4 tecken).
+ * @param time_in Indata (t.ex. "10:30").
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_time_hhmm(const char *time_in, char *out, size_t out_sz);
+
+/**
+ * @brief Formaterar kombinerad RST-rapport som t.ex. "599/599", "59/59" eller "59+20/59+5".
+ * @param rst_sent Sänd rapport RST T.
+ * @param rst_rcvd Mottagen rapport RST R.
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_rst_combined(const char *rst_sent, const char *rst_rcvd, char *out, size_t out_sz);
 
 #ifdef __cplusplus
 }

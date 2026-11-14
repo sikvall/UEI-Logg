@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
+#include <wctype.h>
 
 /**
  * @brief Programmets huvudfunktion: initierar delsystem, laddar data och driver händelseloopen.
@@ -81,6 +83,9 @@ int main(int argc, char *argv[]) {
     } else {
         load_qsos_from_adif(LOG_FILE, &log_list);
     }
+
+    /* Beräkna och spara QRB för eventuella poster som saknar detta */
+    update_all_missing_qrbs(&station, &log_list);
 
     /* Starta asynkron inhämtning av rymdväder från https://hf.avitec.se */
     space_weather_init();
@@ -151,7 +156,9 @@ int main(int argc, char *argv[]) {
                          active_filter, status_msg, current_qrb, &cur_y, &cur_x);
 
         /* Läs in användartangent med timeout */
-        int ch = getch();
+        wint_t wch = 0;
+        int input_res = get_wch(&wch);
+        int ch = (input_res == ERR) ? ERR : (int)wch;
         if (ch == ERR) {
             /* Paus i inmatning: utför automatiska uppslag när användaren stannar upp */
             if (focus_mode == FOCUS_INPUT && active_field == FLD_CALL && current_qso.call[0] != '\0') {
@@ -274,6 +281,7 @@ int main(int argc, char *argv[]) {
                                &selected_log_pos, &log_scroll_offset,
                                status_msg, sizeof(status_msg));
             compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+            update_all_missing_qrbs(&station, &log_list);
             continue;
         }
 
@@ -856,7 +864,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-        } else if (active_field != FLD_BAND && ch >= 32 && ch != 127 && ch < KEY_MIN) {
+        } else if (active_field != FLD_BAND && input_res == OK && wch >= 32 && wch != 127) {
             /* Frys datum och tid när användaren börjar mata in i ett fält */
             if (!time_frozen) {
                 get_utc_strings(current_qso.date, sizeof(current_qso.date),
@@ -879,12 +887,23 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                char c = (char)ch;
-                if ((active_field == FLD_CALL || active_field == FLD_MODE || active_field == FLD_GRID) &&
-                    (unsigned char)c < 128) {
-                    c = (char)toupper((unsigned char)c);
+                if (active_field == FLD_CALL || active_field == FLD_MODE || active_field == FLD_GRID) {
+                    wch = towupper(wch);
                 }
-                utf8_insert_byte_at(field_ptr, max_len, &field_cursor_pos, c);
+
+                char u8[8] = {0};
+                mbstate_t ps;
+                memset(&ps, 0, sizeof(ps));
+                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
+                if (u8_len == (size_t)-1 || u8_len == 0) {
+                    u8[0] = (char)wch;
+                    u8[1] = '\0';
+                    u8_len = 1;
+                } else {
+                    u8[u8_len] = '\0';
+                }
+
+                utf8_insert_char_at(field_ptr, max_len, &field_cursor_pos, u8, u8_len);
 
                 if (active_field == FLD_CALL) {
                     last_smcb_call[0] = '\0';

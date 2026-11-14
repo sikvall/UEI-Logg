@@ -22,6 +22,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
 
 /**
  * @brief Läser in stationsinställningar från station.conf vid programstart.
@@ -274,7 +276,39 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
     QSO current;
     memset(&current, 0, sizeof(current));
 
+    int lines_processed = 0;
+    const char *line_scan = content;
+    time_t last_status_update = 0;
+
     while ((p = strchr(p, '<')) != NULL) {
+        while (line_scan < p) {
+            if (*line_scan == '\n') lines_processed++;
+            line_scan++;
+        }
+
+        time_t now = time(NULL);
+        if (now != last_status_update) {
+            last_status_update = now;
+            int percent = (fsize > 0) ? (int)(((size_t)(p - content) * 100) / (size_t)fsize) : 0;
+            if (percent > 100) percent = 100;
+            if (stdscr != NULL && !isendwin()) {
+                int box_w = 46;
+                int box_h = 5;
+                int box_y = (LINES - box_h) / 2;
+                int box_x = (COLS - box_w) / 2;
+                if (box_y < 0) box_y = 0;
+                if (box_x < 0) box_x = 0;
+                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                draw_box_with_title(box_y, box_x, box_h, box_w, "ADIF-import", 1);
+                char stat_str[64];
+                snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
+                int slen = utf8_display_width(stat_str);
+                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                refresh();
+            }
+        }
+
         const char *end_tag = strchr(p, '>');
         if (end_tag == NULL) break;
 
@@ -324,6 +358,27 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
             qso_list_push(list, &current);
             imported_count++;
         }
+    }
+
+    while (line_scan < content + read_bytes) {
+        if (*line_scan == '\n') lines_processed++;
+        line_scan++;
+    }
+    if (stdscr != NULL && !isendwin()) {
+        int box_w = 46;
+        int box_h = 5;
+        int box_y = (LINES - box_h) / 2;
+        int box_x = (COLS - box_w) / 2;
+        if (box_y < 0) box_y = 0;
+        if (box_x < 0) box_x = 0;
+        attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+        draw_box_with_title(box_y, box_x, box_h, box_w, "ADIF-import", 1);
+        char stat_str[64];
+        snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (100%%)", lines_processed);
+        int slen = utf8_display_width(stat_str);
+        mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+        attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+        refresh();
     }
 
     free(content);
@@ -741,7 +796,9 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             refresh();
         }
 
-        int ch = getch();
+        wint_t wch = 0;
+        int input_res = get_wch(&wch);
+        int ch = (input_res == ERR) ? ERR : (int)wch;
         if (ch == ERR) {
             continue;
         } else if (ch == 27 || ch == KEY_F(12)) {
@@ -987,15 +1044,25 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             } else if (ch == KEY_DC) {
                 buf[0] = '\0';
                 cursor_pos = 0;
-            } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
+            } else if (input_res == OK && wch >= 32 && wch != 127) {
                 if ((active == 5 || active == 6) && strlen(buf) >= 32) {
                     continue;
                 }
-                char c = (char)ch;
-                if ((active == 0 || active == 3) && (unsigned char)c < 128) {
-                    c = (char)toupper((unsigned char)c);
+                if (active == 0 || active == 3) {
+                    wch = towupper(wch);
                 }
-                utf8_insert_byte_at(buf, max_len, &cursor_pos, c);
+                char u8[8] = {0};
+                mbstate_t ps;
+                memset(&ps, 0, sizeof(ps));
+                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
+                if (u8_len == (size_t)-1 || u8_len == 0) {
+                    u8[0] = (char)wch;
+                    u8[1] = '\0';
+                    u8_len = 1;
+                } else {
+                    u8[u8_len] = '\0';
+                }
+                utf8_insert_char_at(buf, max_len, &cursor_pos, u8, u8_len);
             }
         }
     }

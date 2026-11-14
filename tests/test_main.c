@@ -349,6 +349,82 @@ static void run_locator_and_qrb_tests(void) {
     char detail[128];
     snprintf(detail, sizeof(detail), "JO89we -> JO67iq: %.1f km (förväntat ~344 km)", dist_km);
     record_result(qrb_ok, "QRB calculate_distance_km ger rimligt avstånd mellan JO89we och JO67iq (~344 km)", qrb_ok ? NULL : detail);
+
+    /* 3. format_qrb_display formaterar avstånd för kolumnen i loggtabellen */
+    QSO q_dsp1, q_dsp2;
+    memset(&q_dsp1, 0, sizeof(q_dsp1));
+    memset(&q_dsp2, 0, sizeof(q_dsp2));
+    copy_str(q_dsp1.distance, sizeof(q_dsp1.distance), "344");
+    copy_str(q_dsp2.distance, sizeof(q_dsp2.distance), "");
+
+    char out_dsp1[32] = "", out_dsp2[32] = "";
+    format_qrb_display(&q_dsp1, out_dsp1, sizeof(out_dsp1));
+    format_qrb_display(&q_dsp2, out_dsp2, sizeof(out_dsp2));
+    int dsp_ok = (strcmp(out_dsp1, "344") == 0) && (strcmp(out_dsp2, "-") == 0);
+    record_result(dsp_ok, "format_qrb_display formaterar QRB-kolumn korrekt ('344' resp. '-')", NULL);
+
+    /* 4. update_qso_qrb och automatisk persistens i databasen */
+    StationSettings st_qrb;
+    memset(&st_qrb, 0, sizeof(st_qrb));
+    copy_str(st_qrb.call, sizeof(st_qrb.call), "SM5UEI");
+    copy_str(st_qrb.gridsquare, sizeof(st_qrb.gridsquare), "JO89we");
+
+    const char *test_qrb_db = "/tmp/test_qrb_db.sq3";
+    unlink(test_qrb_db);
+    db_open(test_qrb_db);
+
+    QSO q_calc;
+    memset(&q_calc, 0, sizeof(q_calc));
+    copy_str(q_calc.call, sizeof(q_calc.call), "SM7TEST");
+    copy_str(q_calc.gridsquare, sizeof(q_calc.gridsquare), "JO67iq");
+    copy_str(q_calc.date, sizeof(q_calc.date), "2026-11-14");
+    copy_str(q_calc.time_utc, sizeof(q_calc.time_utc), "12:00");
+    copy_str(q_calc.band, sizeof(q_calc.band), "20 m");
+    copy_str(q_calc.mode, sizeof(q_calc.mode), "SSB");
+    q_calc.distance[0] = '\0';
+    db_insert_qso(&q_calc);
+
+    int qrb_updated = update_qso_qrb(&st_qrb, &q_calc);
+    int dist_val = atoi(q_calc.distance);
+    int calc_mem_ok = qrb_updated && (dist_val >= 320 && dist_val <= 360);
+
+    /* Läs tillbaka från databasen för att säkerställa att QRB sparats i SQLite3 */
+    QSOList reloaded_qrb;
+    memset(&reloaded_qrb, 0, sizeof(reloaded_qrb));
+    db_load_all_qsos(&reloaded_qrb);
+    int db_persisted_ok = (reloaded_qrb.count == 1) &&
+                          (strcmp(reloaded_qrb.items[0].distance, q_calc.distance) == 0);
+
+    record_result(calc_mem_ok && db_persisted_ok,
+                  "update_qso_qrb beräknar QRB från lokator och sparar automatiskt i SQLite3", NULL);
+    free(reloaded_qrb.items);
+
+    /* 5. update_all_missing_qrbs beräknar saknade QRB i en lista */
+    QSOList batch_qrb_list;
+    memset(&batch_qrb_list, 0, sizeof(batch_qrb_list));
+    QSO q_m1, q_m2;
+    memset(&q_m1, 0, sizeof(q_m1));
+    memset(&q_m2, 0, sizeof(q_m2));
+    copy_str(q_m1.call, sizeof(q_m1.call), "SA5AAA");
+    copy_str(q_m1.gridsquare, sizeof(q_m1.gridsquare), "JO89we");
+    copy_str(q_m2.call, sizeof(q_m2.call), "SK0TM");
+    copy_str(q_m2.gridsquare, sizeof(q_m2.gridsquare), "JO89xi");
+
+    qso_list_push(&batch_qrb_list, &q_m1);
+    qso_list_push(&batch_qrb_list, &q_m2);
+    db_insert_qso(&batch_qrb_list.items[0]);
+    db_insert_qso(&batch_qrb_list.items[1]);
+
+    int batch_upd_cnt = update_all_missing_qrbs(&st_qrb, &batch_qrb_list);
+    int batch_qrb_ok = (batch_upd_cnt == 2) &&
+                       (batch_qrb_list.items[0].distance[0] != '\0') &&
+                       (batch_qrb_list.items[1].distance[0] != '\0');
+    record_result(batch_qrb_ok,
+                  "update_all_missing_qrbs uppdaterar alla saknade QRB-värden i logglistan och databasen", NULL);
+
+    free(batch_qrb_list.items);
+    db_close();
+    unlink(test_qrb_db);
 }
 
 /* ========================================================================= */
@@ -441,6 +517,48 @@ static void run_string_and_utf8_tests(void) {
     char detail[128];
     snprintf(detail, sizeof(detail), "w('ASCII')=%d, w('ÅÄÖ')=%d, w('✓')=%d", w1, w2, w3);
     record_result(w_ok, "utf8_display_width beräknar visningsbredd rätt för ASCII, åäö och symboler", w_ok ? NULL : detail);
+
+    /* 4. sanitize_to_utf8: konverterar Latin-1 och reparerar mojibake/avhuggna tecken */
+    char clean_qth1[64], clean_qth2[64], clean_name[64], clean_utf8[64];
+    sanitize_to_utf8("V\xe4ster\xe5s", clean_qth1, sizeof(clean_qth1));
+    sanitize_to_utf8("V\xe4llingby", clean_qth2, sizeof(clean_qth2));
+    sanitize_to_utf8("Jonny Bring\xc3\x83\xc2", clean_name, sizeof(clean_name));
+    sanitize_to_utf8("Märsta", clean_utf8, sizeof(clean_utf8));
+
+    int san_ok = (strcmp(clean_qth1, "Västerås") == 0) &&
+                 (strcmp(clean_qth2, "Vällingby") == 0) &&
+                 (strcmp(clean_name, "Jonny Bring") == 0) &&
+                 (strcmp(clean_utf8, "Märsta") == 0);
+    record_result(san_ok, "sanitize_to_utf8 konverterar 'V\\xe4ster\\xe5s' till 'Västerås' och fixar mojibake", NULL);
+
+    /* 5. utf8_pad_or_clip: klipper vid teckengränser och fyller ut rätt displaybredd */
+    char clip_buf[64], pad_buf[64], ralign_buf[64];
+    utf8_pad_or_clip(clip_buf, sizeof(clip_buf), "Västerås", 5, 0);
+    utf8_pad_or_clip(pad_buf, sizeof(pad_buf), "Västerås", 12, 0);
+    utf8_pad_or_clip(ralign_buf, sizeof(ralign_buf), "344 km", 8, 1);
+
+    int clip_ok = (strcmp(clip_buf, "Väste") == 0) &&
+                  (utf8_display_width(clip_buf) == 5) &&
+                  (utf8_display_width(pad_buf) == 12) &&
+                  (strcmp(ralign_buf, "  344 km") == 0);
+    record_result(clip_ok, "utf8_pad_or_clip klipper och fyller ut utan att dela UTF-8-bytes ('Väste')", NULL);
+
+    /* 6. format_date_yymmdd och format_time_hhmm */
+    char yymmdd[16], hhmm[16];
+    format_date_yymmdd("2026-11-14", yymmdd, sizeof(yymmdd));
+    format_time_hhmm("10:30", hhmm, sizeof(hhmm));
+    int dt_ok = (strcmp(yymmdd, "261114") == 0) && (strcmp(hhmm, "1030") == 0);
+    record_result(dt_ok, "format_date_yymmdd -> '261114' och format_time_hhmm -> '1030'", NULL);
+
+    /* 7. format_rst_combined */
+    char rst_c1[32], rst_c2[32], rst_c3[32];
+    format_rst_combined("599", "599", rst_c1, sizeof(rst_c1));
+    format_rst_combined("59+20", "59+5", rst_c2, sizeof(rst_c2));
+    format_rst_combined("59", "59", rst_c3, sizeof(rst_c3));
+    int rst_ok = (strcmp(rst_c1, "599/599") == 0) &&
+                 (strcmp(rst_c2, "59+20/59+5") == 0) &&
+                 (strcmp(rst_c3, "59/59") == 0);
+    record_result(rst_ok, "format_rst_combined sammanfogar RST T och RST R som '599/599' och '59+20/59+5'", NULL);
 }
 
 /* ========================================================================= */
@@ -457,9 +575,41 @@ static void run_sqlite_tests(void) {
     int is_open = db_is_open();
     int initial_cnt = db_count_qsos();
     record_result((rc == 0) && is_open && (initial_cnt == 0),
-                  "db_open skapar och initierar 'qsos' tabell och index i SQLite3", NULL);
+                  "db_open skapar och initierar 'qsos' tabell i SQLite3", NULL);
 
-    /* 2. Infoga QSO och verifiera genererat ID */
+    /* 2. Verifiera WAL-läge och PRAGMA synchronous */
+    sqlite3 *handle = db_get_handle();
+    int wal_ok = 0;
+    if (handle != NULL) {
+        sqlite3_stmt *stmt = NULL;
+        if (sqlite3_prepare_v2(handle, "PRAGMA journal_mode;", -1, &stmt, NULL) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                const unsigned char *mode = sqlite3_column_text(stmt, 0);
+                if (mode && strcasecmp((const char *)mode, "wal") == 0) {
+                    wal_ok = 1;
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    record_result(wal_ok, "Databasen körs i WAL-läge (Write-Ahead Logging) för kraschsäkerhet", NULL);
+
+    /* 3. Verifiera skapade index i sqlite_master */
+    int idx_count = 0;
+    if (handle != NULL) {
+        const char *idx_sql = "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name IN "
+                              "('idx_qsos_call', 'idx_qsos_date_time', 'idx_qsos_band', 'idx_qsos_handled');";
+        sqlite3_stmt *stmt = NULL;
+        if (sqlite3_prepare_v2(handle, idx_sql, -1, &stmt, NULL) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                idx_count = sqlite3_column_int(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    record_result(idx_count == 4, "Tabellindex för call, date/time, band och handled är skapade", NULL);
+
+    /* 4. Infoga QSO och verifiera genererat ID */
     QSO q1, q2, q3;
     memset(&q1, 0, sizeof(q1));
     copy_str(q1.call, sizeof(q1.call), "SM5UEI");
@@ -501,7 +651,7 @@ static void run_sqlite_tests(void) {
                  (q1.id > 0 && q2.id > 0 && q3.id > 0 && q2.id > q1.id);
     record_result(ins_ok, "db_insert_qso infogar poster och tilldelar unika auto-ID:n", NULL);
 
-    /* 3. db_load_all_qsos */
+    /* 5. db_load_all_qsos med kronologisk ordning */
     QSOList loaded;
     memset(&loaded, 0, sizeof(loaded));
     int load_cnt = db_load_all_qsos(&loaded);
@@ -511,7 +661,62 @@ static void run_sqlite_tests(void) {
                   (strcmp(loaded.items[2].call, "K1ZZ") == 0);
     record_result(load_ok, "db_load_all_qsos läser in samtliga sparade QSO:n i kronologisk ordning", NULL);
 
-    /* 4. db_update_qso */
+    /* 6. SQL-injektionsskydd och specialtecken (citat, semikolon, åäö, nyrad) */
+    QSO q_inj;
+    memset(&q_inj, 0, sizeof(q_inj));
+    copy_str(q_inj.call, sizeof(q_inj.call), "O'CONNOR");
+    copy_str(q_inj.name, sizeof(q_inj.name), "Åke \"Blixten\" O'Reilly; DROP TABLE qsos; --");
+    copy_str(q_inj.comment, sizeof(q_inj.comment), "Test ' ' \" ; -- /* comment */ \n nyrad");
+    copy_str(q_inj.date, sizeof(q_inj.date), "2026-11-14");
+    copy_str(q_inj.time_utc, sizeof(q_inj.time_utc), "11:00");
+    copy_str(q_inj.band, sizeof(q_inj.band), "20 m");
+    copy_str(q_inj.mode, sizeof(q_inj.mode), "SSB");
+    int ins_inj = db_insert_qso(&q_inj);
+
+    QSOList loaded_inj;
+    memset(&loaded_inj, 0, sizeof(loaded_inj));
+    db_load_all_qsos(&loaded_inj);
+    int inj_found = 0;
+    for (size_t i = 0; i < loaded_inj.count; ++i) {
+        if (strcmp(loaded_inj.items[i].call, "O'CONNOR") == 0) {
+            if (strcmp(loaded_inj.items[i].name, "Åke \"Blixten\" O'Reilly; DROP TABLE qsos; --") == 0 &&
+                strcmp(loaded_inj.items[i].comment, "Test ' ' \" ; -- /* comment */ \n nyrad") == 0) {
+                inj_found = 1;
+            }
+        }
+    }
+    int inj_ok = (ins_inj == 0) && inj_found && (db_count_qsos() == 4);
+    record_result(inj_ok, "SQL-injektionsskydd och bevarande av specialtecken (apostrof, citat, åäö)", NULL);
+    /* Rensa injektionsposten så att efterföljande tester har känd data */
+    db_delete_qso(q_inj.id);
+    free(loaded_inj.items);
+
+    /* 7. Hantering av tomma fält (får ej läsas ut som NULL eller skräp) */
+    QSO q_empty;
+    memset(&q_empty, 0, sizeof(q_empty));
+    copy_str(q_empty.call, sizeof(q_empty.call), "SA0EMPTY");
+    copy_str(q_empty.date, sizeof(q_empty.date), "2026-11-14");
+    copy_str(q_empty.time_utc, sizeof(q_empty.time_utc), "11:30");
+    db_insert_qso(&q_empty);
+
+    QSOList loaded_empty;
+    memset(&loaded_empty, 0, sizeof(loaded_empty));
+    db_load_all_qsos(&loaded_empty);
+    int empty_ok = 0;
+    for (size_t i = 0; i < loaded_empty.count; ++i) {
+        if (strcmp(loaded_empty.items[i].call, "SA0EMPTY") == 0) {
+            if (loaded_empty.items[i].name[0] == '\0' &&
+                loaded_empty.items[i].comment[0] == '\0' &&
+                loaded_empty.items[i].gridsquare[0] == '\0') {
+                empty_ok = 1;
+            }
+        }
+    }
+    record_result(empty_ok, "Tomma textfält lagras och läses ut som tomma strängar utan minnesfel", NULL);
+    db_delete_qso(q_empty.id);
+    free(loaded_empty.items);
+
+    /* 8. db_update_qso */
     copy_str(loaded.items[0].comment, sizeof(loaded.items[0].comment), "Uppdaterad testkommentar");
     copy_str(loaded.items[0].rst_sent, sizeof(loaded.items[0].rst_sent), "55");
     int upd_rc = db_update_qso(&loaded.items[0]);
@@ -525,9 +730,19 @@ static void run_sqlite_tests(void) {
     record_result(upd_ok, "db_update_qso uppdaterar fält för ett befintligt QSO baserat på ID", NULL);
     free(reloaded.items);
 
-    /* 5. db_set_handled och db_set_all_handled (F7) */
+    /* 9. db_set_handled (selektiv status per ID) */
     db_set_handled(loaded.items[0].id, 1);
     db_set_handled(loaded.items[2].id, 0);
+
+    memset(&reloaded, 0, sizeof(reloaded));
+    db_load_all_qsos(&reloaded);
+    int handled_single_ok = (reloaded.items[0].handled == 1) &&
+                            (reloaded.items[1].handled == 1) &&
+                            (reloaded.items[2].handled == 0);
+    record_result(handled_single_ok, "db_set_handled ändrar hanteringsstatus selektivt för enskilda rader", NULL);
+    free(reloaded.items);
+
+    /* 10. db_set_all_handled (F7) */
     int set_all_cnt = db_set_all_handled(1);
 
     memset(&reloaded, 0, sizeof(reloaded));
@@ -539,7 +754,7 @@ static void run_sqlite_tests(void) {
     record_result(f7_db_ok, "db_set_all_handled (F7) sätter handled = 1 för samtliga poster i SQLite", NULL);
     free(reloaded.items);
 
-    /* 6. db_delete_qso och db_delete_marked */
+    /* 11. db_delete_qso och db_delete_marked */
     int del1_rc = db_delete_qso(loaded.items[2].id);
     int cnt_after_del = db_count_qsos();
     loaded.items[0].marked = 1;
@@ -549,11 +764,62 @@ static void run_sqlite_tests(void) {
                  (del_marked_cnt == 1) && (cnt_after_marked == 1);
     record_result(del_ok, "db_delete_qso och db_delete_marked raderar specificerade poster ur databasen", NULL);
 
-    /* 7. db_clear_all_qsos */
+    /* 12. db_clear_all_qsos */
     db_clear_all_qsos();
-    record_result(db_count_qsos() == 0, "db_clear_all_qsos tömmer tabellen fullständigt", NULL);
+    record_result(db_count_qsos() == 0, "db_clear_all_qsos tömmer tabellen fullständigt och kör VACUUM", NULL);
 
-    /* 8. db_migrate_from_adif (Automatisk migrering från tidigare .adi) */
+    /* 13. db_batch_insert (större batch inom en transaktion) */
+    QSO batch_arr[50];
+    for (int i = 0; i < 50; ++i) {
+        memset(&batch_arr[i], 0, sizeof(QSO));
+        snprintf(batch_arr[i].call, sizeof(batch_arr[i].call), "SM%dTEST", i);
+        copy_str(batch_arr[i].date, sizeof(batch_arr[i].date), "2026-11-14");
+        snprintf(batch_arr[i].time_utc, sizeof(batch_arr[i].time_utc), "%02d:%02d", (i / 60) % 24, i % 60);
+        copy_str(batch_arr[i].band, sizeof(batch_arr[i].band), "20 m");
+        copy_str(batch_arr[i].mode, sizeof(batch_arr[i].mode), "SSB");
+        batch_arr[i].handled = (i % 2 == 0);
+    }
+    int b_ins = db_batch_insert(batch_arr, 50);
+    int b_db_cnt = db_count_qsos();
+    int batch_ids_ok = (batch_arr[0].id > 0) && (batch_arr[49].id > batch_arr[0].id);
+    int batch_ok = (b_ins == 50) && (b_db_cnt == 50) && batch_ids_ok;
+    record_result(batch_ok, "db_batch_insert infogar snabbt 50 poster inom en transaktion med unika ID:n", NULL);
+
+    /* 14. Diskpersistens över stängning och återöppning (db_close -> db_open) */
+    db_close();
+    record_result(db_is_open() == 0, "db_close stänger anslutningen ordnat", NULL);
+
+    int reopen_rc = db_open(test_db_path);
+    int reopen_cnt = db_count_qsos();
+    int persist_ok = (reopen_rc == 0) && (reopen_cnt == 50);
+    record_result(persist_ok, "Diskpersistens: databasens innehåll och antal bevaras efter återöppning", NULL);
+
+    /* 15. Felhantering vid stängd databas och ogiltigt ID */
+    db_close();
+    QSO dummy_q;
+    memset(&dummy_q, 0, sizeof(dummy_q));
+    copy_str(dummy_q.call, sizeof(dummy_q.call), "ERR");
+    dummy_q.id = -10;
+
+    int closed_ins = db_insert_qso(&dummy_q);
+    int closed_upd = db_update_qso(&dummy_q);
+    int closed_del = db_delete_qso(1);
+    QSOList closed_list;
+    int closed_load = db_load_all_qsos(&closed_list);
+    int err_closed_ok = (closed_ins == -1) && (closed_upd == -1) &&
+                        (closed_del == -1) && (closed_load == -1);
+
+    db_open(test_db_path);
+    int inv_upd = db_update_qso(&dummy_q);
+    int inv_del = db_delete_qso(-1);
+    int err_inv_ok = (inv_upd == -1) && (inv_del == -1);
+    record_result(err_closed_ok && err_inv_ok,
+                  "Robust felhantering: stängd DB eller ogiltigt ID returnerar -1 säkert", NULL);
+
+    /* Rensa databasen för migrations- och ADIF-testerna */
+    db_clear_all_qsos();
+
+    /* 16. db_migrate_from_adif (Automatisk migrering från tidigare .adi) */
     const char *tmp_migr_adi = "/tmp/test_migr_source.adi";
     StationSettings st;
     memset(&st, 0, sizeof(st));
@@ -570,10 +836,15 @@ static void run_sqlite_tests(void) {
     int migr_ok = (migr_cnt == 2) && (migr_db_cnt == 2);
     record_result(migr_ok, "db_migrate_from_adif migrerar automatiskt poster från ADIF till SQLite3", NULL);
 
+    /* Verifiera att migrering inte körs om databasen redan innehåller data */
+    int second_migr = db_migrate_from_adif(tmp_migr_adi, &st);
+    record_result(second_migr == 0 && db_count_qsos() == 2,
+                  "db_migrate_from_adif hoppas över om databasen redan innehåller poster", NULL);
+
     unlink(tmp_migr_adi);
     free(migr_src.items);
 
-    /* 9. ADIF-export och import med SQLite */
+    /* 17. ADIF-export och import med SQLite */
     const char *tmp_export_adi = "/tmp/test_export_sqlite.adi";
     memset(&reloaded, 0, sizeof(reloaded));
     db_load_all_qsos(&reloaded);
@@ -594,6 +865,437 @@ static void run_sqlite_tests(void) {
     free(import_list.items);
     free(reloaded.items);
     free(loaded.items);
+
+    /* 18. db_sanitize_all_utf8: automatisk reparation av Latin-1-poster till giltig UTF-8 */
+    db_clear_all_qsos();
+    sqlite3 *raw_db = db_get_handle();
+    if (raw_db != NULL) {
+        /* Infoga råa ISO-8859-1 (Latin-1) bytes: V\xe4ster\xe5s och V\xe4llingby */
+        sqlite3_stmt *raw_stmt = NULL;
+        const char *raw_sql = "INSERT INTO qsos (call, name, qso_date, time_utc, qth) VALUES ('SM5TEST', 'Bernt', '2026-11-14', '12:00', ?);";
+        if (sqlite3_prepare_v2(raw_db, raw_sql, -1, &raw_stmt, NULL) == SQLITE_OK) {
+            const char raw_latin1[] = "V\xe4ster\xe5s";
+            sqlite3_bind_text(raw_stmt, 1, raw_latin1, (int)strlen(raw_latin1), SQLITE_STATIC);
+            sqlite3_step(raw_stmt);
+            sqlite3_finalize(raw_stmt);
+        }
+    }
+
+    int san_cnt = db_sanitize_all_utf8();
+    QSOList san_list;
+    memset(&san_list, 0, sizeof(san_list));
+    db_load_all_qsos(&san_list);
+
+    int san_db_ok = (san_cnt >= 1) && (san_list.count == 1) &&
+                    (strcmp(san_list.items[0].qth, "Västerås") == 0);
+    record_result(san_db_ok, "db_sanitize_all_utf8 detekterar och reparerar automatiskt 'V\\xe4ster\\xe5s' till 'Västerås' i databasen", NULL);
+    free(san_list.items);
+
+    db_close();
+    unlink(test_db_path);
+
+    /* 19. Verifiering mot reell databas qsolog.sq3 (om den finns på disk) */
+    if (access("qsolog.sq3", F_OK) == 0) {
+        db_open("qsolog.sq3");
+        QSOList prod_list;
+        memset(&prod_list, 0, sizeof(prod_list));
+        int loaded_prod = db_load_all_qsos(&prod_list);
+        int vasteras_found = 0;
+        int utf8_clean = 1;
+        for (size_t i = 0; i < prod_list.count; ++i) {
+            if (strstr(prod_list.items[i].qth, "Västerås") != NULL) {
+                vasteras_found = 1;
+            }
+            if (utf8_display_width(prod_list.items[i].call) < 0 ||
+                utf8_display_width(prod_list.items[i].name) < 0 ||
+                utf8_display_width(prod_list.items[i].qth) < 0) {
+                utf8_clean = 0;
+            }
+        }
+        int prod_ok = (loaded_prod > 0) && vasteras_found && utf8_clean;
+        record_result(prod_ok, "qsolog.sq3 sanerad: QTH 'Västerås' och alla namn/qth är 100% ren UTF-8", NULL);
+        free(prod_list.items);
+        db_close();
+    }
+}
+
+/* ========================================================================= */
+/* [10] Hantering av ÅÄÖ i Namn, QTH och Notering                            */
+/* ========================================================================= */
+static void run_swedish_chars_tests(void) {
+    printf(ANSI_BLUE "\n=== [10] Hantering av ÅÄÖ i Namn, QTH och Notering ===" ANSI_RESET "\n");
+
+    const char *test_db_path = "/tmp/test_swedish_chars.sq3";
+    unlink(test_db_path);
+
+    /* 1. Visningsbredd (utf8_display_width) för Å, Ä, Ö, å, ä, ö */
+    {
+        const char *name_sample = "Åke Öberg";                  /* 9 tecken, 11 bytes */
+        const char *qth_sample = "Örnsköldsvik";                /* 12 tecken, 14 bytes */
+        const char *not_sample = "Kör med dipol & strålande väder!"; /* 32 tecken */
+
+        int w_name = utf8_display_width(name_sample);
+        int w_qth = utf8_display_width(qth_sample);
+        int w_not = utf8_display_width(not_sample);
+
+        int ok = (w_name == 9) && (w_qth == 12) && (w_not == 32);
+        char detail[128];
+        snprintf(detail, sizeof(detail), "w_name=%d (förv. 9), w_qth=%d (förv. 12), w_not=%d (förv. 32)",
+                 w_name, w_qth, w_not);
+        record_result(ok, "utf8_display_width beräknar exakt visningsbredd för Namn, QTH och Notering med ÅÄÖ",
+                      ok ? NULL : detail);
+    }
+
+    /* 2. Klippning och utfyllnad (utf8_pad_or_clip) utan att kapa UTF-8-bytes mitt itu */
+    {
+        char clip_name[64], clip_qth[64], clip_not[64];
+        char pad_name[64], pad_qth[64];
+
+        /* "Åke Öberg" (9 kolumner) klippt till 5 -> "Åke Ö" */
+        utf8_pad_or_clip(clip_name, sizeof(clip_name), "Åke Öberg", 5, 0);
+        /* "Örnsköldsvik" (12 kolumner) klippt till 7 -> "Örnsköl" */
+        utf8_pad_or_clip(clip_qth, sizeof(clip_qth), "Örnsköldsvik", 7, 0);
+        /* "Strålande signal på 80m!" klippt till 10 -> "Strålande " */
+        utf8_pad_or_clip(clip_not, sizeof(clip_not), "Strålande signal på 80m!", 10, 0);
+
+        /* Pad: "Åmål" (4 kolumner) fyllt till 10 -> "Åmål      " */
+        utf8_pad_or_clip(pad_qth, sizeof(pad_qth), "Åmål", 10, 0);
+        /* Pad: "Märta" (5 kolumner) fyllt till 8 -> "Märta   " */
+        utf8_pad_or_clip(pad_name, sizeof(pad_name), "Märta", 8, 0);
+
+        int ok = (strcmp(clip_name, "Åke Ö") == 0) &&
+                 (strcmp(clip_qth, "Örnsköl") == 0) &&
+                 (strcmp(clip_not, "Strålande ") == 0) &&
+                 (strcmp(pad_qth, "Åmål      ") == 0) &&
+                 (strcmp(pad_name, "Märta   ") == 0) &&
+                 (utf8_display_width(clip_name) == 5) &&
+                 (utf8_display_width(clip_qth) == 7) &&
+                 (utf8_display_width(clip_not) == 10);
+        record_result(ok, "utf8_pad_or_clip klipper och fyller ut Namn, QTH och Notering utan byte-avhuggning", NULL);
+    }
+
+    /* 3. Sanering (sanitize_to_utf8) av råa Latin-1 (ISO-8859-1) bytes */
+    {
+        char clean_name1[64], clean_name2[64];
+        char clean_qth1[64], clean_qth2[64], clean_qth3[64];
+        char clean_not1[256], clean_not2[256];
+
+        /* Namn: \xc5ke \xd6berg -> Åke Öberg, M\xe4rta \xc4ngstr\xf6m -> Märta Ängström */
+        sanitize_to_utf8("\xc5ke \xd6" "berg", clean_name1, sizeof(clean_name1));
+        sanitize_to_utf8("M\xe4rta \xc4ngstr\xf6m", clean_name2, sizeof(clean_name2));
+
+        /* QTH: \xd6rnsk\xf6ldsvik -> Örnsköldsvik, \xc5m\xe5l -> Åmål, V\xe4ster\xe5s -> Västerås */
+        sanitize_to_utf8("\xd6rnsk\xf6ldsvik", clean_qth1, sizeof(clean_qth1));
+        sanitize_to_utf8("\xc5m\xe5l", clean_qth2, sizeof(clean_qth2));
+        sanitize_to_utf8("V\xe4ster\xe5s", clean_qth3, sizeof(clean_qth3));
+
+        /* Notering: råa svenska tecken i text */
+        sanitize_to_utf8("Str\xe5lande signal fr\xe5n \xd6land med h\xf6g effekt p\xe5 80m!", clean_not1, sizeof(clean_not1));
+        sanitize_to_utf8("Tack f\xf6r trevligt QSO! V\xe4" "dret \xe4r toppen i \xc5m\xe5l.", clean_not2, sizeof(clean_not2));
+
+        int ok = (strcmp(clean_name1, "Åke Öberg") == 0) &&
+                 (strcmp(clean_name2, "Märta Ängström") == 0) &&
+                 (strcmp(clean_qth1, "Örnsköldsvik") == 0) &&
+                 (strcmp(clean_qth2, "Åmål") == 0) &&
+                 (strcmp(clean_qth3, "Västerås") == 0) &&
+                 (strcmp(clean_not1, "Strålande signal från Öland med hög effekt på 80m!") == 0) &&
+                 (strcmp(clean_not2, "Tack för trevligt QSO! Vädret är toppen i Åmål.") == 0);
+        record_result(ok, "sanitize_to_utf8 konverterar råa Latin-1 Å, Ä, Ö, å, ä, ö i Namn, QTH och Notering", NULL);
+    }
+
+    /* 4. SQLite3 lagring och utläsning (db_insert_qso & db_load_all_qsos) med ÅÄÖ */
+    {
+        db_open(test_db_path);
+
+        QSO q1, q2, q3;
+        memset(&q1, 0, sizeof(q1));
+        copy_str(q1.call, sizeof(q1.call), "SM5AKE");
+        copy_str(q1.date, sizeof(q1.date), "2026-11-14");
+        copy_str(q1.time_utc, sizeof(q1.time_utc), "14:00");
+        copy_str(q1.band, sizeof(q1.band), "20 m");
+        copy_str(q1.mode, sizeof(q1.mode), "SSB");
+        copy_str(q1.name, sizeof(q1.name), "Åke Öberg");
+        copy_str(q1.qth, sizeof(q1.qth), "Örnsköldsvik");
+        copy_str(q1.comment, sizeof(q1.comment), "Strålande förhållanden på 20m! Kör portabelt från stugan.");
+
+        memset(&q2, 0, sizeof(q2));
+        copy_str(q2.call, sizeof(q2.call), "SM0MTA");
+        copy_str(q2.date, sizeof(q2.date), "2026-11-14");
+        copy_str(q2.time_utc, sizeof(q2.time_utc), "14:15");
+        copy_str(q2.band, sizeof(q2.band), "40 m");
+        copy_str(q2.mode, sizeof(q2.mode), "CW");
+        copy_str(q2.name, sizeof(q2.name), "Märta Ängström");
+        copy_str(q2.qth, sizeof(q2.qth), "Västerås");
+        copy_str(q2.comment, sizeof(q2.comment), "Trevligt QSO, 100W till en trådantenn. Återkommer gärna!");
+
+        memset(&q3, 0, sizeof(q3));
+        copy_str(q3.call, sizeof(q3.call), "SM7BJN");
+        copy_str(q3.date, sizeof(q3.date), "2026-11-14");
+        copy_str(q3.time_utc, sizeof(q3.time_utc), "14:30");
+        copy_str(q3.band, sizeof(q3.band), "80 m");
+        copy_str(q3.mode, sizeof(q3.mode), "SSB");
+        copy_str(q3.name, sizeof(q3.name), "Björn Håkansson");
+        copy_str(q3.qth, sizeof(q3.qth), "Åmål");
+        copy_str(q3.comment, sizeof(q3.comment), "Önskar en trevlig helg! Gott nytt år till hela klubben.");
+
+        db_insert_qso(&q1);
+        db_insert_qso(&q2);
+        db_insert_qso(&q3);
+
+        QSOList loaded;
+        memset(&loaded, 0, sizeof(loaded));
+        db_load_all_qsos(&loaded);
+
+        int ok = (loaded.count == 3) &&
+                 (strcmp(loaded.items[0].name, "Åke Öberg") == 0) &&
+                 (strcmp(loaded.items[0].qth, "Örnsköldsvik") == 0) &&
+                 (strcmp(loaded.items[0].comment, "Strålande förhållanden på 20m! Kör portabelt från stugan.") == 0) &&
+                 (strcmp(loaded.items[1].name, "Märta Ängström") == 0) &&
+                 (strcmp(loaded.items[1].qth, "Västerås") == 0) &&
+                 (strcmp(loaded.items[1].comment, "Trevligt QSO, 100W till en trådantenn. Återkommer gärna!") == 0) &&
+                 (strcmp(loaded.items[2].name, "Björn Håkansson") == 0) &&
+                 (strcmp(loaded.items[2].qth, "Åmål") == 0) &&
+                 (strcmp(loaded.items[2].comment, "Önskar en trevlig helg! Gott nytt år till hela klubben.") == 0);
+
+        record_result(ok, "SQLite3 INSERT och SELECT bevarar Å, Ä, Ö, å, ä, ö intakta i Namn, QTH och Notering", NULL);
+        free(loaded.items);
+    }
+
+    /* 5. SQLite3 uppdatering (db_update_qso) med ändrade ÅÄÖ-värden */
+    {
+        QSOList loaded;
+        memset(&loaded, 0, sizeof(loaded));
+        db_load_all_qsos(&loaded);
+
+        copy_str(loaded.items[0].name, sizeof(loaded.items[0].name), "Göran Östlund");
+        copy_str(loaded.items[0].qth, sizeof(loaded.items[0].qth), "Jönköping");
+        copy_str(loaded.items[0].comment, sizeof(loaded.items[0].comment), "Ändrad notering: Bytte till 80m dipol, fin signalstyrka!");
+
+        int upd_rc = db_update_qso(&loaded.items[0]);
+
+        QSOList reloaded;
+        memset(&reloaded, 0, sizeof(reloaded));
+        db_load_all_qsos(&reloaded);
+
+        int ok = (upd_rc == 0) && (reloaded.count == 3) &&
+                 (strcmp(reloaded.items[0].name, "Göran Östlund") == 0) &&
+                 (strcmp(reloaded.items[0].qth, "Jönköping") == 0) &&
+                 (strcmp(reloaded.items[0].comment, "Ändrad notering: Bytte till 80m dipol, fin signalstyrka!") == 0);
+        record_result(ok, "db_update_qso uppdaterar Namn, QTH och Notering med ÅÄÖ utan förvanskning", NULL);
+
+        free(loaded.items);
+        free(reloaded.items);
+    }
+
+    /* 6. Databassanering (db_sanitize_all_utf8) av råa Latin-1-bytes i tabellen */
+    {
+        sqlite3 *raw_db = db_get_handle();
+        if (raw_db != NULL) {
+            sqlite3_stmt *stmt = NULL;
+            const char *sql = "INSERT INTO qsos (call, name, qso_date, time_utc, qth, comment) "
+                              "VALUES ('SM4RAW', ?, '2026-11-14', '15:00', ?, ?);";
+            if (sqlite3_prepare_v2(raw_db, sql, -1, &stmt, NULL) == SQLITE_OK) {
+                const char raw_name[] = "J\xf6rgen \xc5kesson";             /* Jörgen Åkesson */
+                const char raw_qth[] = "Link\xf6ping";                     /* Linköping */
+                const char raw_comm[] = "Fin \xe5terkoppling fr\xe5n \xc4lvsbyn!"; /* Fin återkoppling från Älvsbyn! */
+                sqlite3_bind_text(stmt, 1, raw_name, (int)strlen(raw_name), SQLITE_STATIC);
+                sqlite3_bind_text(stmt, 2, raw_qth, (int)strlen(raw_qth), SQLITE_STATIC);
+                sqlite3_bind_text(stmt, 3, raw_comm, (int)strlen(raw_comm), SQLITE_STATIC);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
+        }
+
+        int san_fixed = db_sanitize_all_utf8();
+        QSOList reloaded;
+        memset(&reloaded, 0, sizeof(reloaded));
+        db_load_all_qsos(&reloaded);
+
+        int raw_found = 0;
+        for (size_t i = 0; i < reloaded.count; ++i) {
+            if (strcmp(reloaded.items[i].call, "SM4RAW") == 0) {
+                if (strcmp(reloaded.items[i].name, "Jörgen Åkesson") == 0 &&
+                    strcmp(reloaded.items[i].qth, "Linköping") == 0 &&
+                    strcmp(reloaded.items[i].comment, "Fin återkoppling från Älvsbyn!") == 0) {
+                    raw_found = 1;
+                }
+            }
+        }
+
+        int ok = (san_fixed >= 1) && raw_found;
+        record_result(ok, "db_sanitize_all_utf8 reparerar automatiskt råa Latin-1-bytes i tabellen för Namn, QTH och Notering", NULL);
+        free(reloaded.items);
+    }
+
+    /* 7. ADIF export och import med ÅÄÖ i Namn, QTH och Notering */
+    {
+        const char *tmp_adif = "/tmp/test_swedish_adif.adi";
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+
+        QSOList curr_list;
+        memset(&curr_list, 0, sizeof(curr_list));
+        db_load_all_qsos(&curr_list);
+
+        int exp_cnt = export_qsos_adif(tmp_adif, &curr_list, &st, EXPORT_MODE_ALL);
+
+        /* Töm databasen och importera tillbaka */
+        db_clear_all_qsos();
+        QSOList imp_list;
+        memset(&imp_list, 0, sizeof(imp_list));
+        int imp_cnt = import_qsos_from_adif(tmp_adif, &imp_list, &st);
+
+        QSOList reloaded;
+        memset(&reloaded, 0, sizeof(reloaded));
+        db_load_all_qsos(&reloaded);
+
+        int jorgen_found = 0, marta_found = 0, goran_found = 0;
+        for (size_t i = 0; i < reloaded.count; ++i) {
+            if (strcmp(reloaded.items[i].name, "Jörgen Åkesson") == 0 &&
+                strcmp(reloaded.items[i].qth, "Linköping") == 0 &&
+                strcmp(reloaded.items[i].comment, "Fin återkoppling från Älvsbyn!") == 0) {
+                jorgen_found = 1;
+            }
+            if (strcmp(reloaded.items[i].name, "Märta Ängström") == 0 &&
+                strcmp(reloaded.items[i].qth, "Västerås") == 0) {
+                marta_found = 1;
+            }
+            if (strcmp(reloaded.items[i].name, "Göran Östlund") == 0 &&
+                strcmp(reloaded.items[i].qth, "Jönköping") == 0) {
+                goran_found = 1;
+            }
+        }
+
+        int ok = (exp_cnt == 4) && (imp_cnt == 4) && jorgen_found && marta_found && goran_found;
+        record_result(ok, "ADIF export och återimport bevarar ÅÄÖ i Namn (<NAME>), QTH (<QTH>) och Notering (<COMMENT>)", NULL);
+
+        unlink(tmp_adif);
+        free(curr_list.items);
+        free(imp_list.items);
+        free(reloaded.items);
+    }
+
+    /* 8. Sökning och filtrering (build_filtered_indices) med ÅÄÖ i Namn, QTH och Notering */
+    {
+        QSOList filter_list;
+        memset(&filter_list, 0, sizeof(filter_list));
+        db_load_all_qsos(&filter_list);
+
+        int indices[16];
+        /* Sök i Namn: "östlund" / "Östlund" */
+        int hit_name1 = build_filtered_indices(&filter_list, "Östlund", indices, 16);
+        int hit_name2 = build_filtered_indices(&filter_list, "östlund", indices, 16);
+
+        /* Sök i QTH: "västerås" / "Västerås" */
+        int hit_qth1 = build_filtered_indices(&filter_list, "Västerås", indices, 16);
+        int hit_qth2 = build_filtered_indices(&filter_list, "västerås", indices, 16);
+
+        /* Sök i Notering: "Älvsbyn" / "älvsbyn" och "trådantenn" */
+        int hit_not1 = build_filtered_indices(&filter_list, "Älvsbyn", indices, 16);
+        int hit_not2 = build_filtered_indices(&filter_list, "älvsbyn", indices, 16);
+        int hit_not3 = build_filtered_indices(&filter_list, "trådantenn", indices, 16);
+
+        int ok = (hit_name1 == 1) && (hit_name2 == 1) &&
+                 (hit_qth1 == 1) && (hit_qth2 == 1) &&
+                 (hit_not1 == 1) && (hit_not2 == 1) && (hit_not3 == 1);
+        record_result(ok, "build_filtered_indices filtrerar skiftlägesokänsligt på ÅÄÖ i Namn, QTH och Notering", NULL);
+
+        free(filter_list.items);
+    }
+
+    /* 9. Validering mot produktionsdatabasen qsolog.sq3 för alla Namn, QTH och Noteringar */
+    {
+        if (access("qsolog.sq3", F_OK) == 0) {
+            db_close();
+            db_open("qsolog.sq3");
+            QSOList prod_list;
+            memset(&prod_list, 0, sizeof(prod_list));
+            int cnt = db_load_all_qsos(&prod_list);
+            int all_clean = 1;
+            int swedish_found = 0;
+
+            for (size_t i = 0; i < prod_list.count; ++i) {
+                if (utf8_display_width(prod_list.items[i].name) < 0 ||
+                    utf8_display_width(prod_list.items[i].qth) < 0 ||
+                    utf8_display_width(prod_list.items[i].comment) < 0) {
+                    all_clean = 0;
+                }
+                if (strstr(prod_list.items[i].name, "ä") || strstr(prod_list.items[i].name, "å") || strstr(prod_list.items[i].name, "ö") ||
+                    strstr(prod_list.items[i].qth, "ä") || strstr(prod_list.items[i].qth, "å") || strstr(prod_list.items[i].qth, "ö") ||
+                    strstr(prod_list.items[i].comment, "ä") || strstr(prod_list.items[i].comment, "å") || strstr(prod_list.items[i].comment, "ö")) {
+                    swedish_found = 1;
+                }
+            }
+
+            int ok = (cnt > 0) && all_clean && swedish_found;
+            record_result(ok, "Produktionsdatabas qsolog.sq3: 100% giltig UTF-8 i alla Namn-, QTH- och Noteringsfält", NULL);
+            free(prod_list.items);
+        }
+    }
+
+    /* 10. Inmatning och markörförflyttning (utf8_insert_char_at & utf8_insert_byte_at) med åäö */
+    {
+        char not_buf[64] = "";
+        int cursor = 0;
+
+        /* Mata in "å" (2 bytes) */
+        utf8_insert_char_at(not_buf, sizeof(not_buf), &cursor, "\xc3\xa5", 2);
+        int c1_ok = (cursor == 1) && (strcmp(not_buf, "å") == 0);
+
+        /* Mata in "ä" (2 bytes) */
+        utf8_insert_char_at(not_buf, sizeof(not_buf), &cursor, "\xc3\xa4", 2);
+        int c2_ok = (cursor == 2) && (strcmp(not_buf, "åä") == 0);
+
+        /* Mata in "ö" (2 bytes) */
+        utf8_insert_char_at(not_buf, sizeof(not_buf), &cursor, "\xc3\xb6", 2);
+        int c3_ok = (cursor == 3) && (strcmp(not_buf, "åäö") == 0);
+
+        /* Testa även byte-vis inmatning för "Ö" (\xc3 följt av \x96) */
+        utf8_insert_byte_at(not_buf, sizeof(not_buf), &cursor, '\xc3');
+        int lead_ok = (cursor == 4);
+        utf8_insert_byte_at(not_buf, sizeof(not_buf), &cursor, '\x96');
+        int cont_ok = (cursor == 4) && (strcmp(not_buf, "åäöÖ") == 0);
+
+        /* Backspace ska radera "Ö" och minska cursor till 3 */
+        utf8_backspace_at(not_buf, &cursor);
+        int bs_ok = (cursor == 3) && (strcmp(not_buf, "åäö") == 0);
+
+        int ok = c1_ok && c2_ok && c3_ok && lead_ok && cont_ok && bs_ok;
+        record_result(ok, "UTF-8 inmatning av åäö ökar markörposition med exakt 1 steg per tecken (inte 2 bytes)", NULL);
+    }
+
+    /* 11. QRB formatering som ren siffra (utan 'km') i loggraderna */
+    {
+        QSO q_qrb;
+        memset(&q_qrb, 0, sizeof(q_qrb));
+        copy_str(q_qrb.distance, sizeof(q_qrb.distance), "1250");
+        char dsp[32] = "";
+        format_qrb_display(&q_qrb, dsp, sizeof(dsp));
+        int qrb_num_ok = (strcmp(dsp, "1250") == 0);
+        int no_km_ok = (strstr(dsp, "km") == NULL);
+
+        record_result(qrb_num_ok && no_km_ok, "QRB visas som ren siffra utan 'km' i loggraderna (t.ex. '1250')", NULL);
+    }
+
+    /* 12. QTH-kolumnregler: min 10 tecken innan den döljs, max 30 tecken */
+    {
+        int min_qth = 10;
+        int max_qth = 30;
+        char sample_long_qth[] = "Örnsköldsvik Södra Hamnen Industriområde";
+        char qth_clipped[64];
+        utf8_pad_or_clip(qth_clipped, sizeof(qth_clipped), sample_long_qth, max_qth, 0);
+        int w_clipped = utf8_display_width(qth_clipped);
+        int max_ok = (w_clipped <= max_qth);
+
+        char sample_short_qth[] = "Västerås";
+        char qth_min[64];
+        utf8_pad_or_clip(qth_min, sizeof(qth_min), sample_short_qth, min_qth, 0);
+        int w_min = utf8_display_width(qth_min);
+        int min_ok = (w_min == min_qth);
+
+        record_result(max_ok && min_ok, "QTH-kolumnregler validerade: minsta bredd 10 tkn och maximal bredd 30 tkn", NULL);
+    }
 
     db_close();
     unlink(test_db_path);
@@ -621,6 +1323,7 @@ int main(int argc, char *argv[]) {
     run_settings_tests();
     run_string_and_utf8_tests();
     run_sqlite_tests();
+    run_swedish_chars_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

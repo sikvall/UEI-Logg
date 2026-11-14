@@ -372,6 +372,9 @@ int save_all_qsos_adif(const char *filename, const QSOList *list, const StationS
  * @param val Fältets textvärde.
  */
 void assign_adif_field(QSO *qso, const char *tag, const char *val) {
+    char clean_val[512];
+    sanitize_to_utf8(val, clean_val, sizeof(clean_val));
+    val = clean_val;
     if (strcasecmp(tag, "CALL") == 0) {
         copy_str(qso->call, sizeof(qso->call), val);
     } else if (strcasecmp(tag, "NAME") == 0) {
@@ -511,7 +514,39 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
     QSO current;
     memset(&current, 0, sizeof(current));
 
+    int lines_processed = 0;
+    const char *line_scan = content;
+    time_t last_status_update = 0;
+
     while ((p = strchr(p, '<')) != NULL) {
+        while (line_scan < p) {
+            if (*line_scan == '\n') lines_processed++;
+            line_scan++;
+        }
+
+        time_t now = time(NULL);
+        if (now != last_status_update) {
+            last_status_update = now;
+            int percent = (fsize > 0) ? (int)(((size_t)(p - content) * 100) / (size_t)fsize) : 0;
+            if (percent > 100) percent = 100;
+            if (stdscr != NULL && !isendwin()) {
+                int box_w = 46;
+                int box_h = 5;
+                int box_y = (LINES - box_h) / 2;
+                int box_x = (COLS - box_w) / 2;
+                if (box_y < 0) box_y = 0;
+                if (box_x < 0) box_x = 0;
+                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                draw_box_with_title(box_y, box_x, box_h, box_w, "Läser ADIF", 1);
+                char stat_str[64];
+                snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
+                int slen = utf8_display_width(stat_str);
+                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                refresh();
+            }
+        }
+
         const char *end_tag = strchr(p, '>');
         if (end_tag == NULL) break;
 
@@ -560,6 +595,27 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
         } else {
             p = end_tag + 1;
         }
+    }
+
+    while (line_scan < content + read_bytes) {
+        if (*line_scan == '\n') lines_processed++;
+        line_scan++;
+    }
+    if (stdscr != NULL && !isendwin()) {
+        int box_w = 46;
+        int box_h = 5;
+        int box_y = (LINES - box_h) / 2;
+        int box_x = (COLS - box_w) / 2;
+        if (box_y < 0) box_y = 0;
+        if (box_x < 0) box_x = 0;
+        attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+        draw_box_with_title(box_y, box_x, box_h, box_w, "Läser ADIF", 1);
+        char stat_str[64];
+        snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (100%%)", lines_processed);
+        int slen = utf8_display_width(stat_str);
+        mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+        attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+        refresh();
     }
 
     free(content);
@@ -952,18 +1008,18 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
     }
 
     /* Avstånd (ADIF: DISTANCE) i hela kilometer */
-    int d_val = 0;
+    int d_val = -1;
     if (current_qrb != NULL && current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
         d_val = (int)atol(current_qrb);
     }
-    if (d_val <= 0) {
+    if (d_val < 0) {
         char temp_qrb[32];
         compute_qrb_str(st, qso, temp_qrb, sizeof(temp_qrb));
         if (temp_qrb[0] != '\0' && strcmp(temp_qrb, "-") != 0) {
             d_val = (int)atol(temp_qrb);
         }
     }
-    if (d_val > 0) {
+    if (d_val >= 0) {
         snprintf(qso->distance, sizeof(qso->distance), "%d", d_val);
     }
 

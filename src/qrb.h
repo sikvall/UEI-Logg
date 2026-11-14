@@ -58,6 +58,30 @@ int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out);
  */
 void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz);
 
+/**
+ * @brief Uppdaterar QRB för ett enskilt QSO om det kan beräknas, och sparar till databasen om det ändrats.
+ * @param my_st Min stations inställningar (innehåller egen lokator).
+ * @param target_qso Motstationens QSO-post.
+ * @return 1 om QRB beräknades och sparades, annars 0.
+ */
+int update_qso_qrb(const StationSettings *my_st, QSO *target_qso);
+
+/**
+ * @brief Går igenom en logglista och beräknar saknade QRB-värden samt sparar dem till databasen.
+ * @param my_st Min stations inställningar.
+ * @param list Logglista vars poster kontrolleras och uppdateras.
+ * @return Antal uppdaterade poster.
+ */
+int update_all_missing_qrbs(const StationSettings *my_st, QSOList *list);
+
+/**
+ * @brief Formaterar avstånd för visning i loggtabellens QRB-kolumn (t.ex. "344 km" eller "-").
+ * @param qso QSO-post att formatera QRB för.
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_qrb_display(const QSO *qso, char *out, size_t out_sz);
+
 #ifdef __cplusplus
 }
 #endif

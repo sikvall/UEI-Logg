@@ -68,6 +68,9 @@ int db_open(const char *path) {
         return -1;
     }
 
+    /* Sanera och reparera eventuellt felaktigt kodade UTF-8- eller Latin-1-poster i databasen */
+    db_sanitize_all_utf8();
+
     return 0;
 }
 
@@ -89,9 +92,9 @@ sqlite3 *db_get_handle(void) {
 static void read_column_text(sqlite3_stmt *stmt, int col, char *dest, size_t dest_sz) {
     const unsigned char *text = sqlite3_column_text(stmt, col);
     if (text != NULL) {
-        copy_str(dest, dest_sz, (const char *)text);
+        sanitize_to_utf8((const char *)text, dest, dest_sz);
     } else {
-        dest[0] = '\0';
+        if (dest_sz > 0) dest[0] = '\0';
     }
 }
 
@@ -146,19 +149,27 @@ static const char *INSERT_SQL =
     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 static int bind_qso_params(sqlite3_stmt *stmt, const QSO *qso) {
-    sqlite3_bind_text(stmt, 1, qso->call, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, qso->name, -1, SQLITE_TRANSIENT);
+    char s_call[64], s_name[128], s_qth[128], s_comm[512], s_dxcc[128], s_grid[32];
+    sanitize_to_utf8(qso->call, s_call, sizeof(s_call));
+    sanitize_to_utf8(qso->name, s_name, sizeof(s_name));
+    sanitize_to_utf8(qso->qth, s_qth, sizeof(s_qth));
+    sanitize_to_utf8(qso->comment, s_comm, sizeof(s_comm));
+    sanitize_to_utf8(qso->dxcc, s_dxcc, sizeof(s_dxcc));
+    sanitize_to_utf8(qso->gridsquare, s_grid, sizeof(s_grid));
+
+    sqlite3_bind_text(stmt, 1, s_call, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, s_name, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, qso->date, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 4, qso->time_utc, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 5, qso->gridsquare, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, s_grid, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 6, qso->freq, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 7, qso->band, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 8, qso->mode, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 9, qso->rst_sent, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 10, qso->rst_rcvd, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 11, qso->qth, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 12, qso->dxcc, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 13, qso->comment, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 11, s_qth, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 12, s_dxcc, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 13, s_comm, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 14, qso->distance, -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 15, qso->handled);
     return SQLITE_OK;
@@ -376,4 +387,67 @@ int db_migrate_from_adif(const char *adif_path, const StationSettings *st) {
     }
 
     return migrated;
+}
+
+int db_sanitize_all_utf8(void) {
+    if (s_db == NULL) return -1;
+
+    const char *sel_sql = "SELECT id, call, name, qth, comment, dxcc, gridsquare FROM qsos;";
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(s_db, sel_sql, -1, &stmt, NULL) != SQLITE_OK) {
+        return -1;
+    }
+
+    const char *upd_sql =
+        "UPDATE qsos SET call=?, name=?, qth=?, comment=?, dxcc=?, gridsquare=? WHERE id=?;";
+    sqlite3_stmt *upd_stmt = NULL;
+    if (sqlite3_prepare_v2(s_db, upd_sql, -1, &upd_stmt, NULL) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    sqlite3_exec(s_db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+
+    int updated_rows = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int64_t id = sqlite3_column_int64(stmt, 0);
+        const char *c_call = (const char *)sqlite3_column_text(stmt, 1);
+        const char *c_name = (const char *)sqlite3_column_text(stmt, 2);
+        const char *c_qth  = (const char *)sqlite3_column_text(stmt, 3);
+        const char *c_comm = (const char *)sqlite3_column_text(stmt, 4);
+        const char *c_dxcc = (const char *)sqlite3_column_text(stmt, 5);
+        const char *c_grid = (const char *)sqlite3_column_text(stmt, 6);
+
+        char s_call[64], s_name[128], s_qth[128], s_comm[512], s_dxcc[128], s_grid[32];
+        sanitize_to_utf8(c_call ? c_call : "", s_call, sizeof(s_call));
+        sanitize_to_utf8(c_name ? c_name : "", s_name, sizeof(s_name));
+        sanitize_to_utf8(c_qth  ? c_qth  : "", s_qth,  sizeof(s_qth));
+        sanitize_to_utf8(c_comm ? c_comm : "", s_comm, sizeof(s_comm));
+        sanitize_to_utf8(c_dxcc ? c_dxcc : "", s_dxcc, sizeof(s_dxcc));
+        sanitize_to_utf8(c_grid ? c_grid : "", s_grid, sizeof(s_grid));
+
+        if ((c_call && strcmp(c_call, s_call) != 0) ||
+            (c_name && strcmp(c_name, s_name) != 0) ||
+            (c_qth  && strcmp(c_qth,  s_qth)  != 0) ||
+            (c_comm && strcmp(c_comm, s_comm) != 0) ||
+            (c_dxcc && strcmp(c_dxcc, s_dxcc) != 0) ||
+            (c_grid && strcmp(c_grid, s_grid) != 0)) {
+            sqlite3_reset(upd_stmt);
+            sqlite3_bind_text(upd_stmt, 1, s_call, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(upd_stmt, 2, s_name, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(upd_stmt, 3, s_qth,  -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(upd_stmt, 4, s_comm, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(upd_stmt, 5, s_dxcc, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(upd_stmt, 6, s_grid, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int64(upd_stmt, 7, id);
+            sqlite3_step(upd_stmt);
+            updated_rows++;
+        }
+    }
+
+    sqlite3_finalize(upd_stmt);
+    sqlite3_finalize(stmt);
+    sqlite3_exec(s_db, "COMMIT;", NULL, NULL, NULL);
+
+    return updated_rows;
 }
