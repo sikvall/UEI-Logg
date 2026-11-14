@@ -89,9 +89,9 @@ enum {
     FLD_RSTS = 1,  /**< Rad 1: RST T / sänd rapport (6 tecken) */
     FLD_RSTR = 2,  /**< Rad 1: RST R / mottagen rapport (6 tecken) */
     FLD_NAME = 3,  /**< Rad 1: Namn (12-16 tecken) */
-    FLD_QTH  = 4,  /**< Rad 2: QTH (14-15 tecken) */
+    FLD_DXCC = 4,  /**< Rad 2: DXCC-land (14-15 tecken) */
     FLD_GRID = 5,  /**< Rad 2: Maidenhead-lokator (6 tecken) */
-    FLD_DXCC = 6,  /**< Rad 2: DXCC-land (12-16 tecken) */
+    FLD_QTH  = 6,  /**< Rad 2: QTH (12-16 tecken) */
     FLD_FREQ = 7,  /**< Rad 3: Frekvens i MHz */
     FLD_BAND = 8,  /**< Rad 3: Amatörband (dropdown) */
     FLD_MODE = 9,  /**< Rad 3: Trafiksätt (t.ex. SSB, CW, FT8) */

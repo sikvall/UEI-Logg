@@ -1144,11 +1144,11 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (form_w_name < 6) form_w_name = 6;
     if (form_w_name > 16) form_w_name = 16;
 
-    int form_w_dxcc = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
-    if (form_w_dxcc < 6) form_w_dxcc = 6;
-    if (form_w_dxcc > 16) form_w_dxcc = 16;
+    int form_w_qth = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    if (form_w_qth < 6) form_w_qth = 6;
+    if (form_w_qth > 16) form_w_qth = 16;
 
-    int form_w_qth = (COLS >= 88) ? 15 : 14;
+    int form_w_dxcc = (COLS >= 88) ? 15 : 14;
 
     /* Rad 1 (y = 6): Signal, RST T, RST R, Namn */
     draw_field_aligned(input_top + 1, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
@@ -1156,11 +1156,11 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(input_top + 1, c3, "RST R",  qso->rst_rcvd,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 1, c4, "Namn",   qso->name,     form_w_name, (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 2 (y = 7): QTH, Lokator, QRB, DXCC */
-    draw_field_aligned(input_top + 2, c1, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
+    /* Rad 2 (y = 7): DXCC, Lokator, QRB, QTH */
+    draw_field_aligned(input_top + 2, c1, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 2, c2, "Lokator", qso->gridsquare, 6,           (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
 
-    /* QRB mellan Lokator och DXCC på rad 2 */
+    /* QRB mellan Lokator och QTH på rad 2 */
     int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
     const char *qrb_val = has_qrb ? qrb_str : "-";
     int lbl_qrb_x = c3 - 3; /* "QRB" är 3 tecken */
@@ -1172,7 +1172,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     mvprintw(input_top + 2, c3 + 2, "%-8.8s", qrb_val);
     attroff(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
 
-    draw_field_aligned(input_top + 2, c4, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 2, c4, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
     /* Rad 3 (y = 8): Frekvens, Band, Mode */
     draw_field_aligned(input_top + 3, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
@@ -1701,10 +1701,10 @@ void sync_cursor_to_field_end(QSO *qso, int active_field, int *cursor_pos) {
  */
 int field_default_col(int fld) {
     switch (fld) {
-        case FLD_CALL: case FLD_QTH:  case FLD_FREQ: case FLD_DATE: return 0;
+        case FLD_CALL: case FLD_DXCC: case FLD_FREQ: case FLD_DATE: return 0;
         case FLD_RSTS: case FLD_GRID: case FLD_BAND: case FLD_TIME: return 1;
         case FLD_RSTR:                case FLD_MODE:                return 2;
-        case FLD_NAME: case FLD_DXCC:                               return 3;
+        case FLD_NAME: case FLD_QTH:                                return 3;
         case FLD_COMM:                                              return 2;
         default: return 0;
     }
@@ -1716,7 +1716,7 @@ int field_default_col(int fld) {
 int field_row_index(int fld) {
     switch (fld) {
         case FLD_CALL: case FLD_RSTS: case FLD_RSTR: case FLD_NAME: return 0;
-        case FLD_QTH:  case FLD_GRID: case FLD_DXCC:                return 1;
+        case FLD_DXCC: case FLD_GRID: case FLD_QTH:                 return 1;
         case FLD_FREQ: case FLD_BAND: case FLD_MODE:                return 2;
         case FLD_DATE: case FLD_TIME: case FLD_COMM:                return 3;
         default: return 0;
@@ -1729,7 +1729,7 @@ int field_row_index(int fld) {
 int step_field_vertical(int current_field, int dir, int pref_col) {
     static const int grid[4][4] = {
         { FLD_CALL, FLD_RSTS, FLD_RSTR, FLD_NAME },
-        { FLD_QTH,  FLD_GRID, FLD_DXCC, FLD_DXCC },
+        { FLD_DXCC, FLD_GRID, FLD_QTH,  FLD_QTH  },
         { FLD_FREQ, FLD_BAND, FLD_MODE, FLD_MODE },
         { FLD_DATE, FLD_TIME, FLD_COMM, FLD_COMM }
     };

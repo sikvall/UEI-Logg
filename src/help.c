@@ -78,7 +78,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Fältordning och format (4 rader):",
             "  * Rad 1: Signal (10), RST T (6), RST R (6), Namn (14)",
-            "  * Rad 2: QTH (14), Lokator (6), QRB (avstånd), DXCC (land)",
+            "  * Rad 2: DXCC (land), Lokator (6), QRB (avstånd), QTH (14)",
             "  * Rad 3: Frekvens (MHz), Band (dropdown), Mode (t.ex. SSB/CW/FT8)",
             "  * Rad 4: Datum (YYYY-MM-DD), UTC (HH:MM), Notering (resten av raden)",
             "",

@@ -145,7 +145,7 @@ Kör programmet direkt från terminalen:
 Huvudskärmen i UEI-Logg är indelad i fem tydliga komponenter uppifrån och ned:
 
 \subsection{Titelrad (Topbar)}
-Visar applikationens namn och version (\texttt{UEI-log}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator.
+Visar applikationens namn och version (\texttt{UEI-log}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator. Fälten presenteras i ordningen stationssignal, QTH och lokator (t.ex.\ \texttt{SM5UEI Linköping JO88fk}), utan parenteser kring QTH.
 
 \subsection{Statistikruta (Realtidsstatistik)}
 När terminalen har minst 30 rader och funktionen är påslagen i inställningarna visas en kompakt statuspanel:
@@ -164,21 +164,22 @@ Inmatningsfältet är ordnat på fyra rader:
     \item \textbf{Rad 1:}
     \begin{itemize}
         \item \texttt{Signal}: Motstationens signal (omvandlas automatiskt till versaler).
-        \item \texttt{Frekv (MHz)}: Frekvens i MHz (t.ex. \texttt{14.225} eller \texttt{7.074}).
-        \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen).
-        \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
-    \end{itemize}
-    \item \textbf{Rad 2:}
-    \begin{itemize}
         \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
         \item \texttt{RST R}: Mottagen rapport.
         \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i Callbook eller QRZ).
     \end{itemize}
+    \item \textbf{Rad 2:}
+    \begin{itemize}
+        \item \texttt{DXCC}: Identifierat land utifrån prefix eller uppslag.
+        \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex.\ \texttt{JO89we}).
+        \item \texttt{QRB}: Beräknat avstånd i kilometer (visas som grön indikator). Med tangenten \texttt{F7} i inmatningsläget beräknas QRB om direkt baserat på angiven lokator (i första hand) eller QTH.
+        \item \texttt{QTH}: Motstationens stad eller ort.
+    \end{itemize}
     \item \textbf{Rad 3:}
     \begin{itemize}
-        \item \texttt{QTH}: Motstationens stad eller ort.
-        \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex. \texttt{JO89we}).
-        \item \texttt{DXCC}: Identifierat land samt beräknat avstånd och bäring (QRB).
+        \item \texttt{Frekvens}: Frekvens i MHz (t.ex.\ \texttt{14.225} eller \texttt{7.074}).
+        \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen eller väljs via interaktiv meny).
+        \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
     \end{itemize}
     \item \textbf{Rad 4:}
     \begin{itemize}
@@ -231,13 +232,16 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Delete (DEL)} & Inmatning & \textbf{Rensa hela det aktiva fältet omedelbart} \\
 \texttt{F1} & Allmänt & Visa snabbhjälp och tangentbordsguide \\
 \texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
+\texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (vid redigering sparas ändringen och QSO:t märks som nytt, ✗) \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
+\texttt{F5} & Inmatning & Manuellt uppslag mot SM Callbook / QRZ.COM \\
 \texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
+\texttt{F7} & Inmatning & Ny beräkning av QRB för angiven lokator (föredras) eller QTH \\
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
-\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering \\
+\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (märks automatiskt som nytt, ✗) \\
 \texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
 \texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
 \texttt{Home / End} & Loggläge & Hoppa längst upp (senaste) / längst ned (äldsta) i logglistan \\
@@ -255,6 +259,8 @@ All interaktion i UEI-Logg styrs via tangentbordet.
     \item \textbf{DEL-tangenten:} Tryck på \texttt{Delete} för att tömma hela fältet direkt.
     \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
     \item \textbf{Automatisk frekvens-, band- och våglängdskoppling:} När du anger en frekvens (t.ex. \texttt{1936 kHz}, \texttt{14,200}, \texttt{14.074}) sätts automatiskt rätt amatörradioband (\texttt{160 m}, \texttt{20 m}). Om frekvensen ligger utanför de etablerade amatörbanden beräknas våglängden automatiskt ($\lambda = 300 / f_{\text{MHz}}$, t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
+    \item \textbf{Redigering av QSO:} När du väljer ett QSO i logglistan och trycker \texttt{Enter} laddas alla fält till inmatningsrutan och kontakten märks direkt som ny (\texttt{handled = 0}, rött kryss ✗). När du sparar ändringarna med \texttt{Enter} eller \texttt{F2} uppdateras databasen och posten behåller sin status som ny tills den exporteras.
+    \item \textbf{Manuell QRB-beräkning (F7):} Om du i inmatningsläget trycker på \texttt{F7} görs en omedelbar ny beräkning av QRB. Programmet föredrar den angivna lokatorn; om lokator saknas används i stället motstationens QTH.
 \end{itemize}
 
 \section{Inställningar (F12)}

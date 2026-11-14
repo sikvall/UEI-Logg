@@ -21,7 +21,8 @@
 
 ## Funktioner
 
-- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, QTH, Lokator, QRB, DXCC, Frekvens, Band, Mode, Datum, UTC, Notering).
+- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, Datum, UTC, Notering). F7 i inmatningsläget beräknar om QRB från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
+- **Titelrad med stationsinfo**: Översta listen presenterar egen anropssignal, QTH och lokator centrerat (`Anropssignal QTH Lokator` utan parenteser runt QTH) tillsammans med lokal tid och UTC.
 - **SQLite3 Databas med WAL-läge**: Persistent, kraschsäker och blixtsnabb databaslagring i `qsolog.sq3`. Automatisk migrering från tidigare `qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (SFI, SSN, A-index, K-index, solflares, geomagnetiska stormar och HF-konditioner per band).
@@ -247,12 +248,12 @@ När `ueilog` körs är följande tangenter tillgängliga:
 
 | Tangent | Beskrivning |
 |---|---|
-| **F2** / **Enter** | Spara och logga aktuellt QSO till SQLite-databasen och ADIF |
+| **F2** / **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF.<br>I loggläge (Enter): Ladda markerat QSO till formuläret för redigering (märks automatiskt som nytt, ✗) |
 | **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
 | **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
 | **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
-| **F7** | I loggläge: Markera samtliga loggrader som Hanterade (✓) |
+| **F7** | I inmatningsläge: Ny beräkning av QRB för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
 | **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, ADIF import/export, reglage m.m.) |
