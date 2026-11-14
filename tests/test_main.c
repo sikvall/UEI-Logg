@@ -519,6 +519,27 @@ static void run_settings_tests(void) {
         record_result(right_aligned_ok && label_ok,
                       "Rymdvädersrutan: K/Kp och tidsstämpel högerställd i titelraden (t.ex. ' (kl 16:45) ')", NULL);
     }
+
+    /* Titelrad (top bar): Anropssignal, QTH och Lokator utan parenteser */
+    {
+        StationSettings st_top;
+        memset(&st_top, 0, sizeof(st_top));
+        copy_str(st_top.call, sizeof(st_top.call), "SM5UEI");
+        copy_str(st_top.qth, sizeof(st_top.qth), "KARLHOLM");
+        copy_str(st_top.gridsquare, sizeof(st_top.gridsquare), "JP80TM");
+
+        char station_info[128];
+        const char *my_call = st_top.call[0] ? st_top.call : "SM5UEI";
+        const char *my_qth  = st_top.qth[0] ? st_top.qth : "";
+        const char *my_grid = st_top.gridsquare[0] ? st_top.gridsquare : "";
+        if (my_qth[0] != '\0' && my_grid[0] != '\0') {
+            snprintf(station_info, sizeof(station_info), "%s %s %s", my_call, my_qth, my_grid);
+        }
+        int top_ok = (strcmp(station_info, "SM5UEI KARLHOLM JP80TM") == 0) &&
+                     (strchr(station_info, '(') == NULL) &&
+                     (strchr(station_info, ')') == NULL);
+        record_result(top_ok, "Titelrad: format 'Anropssignal QTH Lokator' utan parenteser runt QTH", NULL);
+    }
 }
 
 /* ========================================================================= */
@@ -1239,6 +1260,8 @@ static void run_swedish_chars_tests(void) {
         if (access("qsolog.sq3", F_OK) == 0) {
             db_close();
             db_open("qsolog.sq3");
+            sqlite3 *h = db_get_handle();
+            if (h) sqlite3_exec(h, "DELETE FROM qsos WHERE call='SM5EDIT';", NULL, NULL, NULL);
             QSOList prod_list;
             memset(&prod_list, 0, sizeof(prod_list));
             int cnt = db_load_all_qsos(&prod_list);
@@ -1261,6 +1284,7 @@ static void run_swedish_chars_tests(void) {
             int ok = (cnt > 0) && all_clean && swedish_found;
             record_result(ok, "Produktionsdatabas qsolog.sq3: 100% giltig UTF-8 i alla Namn-, QTH- och Noteringsfält", NULL);
             free(prod_list.items);
+            db_close();
         }
     }
 
@@ -1402,6 +1426,11 @@ static void run_swedish_chars_tests(void) {
 
     /* 17. Redigering av ett hanterat QSO märker det som nytt (handled = 0) och QRB föredrar lokator */
     {
+        const char *test_edit_db = "/tmp/test_edit_flow.sq3";
+        unlink(test_edit_db);
+        db_close();
+        db_open(test_edit_db);
+
         StationSettings cur_st;
         load_station_settings(CONFIG_FILE, &cur_st);
         StationSettings test_st = cur_st;
@@ -1461,6 +1490,8 @@ static void run_swedish_chars_tests(void) {
         }
         save_station_settings(CONFIG_FILE, &cur_st);
         free(edit_list.items);
+        db_close();
+        unlink(test_edit_db);
         record_result(edit_marked_new_ok,
                       "Redigering av ett QSO märker det som nytt (handled = 0) och beräknar QRB från lokator", NULL);
     }

@@ -567,24 +567,32 @@ void draw_top_bar(const StationSettings *st) {
     if (st != NULL && st->call[0] != '\0') {
         copy_str(clean_call, sizeof(clean_call), st->call);
     }
-    const char *my_qth = (st != NULL && st->qth[0] != '\0') ? st->qth : "SM";
-    snprintf(station_info, sizeof(station_info), "%s (%s)", clean_call[0] ? clean_call : "SM5UEI", my_qth);
+    const char *my_call = clean_call[0] ? clean_call : "SM5UEI";
+    const char *my_qth  = (st != NULL && st->qth[0] != '\0') ? st->qth : "";
+    const char *my_grid = (st != NULL && st->gridsquare[0] != '\0') ? st->gridsquare : "";
+
+    if (my_qth[0] != '\0' && my_grid[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s %s", my_call, my_qth, my_grid);
+    } else if (my_qth[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s", my_call, my_qth);
+    } else if (my_grid[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s", my_call, my_grid);
+    } else {
+        snprintf(station_info, sizeof(station_info), "%s", my_call);
+    }
 
     int info_w = utf8_display_width(station_info);
     int info_col = (COLS - info_w) / 2;
-    if (info_col > 14) {
-        attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(0, info_col, "%s", station_info);
-        attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-    }
+    if (info_col < 14) info_col = 14;
 
     char time_str[64];
     get_utc_strings(NULL, 0, NULL, 0, time_str, sizeof(time_str));
     int time_col = COLS - utf8_display_width(time_str) - 2;
     if (time_col > info_col + info_w) {
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(0, time_col, "%s", time_str);
+        mvprintw(0, info_col, "%s", station_info);
         attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+        mvprintw(0, time_col, "%s", time_str);
     }
 }
 
