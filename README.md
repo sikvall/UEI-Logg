@@ -34,7 +34,7 @@
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
 - **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
 - **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
-- **14 Färgscheman**: Välj mellan 14 teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) med interaktiv rullgardinsmeny och live-förhandsgranskning. Spara och avsluta smidigt med F12.
+- **15 Färgscheman och egen färgprofilseditor**: Välj mellan 14 färdiga teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en helt egen anpassad färgprofil via den inbyggda färgprofilseditorn (F7 i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med F12.
 
 ---
 
@@ -256,7 +256,7 @@ När `ueilog` körs är följande tangenter tillgängliga:
 | **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
-| **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, ADIF import/export, reglage m.m.) |
+| **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, egen färgprofilseditor [F7], ADIF import/export, reglage m.m.) |
 | **Ctrl+Q** / **Ctrl+C** | Avsluta programmet |
 | **Tab** / **Skift+Tab** | Stega framåt / bakåt mellan inmatningsfälten |
 | **Pilar Upp/Ned/Vänster/Höger** | Navigera i formulär, fält och menyer |

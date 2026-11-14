@@ -60,9 +60,31 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) */
+/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio samt Egen profil) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 14
+#define THEME_COUNT 15
+#define THEME_CUSTOM 14
+
+/**
+ * @brief Egen anpassad färgprofil (Custom Theme).
+ * Innehåller index till färger i paletten för respektive gränssnittselement.
+ */
+typedef struct {
+    int bg_main;        /**< 0: Huvudbakgrund */
+    int fg_text;        /**< 1: Normal text */
+    int border;         /**< 2: Normala fönsterramar */
+    int border_active;  /**< 3: Aktiv fönsterram (Fokus) */
+    int title;          /**< 4: Titlar & fönsterrubriker */
+    int label;          /**< 5: Fältetiketter (Signal:, QTH:) */
+    int field_act_bg;   /**< 6: Aktivt fält (Bakgrund) */
+    int field_act_fg;   /**< 7: Aktivt fält (Text) */
+    int sel_bg;         /**< 8: Vald loggrad (Bakgrund) */
+    int sel_fg;         /**< 9: Vald loggrad (Text) */
+    int topbar_bg;      /**< 10: Titelrad / Topplist (Bakgrund) */
+    int topbar_fg;      /**< 11: Titelrad / Topplist (Text) */
+    int status_ok;      /**< 12: Status OK / bock */
+    int status_warn;    /**< 13: Varning / fel / kryss */
+} CustomTheme;
 
 /**
  * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).
@@ -113,6 +135,7 @@ typedef struct {
     char qrz_password[36]; /**< QRZ.COM lösenord */
     int  qrz_enabled;      /**< 1 om automatisk QRZ-uppslagning är aktiv */
     int  theme;            /**< Index för aktivt färgschema (0..THEME_COUNT-1) */
+    CustomTheme custom_theme; /**< Egen anpassad färgprofil */
     int  smcb_enabled;     /**< 1 om automatisk SM Callbook-uppslagning är aktiv */
     int  auto_rst_59;      /**< 1 om RST förifylls automatiskt med 59/599 vid nytt QSO */
     int  filter_log;       /**< 1 om loggrader filtreras automatiskt efter inmatad signal */

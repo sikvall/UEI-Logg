@@ -12,11 +12,12 @@
 #include "space_weather.h"
 #include "util.h"
 #include <ctype.h>
+#include "theme_editor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula och militärradio */
+/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula, militärradio samt egen profil */
 const char * const THEME_NAMES[] = {
     "Turbo Pascal (MC Default)",
     "MC Darkfar (Svart/Blå)",
@@ -31,8 +32,29 @@ const char * const THEME_NAMES[] = {
     "Mörkerläge (Crimson Night)",
     "Solarized Dark (Djuphav)",
     "Dracula (Neon Skymning)",
-    "Militärradio (Fältgrön)"
+    "Militärradio (Fältgrön)",
+    "Egen profil (Anpassad)"
 };
+
+static CustomTheme g_custom_theme;
+static int g_custom_theme_init = 0;
+
+void set_custom_theme(const CustomTheme *ct) {
+    if (ct != NULL) {
+        g_custom_theme = *ct;
+        g_custom_theme_init = 1;
+    }
+}
+
+void get_custom_theme(CustomTheme *ct) {
+    if (ct != NULL) {
+        if (!g_custom_theme_init) {
+            custom_theme_init_defaults(&g_custom_theme);
+            g_custom_theme_init = 1;
+        }
+        *ct = g_custom_theme;
+    }
+}
 
 /**
  * @brief Initierar curses-läget, konfigurerar tangentbord och definierar specialtangenter.
@@ -644,6 +666,15 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_WARN,          fg_sig_yel,   bg_tac);
             init_pair(CP_SW_BAD,           fg_haz_red,   bg_tac);
             init_pair(CP_SW_SEVERE,        fg_sig_orn,   bg_tac);
+            break;
+        }
+
+        case 14: { /* 15. Egen profil (Användaranpassat färgschema från editorn) */
+            if (!g_custom_theme_init) {
+                custom_theme_init_defaults(&g_custom_theme);
+                g_custom_theme_init = 1;
+            }
+            apply_custom_theme_pairs(&g_custom_theme);
             break;
         }
     }

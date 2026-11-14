@@ -20,6 +20,7 @@
 #include "dxcc.h"
 #include "tui.h"
 #include "space_weather.h"
+#include "theme_editor.h"
 
 static int g_tests_run = 0;
 static int g_tests_passed = 0;
@@ -1526,10 +1527,10 @@ static void run_swedish_chars_tests(void) {
 /* [11] Färgscheman och temahantering                                        */
 /* ========================================================================= */
 static void run_theme_tests(void) {
-    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (14 teman) ===" ANSI_RESET "\n");
+    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (15 teman inkl. egen profil) ===" ANSI_RESET "\n");
 
     /* 1. Antal teman */
-    record_result(THEME_COUNT == 14, "THEME_COUNT är definierat som 14 teman", NULL);
+    record_result(THEME_COUNT == 15, "THEME_COUNT är definierat som 15 teman (inkl. Egen profil)", NULL);
 
     /* 2. Temanamn och validering */
     int names_ok = 1;
@@ -1546,16 +1547,17 @@ static void run_theme_tests(void) {
         strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0 &&
         strcmp(THEME_NAMES[11], "Solarized Dark (Djuphav)") == 0 &&
         strcmp(THEME_NAMES[12], "Dracula (Neon Skymning)") == 0 &&
-        strcmp(THEME_NAMES[13], "Militärradio (Fältgrön)") == 0) {
+        strcmp(THEME_NAMES[13], "Militärradio (Fältgrön)") == 0 &&
+        strcmp(THEME_NAMES[14], "Egen profil (Anpassad)") == 0) {
         expected_names = 1;
     }
-    record_result(names_ok && expected_names, "Alla 14 temanamn definierade, inkl. Solarized Dark, Dracula och Militärradio", NULL);
+    record_result(names_ok && expected_names, "Alla 15 temanamn definierade, inkl. Solarized, Dracula, Militär och Egen profil", NULL);
 
     /* 3. Säker exekvering av apply_color_theme för alla index inkl. gränsvärden */
-    for (int t = -2; t <= 16; ++t) {
+    for (int t = -2; t <= 17; ++t) {
         apply_color_theme(t);
     }
-    record_result(1, "apply_color_theme() exekverar stabilt för alla 14 teman och felaktiga index", NULL);
+    record_result(1, "apply_color_theme() exekverar stabilt för alla 15 teman och felaktiga index", NULL);
 
     /* 4. Sparande och laddning av nya teman i station.conf */
     const char *test_conf = "/tmp/test_theme_station.conf";
@@ -1580,8 +1582,30 @@ static void run_theme_tests(void) {
     load_station_settings(test_conf, &st_load);
     int p3 = (st_load.theme == 13);
 
+    /* 5. Egen färgprofil (CustomTheme) initiering, presets och persistens */
+    CustomTheme def_ct, preset_ct;
+    custom_theme_init_defaults(&def_ct);
+    custom_theme_init_preset(&preset_ct, 3); /* Dracula preset */
+
+    int ct_init_ok = (def_ct.bg_main == 3 && def_ct.fg_text == 1 && def_ct.border == 8) &&
+                     (preset_ct.border_active == 19 && preset_ct.title == 9);
+
+    st_save.theme = THEME_CUSTOM;
+    st_save.custom_theme = def_ct;
+    st_save.custom_theme.border = 15; /* Ändra till Orange */
+    st_save.custom_theme.title = 14;  /* Ändra till Solgul */
+    save_station_settings(test_conf, &st_save);
+
+    memset(&st_load, 0, sizeof(st_load));
+    load_station_settings(test_conf, &st_load);
+    int custom_persist_ok = (st_load.theme == THEME_CUSTOM) &&
+                            (st_load.custom_theme.border == 15) &&
+                            (st_load.custom_theme.title == 14) &&
+                            (st_load.custom_theme.bg_main == def_ct.bg_main);
+
     unlink(test_conf);
-    record_result(p1 && p2 && p3, "StationSettings sparar och läser in alla nya teman (11, 12, 13) korrekt via station.conf", NULL);
+    record_result(p1 && p2 && p3 && ct_init_ok && custom_persist_ok,
+                  "CustomTheme: presets, init_defaults och fullständig persistens i station.conf (THEME=14)", NULL);
 }
 
 /* ========================================================================= */

@@ -68,6 +68,18 @@ void tui_cleanup(void);
 void apply_color_theme(int theme_idx);
 
 /**
+ * @brief Sätter den aktiva egna färgprofilen för temat THEME_CUSTOM.
+ * @param ct Pekare till CustomTheme-struktur.
+ */
+void set_custom_theme(const CustomTheme *ct);
+
+/**
+ * @brief Hämtar den aktiva egna färgprofilen.
+ * @param ct Pekare till CustomTheme-struktur som fylls i.
+ */
+void get_custom_theme(CustomTheme *ct);
+
+/**
  * @brief Beräknar hur många rader i terminalen som är tillgängliga för loggtabellen.
  * @param st Stationsinställningar (eller NULL för standard).
  * @return Antal synliga rader.

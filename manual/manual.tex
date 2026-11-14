@@ -241,6 +241,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
 \texttt{F7} & Inmatning & Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH \\
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
+\texttt{F7} & Inställningar & Öppna editorn för egen färgprofil \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
 \texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (märks automatiskt som nytt, ✗) \\
 \texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
@@ -278,7 +279,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
     \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
     \item \textbf{QRZ-uppslag:} \texttt{< På >} / \texttt{< Av >}. Hämtar automatiskt motstationens namn, QTH och lokator över nätet.
-    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 14 färgteman finns tillgängliga:
+    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 15 färgteman finns tillgängliga:
     \begin{itemize}
         \item \emph{Turbo Pascal (MC Default):} Klassisk borlandblå/cyan/vit layout.
         \item \emph{MC Darkfar:} Mörkblå/svart bakgrund med hög kontrast.
@@ -294,7 +295,9 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{Solarized Dark (Djuphav):} Ethan Schoonovers legendariska, vetenskapligt balanserade mörkblå marinpalett med djup cyan och krämgul text för optimal kontrast och läsbarhet.
         \item \emph{Dracula (Neon Skymning):} Mycket populärt och modernt mörkt tema med skifferviolett bakgrund, neonlila, elcyan och korallrosa accenter.
         \item \emph{Militärradio (Fältgrön):} Taktisk militär känsla i stil med bärbara fältradiostationer, djup olivdrab botten med khaki canvastypografi och mässingsdetaljer.
+        \item \emph{Egen profil (Anpassad):} Användarens egna skräddarsydda färgprofil som skapas och redigeras via den inbyggda färgprofilseditorn (\texttt{F7}).
     \end{itemize}
+    \item \textbf{Egen färgprofil (\texttt{F7}):} Direktknapp för att starta den interaktiva färgprofilseditorn (se avsnitt~\ref{sec:theme_editor}).
     \item \textbf{SM Callbook:} \texttt{< På >} / \texttt{< Av >}. Söker i den lokala databasen \texttt{smcallbook.txt}.
     \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
@@ -304,6 +307,17 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
+
+\subsection{Egen Färgprofilseditor (F7 i inställningar)}
+\label{sec:theme_editor}
+UEI-Logg erbjuder en komplett inbyggd färgprofilseditor där operatören själv kan skapa och spara ett helt personligt färgschema. Editorn öppnas direkt från inställningsmenyn med tangenten \texttt{F7} (eller \texttt{E} när markören står på fältet \emph{Färgschema}):
+\begin{itemize}
+    \item \textbf{14 anpassningsbara element:} Justera färger för huvudbakgrund, normal text, ramar, aktiv fokusram, titlar, fältetiketter, aktivt inmatningsfält (text och bakgrund), markerad loggrad (text och bakgrund), titelrad samt status- och varningsindikatorer.
+    \item \textbf{Realtidsförhandsgranskning (Live Preview):} Till höger om inställningslistan visas en interaktiv miniatyr av loggfönstret som omedelbart uppdateras vid varje ändring så att du ser exakt hur färgkombinationerna fungerar i praktiken.
+    \item \textbf{Färgpalett:} Bläddra bland 22 noggrant anpassade färger med piltangenterna \texttt{Vänster} och \texttt{Höger}.
+    \item \textbf{Ladda förinställd mall (P):} Tryck \texttt{P} för att kopiera färgerna från ett befintligt tema (t.ex.\ Borland, Solarized, Dracula, Militärradio m.fl.) som grund och finjustera sedan detaljerna.
+    \item \textbf{Spara och aktivera:} Bekräfta med \texttt{Enter} eller \texttt{F2}. Profilen sparas i \texttt{station.conf} under parametern \texttt{CUSTOM\_THEME} och aktiveras omedelbart i programmet.
+\end{itemize}
 
 \section{Lokal Databas (SQLite3) samt ADIF Import och Export}
 \label{sec:adif}

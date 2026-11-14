@@ -12,6 +12,7 @@
 #include "util.h"
 #include "file_dialog.h"
 #include "help.h"
+#include "theme_editor.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <ncurses.h>
@@ -39,12 +40,16 @@ void load_station_settings(const char *filename, StationSettings *st) {
     st->show_notes = 1;
     st->qrz_username[0] = '\0';
     st->qrz_password[0] = '\0';
+    custom_theme_init_defaults(&st->custom_theme);
     copy_str(st->last_band, sizeof(st->last_band), "20 m");
     copy_str(st->last_freq, sizeof(st->last_freq), "14.200");
     copy_str(st->last_mode, sizeof(st->last_mode), "SSB");
 
     FILE *fp = fopen(filename, "r");
-    if (fp == NULL) return;
+    if (fp == NULL) {
+        set_custom_theme(&st->custom_theme);
+        return;
+    }
 
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -70,6 +75,22 @@ void load_station_settings(const char *filename, StationSettings *st) {
             if (t >= 0 && t < THEME_COUNT) {
                 st->theme = t;
             }
+        } else if (strcasecmp(key, "CUSTOM_THEME") == 0) {
+            sscanf(val, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                   &st->custom_theme.bg_main,
+                   &st->custom_theme.fg_text,
+                   &st->custom_theme.border,
+                   &st->custom_theme.border_active,
+                   &st->custom_theme.title,
+                   &st->custom_theme.label,
+                   &st->custom_theme.field_act_bg,
+                   &st->custom_theme.field_act_fg,
+                   &st->custom_theme.sel_bg,
+                   &st->custom_theme.sel_fg,
+                   &st->custom_theme.topbar_bg,
+                   &st->custom_theme.topbar_fg,
+                   &st->custom_theme.status_ok,
+                   &st->custom_theme.status_warn);
         } else if (strcasecmp(key, "SMCB") == 0) {
             st->smcb_enabled = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "QRZ_USER") == 0) {
@@ -100,6 +121,7 @@ void load_station_settings(const char *filename, StationSettings *st) {
         }
     }
     fclose(fp);
+    set_custom_theme(&st->custom_theme);
 }
 
 /**
@@ -117,6 +139,21 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "GRIDSQUARE=%s\n", st->gridsquare);
     fprintf(fp, "TIMEZONE=%s\n", st->timezone);
     fprintf(fp, "THEME=%d\n", st->theme);
+    fprintf(fp, "CUSTOM_THEME=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            st->custom_theme.bg_main,
+            st->custom_theme.fg_text,
+            st->custom_theme.border,
+            st->custom_theme.border_active,
+            st->custom_theme.title,
+            st->custom_theme.label,
+            st->custom_theme.field_act_bg,
+            st->custom_theme.field_act_fg,
+            st->custom_theme.sel_bg,
+            st->custom_theme.sel_fg,
+            st->custom_theme.topbar_bg,
+            st->custom_theme.topbar_fg,
+            st->custom_theme.status_ok,
+            st->custom_theme.status_warn);
     fprintf(fp, "SMCB=%d\n", st->smcb_enabled ? 1 : 0);
     fprintf(fp, "QRZ_USER=%s\n", st->qrz_username);
     fprintf(fp, "QRZ_PASS=%s\n", st->qrz_password);
@@ -606,6 +643,18 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
+    if (COLS >= 78) {
+        if (active == 8) {
+            attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+            mvprintw(r_theme, fcol + 32, "[ F7: Egen färgprofil... ]");
+            attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+        } else {
+            attron(COLOR_PAIR(CP_BORDER));
+            mvprintw(r_theme, fcol + 32, "[ F7: Egen färgprofil... ]");
+            attroff(COLOR_PAIR(CP_BORDER));
+        }
+    }
+
     /* Fält 9: SM Callbook toggle */
     const char *lbl_smcb = "SM Callbook (ssa.se)";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
@@ -789,9 +838,9 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 
     if (LINES >= 17) {
         if (active == 8) {
-            mvprintw(LINES - 2, 3, "Enter/Mellanslag: Öppna temalista. Pilar: Byt fält. F2/F12: Spara.");
+            mvprintw(LINES - 2, 3, "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara.");
         } else {
-            mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. F5=Importera, F6=Exportera. Enter/F2/F12=Spara. Esc=Avbryt.");
+            mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F7: Egen färgprofil. F5=Import, F6=Export. Esc=Avbryt.");
         }
     }
 
@@ -901,6 +950,16 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
             edit->theme = orig_theme;
             apply_color_theme(orig_theme);
             return 0;
+        } else if (ch == KEY_F(7) || ch == 'e' || ch == 'E') {
+            int changed = run_color_theme_editor(edit);
+            if (changed) {
+                edit->theme = THEME_CUSTOM;
+                set_custom_theme(&edit->custom_theme);
+                apply_color_theme(THEME_CUSTOM);
+                return 1;
+            } else {
+                apply_color_theme(sel_idx);
+            }
         } else if (ch == KEY_F(12)) {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
@@ -993,6 +1052,17 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
         } else if (ch == KEY_F(9)) {
             run_help_modal(&edit);
             apply_color_theme(edit.theme);
+            continue;
+        } else if (ch == KEY_F(7) || (active == 8 && (ch == 'e' || ch == 'E'))) {
+            int changed = run_color_theme_editor(&edit);
+            if (changed) {
+                edit.theme = THEME_CUSTOM;
+                set_custom_theme(&edit.custom_theme);
+                apply_color_theme(THEME_CUSTOM);
+                copy_str(status_msg, status_sz, "Egen färgprofil sparad och aktiverad!");
+            } else {
+                apply_color_theme(edit.theme);
+            }
             continue;
         } else if (ch == KEY_F(5) || (active == 14 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             char chosen_path[PATH_MAX] = {0};
