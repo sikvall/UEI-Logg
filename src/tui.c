@@ -952,6 +952,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
     const int min_qth   = 10;
     const int max_qth   = 30;
     const int base_qrb  = 6;  /* Siffra utan 'km' */
+    const int base_quj  = 5;  /* Bäring i grader (t.ex. ' 145°') */
     const int base_loc  = 8;
     const int base_dxcc = 16;
 
@@ -978,13 +979,14 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
     int col_name = layout->col_name;
     int avail_total = max_col - col_name + 1;
 
-    if (max_col >= col_name + 60) {
-        /* Full bredd: Alla kolumner visas (Namn, QTH, QRB, Lokator, DXCC) */
+    if (max_col >= col_name + 66) {
+        /* Full bredd: Alla kolumner visas (Namn, QTH, QRB, QUJ, Lokator, DXCC) */
         layout->w_dxcc = base_dxcc;
         layout->w_loc = base_loc;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 60);
+        int extra = max_col - (col_name + 66);
         int qth_extra = (extra > (max_qth - base_qth)) ? (max_qth - base_qth) : extra;
         layout->w_qth = base_qth + qth_extra;
         int rem = extra - qth_extra;
@@ -994,46 +996,54 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         }
         layout->col_qth  = col_name + layout->w_name + 1;
         layout->col_qrb  = layout->col_qth + layout->w_qth + 1;
-        layout->col_loc  = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_quj  = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_loc  = layout->col_quj + layout->w_quj + 1;
         layout->col_dxcc = layout->col_loc + layout->w_loc + 1;
-    } else if (max_col >= col_name + 43) {
-        /* DXCC döljs först: Namn, QTH, QRB, Lokator visas */
+    } else if (max_col >= col_name + 49) {
+        /* DXCC döljs först: Namn, QTH, QRB, QUJ, Lokator visas */
         layout->w_dxcc = 0;
         layout->w_loc = base_loc;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 43);
+        int extra = max_col - (col_name + 49);
         layout->w_qth = base_qth + extra;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
-        layout->col_loc = layout->col_qrb + layout->w_qrb + 1;
-    } else if (max_col >= col_name + 35) {
-        /* Lokator döljs därefter: Namn, QTH (>= 13), QRB visas */
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_loc = layout->col_quj + layout->w_quj + 1;
+    } else if (max_col >= col_name + 41) {
+        /* Lokator döljs därefter: Namn, QTH (>= 13), QRB, QUJ visas */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 35);
+        int extra = max_col - (col_name + 41);
         layout->w_qth = base_qth + extra;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
-    } else if (max_col >= col_name + 32) {
-        /* Lokator döljs, QTH minskas mot 10 tecken, QRB visas fortfarande */
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
+    } else if (max_col >= col_name + 38) {
+        /* Lokator döljs, QTH minskas mot 10 tecken, QRB och QUJ visas fortfarande */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        layout->w_qth = max_col - (col_name + base_name + 1 + base_qrb + 1);
+        layout->w_qth = max_col - (col_name + base_name + 1 + base_qrb + 1 + base_quj + 1);
         if (layout->w_qth < min_qth) layout->w_qth = min_qth;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
     } else if (total_cols >= 80) {
-        /* QRB döljs FÖRE QTH. QTH förblir synlig så länge total_cols >= 80 */
+        /* QRB och QUJ döljs samtidigt FÖRE QTH. QTH förblir synlig så länge total_cols >= 80 */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         if (avail_total >= base_name + 1 + min_qth) {
             layout->w_name = base_name;
@@ -1052,6 +1062,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         /* Vid < 80 kolumner döljs QTH helt; endast Namn visas */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         layout->w_qth = 0;
         layout->w_name = max_col - col_name + 1;
@@ -1060,6 +1071,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         /* Mycket smalt fönster */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         layout->w_qth = 0;
         layout->w_name = 0;
@@ -1075,7 +1087,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       int field_cursor_pos, int time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
-                      const char *qrb_str,
+                      const char *qrb_str, const char *quj_str,
                       int *cur_y, int *cur_x) {
     erase();
 
@@ -1174,10 +1186,22 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     draw_field_aligned(input_top + 2, c4, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 3 (y = 8): Frekvens, Band, Mode */
+    /* Rad 3 (y = 8): Frekvens, Band, Mode, QUJ */
     draw_field_aligned(input_top + 3, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
     draw_band_selector_aligned(input_top + 3, c2, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
     draw_field_aligned(input_top + 3, c3, "Mode",     qso->mode,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
+
+    /* QUJ till höger om Mode på rad 3 */
+    int has_quj = (quj_str != NULL && quj_str[0] != '\0' && strcmp(quj_str, "-") != 0);
+    const char *quj_val = has_quj ? quj_str : "-";
+    int lbl_quj_x = c4 - 3; /* "QUJ" är 3 tecken */
+    attron(COLOR_PAIR(CP_LABEL));
+    mvprintw(input_top + 3, lbl_quj_x, "QUJ:");
+    attroff(COLOR_PAIR(CP_LABEL));
+    int quj_color = has_quj ? CP_STATUS_OK : CP_FIELD_INACTIVE;
+    attron(COLOR_PAIR(quj_color) | (has_quj ? A_BOLD : 0));
+    mvprintw(input_top + 3, c4 + 2, "%-8.8s", quj_val);
+    attroff(COLOR_PAIR(quj_color) | (has_quj ? A_BOLD : 0));
 
     /* Rad 4 (y = 9): Datum, UTC, Notering */
     int comm_w = COLS - (c3 + 2) - 1;
@@ -1234,6 +1258,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (layout.w_qrb > 0) {
         utf8_pad_or_clip(h_buf, sizeof(h_buf), "QRB", layout.w_qrb, 1);
         mvprintw(log_top + 1, layout.col_qrb, "%s", h_buf);
+    }
+    if (layout.w_quj > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QUJ", layout.w_quj, 1);
+        mvprintw(log_top + 1, layout.col_quj, "%s", h_buf);
     }
     if (layout.w_loc > 0) {
         utf8_pad_or_clip(h_buf, sizeof(h_buf), "Lokator", layout.w_loc, 0);
@@ -1342,6 +1370,12 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             format_qrb_display(item, qrb_dsp, sizeof(qrb_dsp));
             utf8_pad_or_clip(cell_buf, sizeof(cell_buf), qrb_dsp, layout.w_qrb, 1);
             mvprintw(row_y, layout.col_qrb, "%s", cell_buf);
+        }
+        if (layout.w_quj > 0) {
+            char quj_dsp[16];
+            format_quj_display(st, item, quj_dsp, sizeof(quj_dsp));
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), quj_dsp, layout.w_quj, 1);
+            mvprintw(row_y, layout.col_quj, "%s", cell_buf);
         }
         if (layout.w_loc > 0) {
             utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->gridsquare, layout.w_loc, 0);
@@ -1523,7 +1557,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
                       int field_cursor_pos, int *time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, char *status_msg, size_t status_sz,
-                      const char *qrb_str, int band_row, int colon_col) {
+                      const char *qrb_str, const char *quj_str, int band_row, int colon_col) {
     int cur_idx = find_band_index(qso->band);
     if (cur_idx < 0) cur_idx = 0;
     int sel_idx = cur_idx;
@@ -1564,7 +1598,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
         draw_main_screen(st, qso, focus_mode, active_field, 1,
                          field_cursor_pos, *time_frozen, editing_index,
                          log_list, selected_log_pos, log_scroll_offset,
-                         search_filter, status_msg, qrb_str,
+                         search_filter, status_msg, qrb_str, quj_str,
                          &cur_y, &cur_x);
 
         /* Rita popup-ram */
@@ -1747,7 +1781,7 @@ int step_field_vertical(int current_field, int dir, int pref_col) {
  */
 void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *active_field,
                     int *field_cursor_pos, int *editing_index, char *last_smcb_call,
-                    char *current_qrb) {
+                    char *current_qrb, char *current_quj) {
     memset(qso, 0, sizeof(*qso));
     if (st != NULL) {
         copy_str(qso->band, sizeof(qso->band), st->last_band);
@@ -1765,6 +1799,7 @@ void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *
     *editing_index = -1;
     if (last_smcb_call) last_smcb_call[0] = '\0';
     if (current_qrb) copy_str(current_qrb, 32, "-");
+    if (current_quj) copy_str(current_quj, 32, "-");
 
     get_utc_strings(qso->date, sizeof(qso->date),
                     qso->time_utc, sizeof(qso->time_utc),

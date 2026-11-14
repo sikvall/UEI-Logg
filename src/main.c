@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
     int idle_ticks_on_qth = 0;
     int idle_ticks_on_grid = 0;
     char current_qrb[32] = "-";
+    char current_quj[32] = "-";
     FocusMode focus_mode = FOCUS_INPUT;
     int selected_log_pos = 0;
     int log_scroll_offset = 0;
@@ -123,7 +124,7 @@ int main(int argc, char *argv[]) {
                  120, g_log_filename, log_list.count);
     }
 
-    reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+    reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
 
     /* HUVUDLOOP */
     while (1) {
@@ -146,6 +147,12 @@ int main(int argc, char *argv[]) {
                                    status_msg, sizeof(status_msg),
                                    current_qrb, sizeof(current_qrb));
 
+        if (current_qso.qth[0] != '\0' || current_qso.gridsquare[0] != '\0') {
+            if (current_quj[0] == '-' && current_qrb[0] != '-') {
+                compute_quj_str(&station, &current_qso, current_quj, sizeof(current_quj));
+            }
+        }
+
         /* Rita huvudfönstret */
         int cur_y = 2, cur_x = 16;
         const char *active_filter = (search_filter[0] != '\0') ? search_filter :
@@ -153,7 +160,7 @@ int main(int argc, char *argv[]) {
         draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                          field_cursor_pos, time_frozen, editing_index,
                          &log_list, selected_log_pos, &log_scroll_offset,
-                         active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                         active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
 
         /* Läs in användartangent med timeout */
         wint_t wch = 0;
@@ -167,20 +174,20 @@ int main(int argc, char *argv[]) {
                     maybe_lookup_call_details(&current_qso, &log_list, &station,
                                               last_smcb_call, sizeof(last_smcb_call),
                                               status_msg, sizeof(status_msg));
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                 }
             }
             if (focus_mode == FOCUS_INPUT && active_field == FLD_QTH && current_qso.qth[0] != '\0') {
                 idle_ticks_on_qth++;
                 if (idle_ticks_on_qth == 3) {
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                 }
             }
             if (focus_mode == FOCUS_INPUT && active_field == FLD_GRID && current_qso.gridsquare[0] != '\0') {
                 idle_ticks_on_grid++;
                 if (idle_ticks_on_grid == 3) {
                     if (is_valid_locator(current_qso.gridsquare)) {
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     }
                 }
             }
@@ -210,7 +217,7 @@ int main(int argc, char *argv[]) {
             }
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
-            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
             field_fresh = 1;
             preferred_col = 0;
             copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
@@ -219,7 +226,7 @@ int main(int argc, char *argv[]) {
             /* F1: Rensa formuläret och låt UTC-klockan ticka igen */
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
-            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
             field_fresh = 1;
             preferred_col = 0;
             copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
@@ -290,13 +297,13 @@ int main(int argc, char *argv[]) {
                                status_msg, sizeof(status_msg));
             if (was_editing && editing_index < 0) {
                 reset_qso_form(&current_qso, &station, &time_frozen, &active_field,
-                               &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                               &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
                 field_fresh = 1;
             }
             if (focus_mode == FOCUS_LOG && log_list.count == 0) {
                 focus_mode = FOCUS_INPUT;
             }
-            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
             update_all_missing_qrbs(&station, &log_list);
             continue;
         }
@@ -461,7 +468,7 @@ int main(int argc, char *argv[]) {
                     }
                     if (editing_index >= 0) {
                         if (edit_was_marked) {
-                            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
                         } else {
                             editing_index -= marked_before_edit;
                         }
@@ -479,7 +486,7 @@ int main(int argc, char *argv[]) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
                     if (editing_index == orig_idx) {
-                        reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                        reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
                     } else if (editing_index > orig_idx) {
                         editing_index--;
                     }
@@ -517,7 +524,7 @@ int main(int argc, char *argv[]) {
                     field_cursor_pos = 0;
                     field_fresh = 1;
                     focus_mode = FOCUS_INPUT;
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     if (strcmp(current_qrb, "-") == 0 && current_qso.distance[0] != '\0') {
                         snprintf(current_qrb, sizeof(current_qrb), "%s km", current_qso.distance);
                     }
@@ -551,7 +558,7 @@ int main(int argc, char *argv[]) {
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
                 refresh();
 
                 char sm_name[64] = "", sm_qth[64] = "";
@@ -564,6 +571,7 @@ int main(int argc, char *argv[]) {
                         copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
                         store_smcb_cache(base_call, "-SK-", "", 1);
                         copy_str(current_qrb, sizeof(current_qrb), "-");
+                        copy_str(current_quj, sizeof(current_quj), "-");
                         field_cursor_pos = 0;
                         copy_str(status_msg, sizeof(status_msg), "SMCB: SILENT KEY (-SK-)");
                         continue;
@@ -571,7 +579,7 @@ int main(int argc, char *argv[]) {
                     copy_str(current_qso.name, sizeof(current_qso.name), sm_name);
                     copy_str(current_qso.qth, sizeof(current_qso.qth), sm_qth);
                     store_smcb_cache(base_call, sm_name, sm_qth, 1);
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     field_cursor_pos = 0;
                     snprintf(status_msg, sizeof(status_msg), "SMCB: %s, %s", sm_name, sm_qth);
                     continue;
@@ -598,7 +606,7 @@ int main(int argc, char *argv[]) {
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
                 refresh();
 
                 char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
@@ -612,6 +620,7 @@ int main(int argc, char *argv[]) {
                         current_qso.gridsquare[0] = '\0';
                         copy_str(current_qso.comment, sizeof(current_qso.comment), "SILENT KEY");
                         copy_str(current_qrb, sizeof(current_qrb), "-");
+                        copy_str(current_quj, sizeof(current_quj), "-");
                         field_cursor_pos = 0;
                         copy_str(status_msg, sizeof(status_msg), "QRZ: SILENT KEY (-SK-)");
                         continue;
@@ -621,7 +630,7 @@ int main(int argc, char *argv[]) {
                     if (qrz_grid[0] != '\0') {
                         copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
                     }
-                    compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     field_cursor_pos = 0;
                     if (qrz_grid[0] != '\0') {
                         snprintf(status_msg, sizeof(status_msg), "QRZ: %s, %s (%s)", qrz_name, qrz_qth, qrz_grid);
@@ -672,50 +681,52 @@ int main(int argc, char *argv[]) {
             }
             continue;
         } else if (ch == KEY_F(7)) {
-            /* F7 i inmatningsfältet: Ny beräkning av QRB för angiven lokator (föredras) och om den saknas i stället QTH */
+            /* F7 i inmatningsfältet: Ny beräkning av QRB & QUJ för angiven lokator (föredras) och om den saknas i stället QTH */
             band_selecting = 0;
             trim_str(current_qso.gridsquare);
             to_upper_str(current_qso.gridsquare);
             trim_str(current_qso.qth);
 
             if (is_valid_locator(current_qso.gridsquare)) {
-                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                 if (current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
                     snprintf(current_qso.distance, sizeof(current_qso.distance), "%ld", atol(current_qrb));
-                    snprintf(status_msg, sizeof(status_msg), "QRB beräknat från lokator (%s): %s",
-                             current_qso.gridsquare, current_qrb);
+                    snprintf(status_msg, sizeof(status_msg), "QRB/QUJ beräknat från lokator (%s): %s, %s",
+                             current_qso.gridsquare, current_qrb, current_quj);
                 } else {
                     current_qso.distance[0] = '\0';
-                    copy_str(status_msg, sizeof(status_msg), "Fel: Kan ej beräkna QRB (kontrollera egen lokator/QTH i F12).");
+                    copy_str(status_msg, sizeof(status_msg), "Fel: Kan ej beräkna QRB/QUJ (kontrollera egen lokator/QTH i F12).");
                 }
             } else if (current_qso.qth[0] != '\0') {
                 invalidate_qth_cache(current_qso.qth);
-                copy_str(status_msg, sizeof(status_msg), "Beräknar QRB från QTH...");
+                copy_str(status_msg, sizeof(status_msg), "Beräknar QRB/QUJ från QTH...");
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
                 refresh();
 
-                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                 if (current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
                     snprintf(current_qso.distance, sizeof(current_qso.distance), "%ld", atol(current_qrb));
-                    snprintf(status_msg, sizeof(status_msg), "QRB beräknat från QTH (%s): %s",
-                             current_qso.qth, current_qrb);
+                    snprintf(status_msg, sizeof(status_msg), "QRB/QUJ beräknat från QTH (%s): %s, %s",
+                             current_qso.qth, current_qrb, current_quj);
                 } else {
                     current_qso.distance[0] = '\0';
-                    snprintf(status_msg, sizeof(status_msg), "Fel: Kunde inte beräkna QRB för QTH '%s'.",
+                    snprintf(status_msg, sizeof(status_msg), "Fel: Kunde inte beräkna QRB/QUJ för QTH '%s'.",
                              current_qso.qth);
                 }
             } else if (current_qso.gridsquare[0] != '\0') {
                 copy_str(current_qrb, sizeof(current_qrb), "-");
+                copy_str(current_quj, sizeof(current_quj), "-");
                 current_qso.distance[0] = '\0';
                 snprintf(status_msg, sizeof(status_msg), "Fel: Ogiltig lokator '%s' (och QTH saknas).",
                          current_qso.gridsquare);
             } else {
                 copy_str(current_qrb, sizeof(current_qrb), "-");
+                copy_str(current_quj, sizeof(current_quj), "-");
                 current_qso.distance[0] = '\0';
-                copy_str(status_msg, sizeof(status_msg), "Ange lokator eller QTH först för att beräkna QRB.");
+                copy_str(status_msg, sizeof(status_msg), "Ange lokator eller QTH först för att beräkna QRB och bäring.");
             }
             continue;
         } else if (active_field == FLD_BAND && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || (ch >= '0' && ch <= '9'))) {
@@ -734,7 +745,7 @@ int main(int argc, char *argv[]) {
                                         field_cursor_pos, &time_frozen, editing_index,
                                         &log_list, selected_log_pos, &log_scroll_offset,
                                         active_filter, status_msg, sizeof(status_msg),
-                                        current_qrb, band_row, band_col);
+                                        current_qrb, current_quj, band_row, band_col);
             if (ret == 2) {
                 active_field = (active_field + 1) % QSO_FIELD_COUNT;
                 preferred_col = field_default_col(active_field);
@@ -753,12 +764,13 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             size_t count_before = log_list.count;
             try_save_current_qso(&current_qso, &time_frozen, &active_field,
                                  &field_cursor_pos, &editing_index,
                                  &station, &log_list, last_smcb_call, status_msg, sizeof(status_msg),
-                                 current_qrb);
+                                 current_qrb, current_quj);
             if (log_list.count > count_before) {
                 selected_log_pos = 0;
                 log_scroll_offset = 0;
@@ -771,7 +783,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             active_field = (active_field + 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             field_cursor_pos = 0;
@@ -782,7 +795,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             active_field = (active_field + QSO_FIELD_COUNT - 1) % QSO_FIELD_COUNT;
             preferred_col = field_default_col(active_field);
             field_cursor_pos = 0;
@@ -793,7 +807,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, +1, preferred_col);
             field_cursor_pos = 0;
@@ -804,7 +819,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             preferred_col = field_default_col(active_field);
             active_field = step_field_vertical(active_field, -1, preferred_col);
             field_cursor_pos = 0;
@@ -815,7 +831,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             active_field = FLD_CALL;
             preferred_col = 0;
             field_cursor_pos = 0;
@@ -826,7 +843,8 @@ int main(int argc, char *argv[]) {
             apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                           last_smcb_call, sizeof(last_smcb_call),
                                           status_msg, sizeof(status_msg),
-                                          current_qrb, sizeof(current_qrb));
+                                          current_qrb, sizeof(current_qrb),
+                                          current_quj, sizeof(current_quj));
             active_field = FLD_COMM;
             preferred_col = 4;
             field_cursor_pos = 0;
@@ -871,22 +889,25 @@ int main(int argc, char *argv[]) {
                 if (active_field == FLD_GRID) {
                     if (current_qso.gridsquare[0] == '\0') {
                         if (current_qso.qth[0] != '\0') {
-                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                         } else {
                             copy_str(current_qrb, sizeof(current_qrb), "-");
+                            copy_str(current_quj, sizeof(current_quj), "-");
                         }
                     } else if (is_valid_locator(current_qso.gridsquare) == 6) {
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     } else {
                         copy_str(current_qrb, sizeof(current_qrb), "-");
+                        copy_str(current_quj, sizeof(current_quj), "-");
                     }
                 }
                 if (active_field == FLD_QTH) {
                     if (current_qso.qth[0] == '\0') {
                         if (is_valid_locator(current_qso.gridsquare)) {
-                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                         } else {
                             copy_str(current_qrb, sizeof(current_qrb), "-");
+                            copy_str(current_quj, sizeof(current_quj), "-");
                         }
                     }
                 }
@@ -903,6 +924,7 @@ int main(int argc, char *argv[]) {
                     last_smcb_call[0] = '\0';
                     lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
                     copy_str(current_qrb, sizeof(current_qrb), "-");
+                    copy_str(current_quj, sizeof(current_quj), "-");
                 }
                 if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
                     resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
@@ -910,22 +932,25 @@ int main(int argc, char *argv[]) {
                 if (active_field == FLD_GRID) {
                     if (current_qso.gridsquare[0] == '\0') {
                         if (current_qso.qth[0] != '\0') {
-                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                         } else {
                             copy_str(current_qrb, sizeof(current_qrb), "-");
+                            copy_str(current_quj, sizeof(current_quj), "-");
                         }
                     } else if (is_valid_locator(current_qso.gridsquare) == 6) {
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     } else {
                         copy_str(current_qrb, sizeof(current_qrb), "-");
+                        copy_str(current_quj, sizeof(current_quj), "-");
                     }
                 }
                 if (active_field == FLD_QTH) {
                     if (current_qso.qth[0] == '\0') {
                         if (is_valid_locator(current_qso.gridsquare)) {
-                            compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                         } else {
                             copy_str(current_qrb, sizeof(current_qrb), "-");
+                            copy_str(current_quj, sizeof(current_quj), "-");
                         }
                     }
                 }
@@ -980,7 +1005,7 @@ int main(int argc, char *argv[]) {
                 }
                 if (active_field == FLD_GRID) {
                     if (is_valid_locator(current_qso.gridsquare) == 6) {
-                        compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     }
                 }
             }
@@ -991,7 +1016,8 @@ int main(int argc, char *argv[]) {
     apply_field_defaults_on_leave(&current_qso, active_field, &log_list, &station,
                                   last_smcb_call, sizeof(last_smcb_call),
                                   status_msg, sizeof(status_msg),
-                                  current_qrb, sizeof(current_qrb));
+                                  current_qrb, sizeof(current_qrb),
+                                  current_quj, sizeof(current_quj));
     persist_qso_radio_settings(&current_qso, &station);
 
     /* Rensa resurser och stäng bakgrundstrådar */

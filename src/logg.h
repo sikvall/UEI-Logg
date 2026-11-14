@@ -198,13 +198,16 @@ void step_band_choice(QSO *qso, StationSettings *st, int delta);
  * @param status_sz Storlek på statusbufferten.
  * @param current_qrb Buffer för beräknat QRB.
  * @param qrb_sz Storlek på QRB-bufferten.
+ * @param current_quj Buffer för beräknad bäring (QUJ).
+ * @param quj_sz Storlek på QUJ-bufferten.
  */
 void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
                                    const QSOList *log_list,
                                    StationSettings *st,
                                    char *last_smcb_call, size_t last_smcb_sz,
                                    char *status_msg, size_t status_sz,
-                                   char *current_qrb, size_t qrb_sz);
+                                   char *current_qrb, size_t qrb_sz,
+                                   char *current_quj, size_t quj_sz);
 
 /**
  * @brief Validerar formuläret och sparar pågående QSO till loggboken (eller uppdaterar vid redigering).
@@ -219,13 +222,14 @@ void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
  * @param status_msg Buffer för statusmeddelande.
  * @param status_sz Storlek på statusbufferten.
  * @param current_qrb Buffer för QRB.
+ * @param current_quj Buffer för QUJ (eller NULL).
  */
 void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
                           int *field_cursor_pos, int *editing_index,
                           StationSettings *st, QSOList *log_list,
                           char *last_smcb_call,
                           char *status_msg, size_t status_sz,
-                          char *current_qrb);
+                          char *current_qrb, char *current_quj);
 
 #ifdef __cplusplus
 }

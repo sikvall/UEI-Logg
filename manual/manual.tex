@@ -172,7 +172,7 @@ Inmatningsfältet är ordnat på fyra rader:
     \begin{itemize}
         \item \texttt{DXCC}: Identifierat land utifrån prefix eller uppslag.
         \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex.\ \texttt{JO89we}).
-        \item \texttt{QRB}: Beräknat avstånd i kilometer (visas som grön indikator). Med tangenten \texttt{F7} i inmatningsläget beräknas QRB om direkt baserat på angiven lokator (i första hand) eller QTH.
+        \item \texttt{QRB}: Beräknat avstånd i kilometer (visas som grön indikator). Med tangenten \texttt{F7} i inmatningsläget beräknas QRB och bäring (QUJ) om direkt baserat på angiven lokator (i första hand) eller QTH.
         \item \texttt{QTH}: Motstationens stad eller ort.
     \end{itemize}
     \item \textbf{Rad 3:}
@@ -180,6 +180,7 @@ Inmatningsfältet är ordnat på fyra rader:
         \item \texttt{Frekvens}: Frekvens i MHz (t.ex.\ \texttt{14.225} eller \texttt{7.074}).
         \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen eller väljs via interaktiv meny).
         \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
+        \item \texttt{QUJ}: Beräknad bäring i grader (visas som grön indikator, t.ex.\ \texttt{145°}). Beräknas automatiskt samtidigt med QRB.
     \end{itemize}
     \item \textbf{Rad 4:}
     \begin{itemize}
@@ -192,8 +193,8 @@ Inmatningsfältet är ordnat på fyra rader:
 \subsection{Loggradstabell (Tidigare QSO)}
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
-    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
-    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
+    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), QUJ (bäring i grader, t.ex.\ \texttt{145°}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
+    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och \textbf{QUJ} samtidigt och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
     \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
 \end{itemize}
@@ -238,7 +239,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{F5} & Inmatning & Manuellt uppslag mot SM Callbook / QRZ.COM \\
 \texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
-\texttt{F7} & Inmatning & Ny beräkning av QRB för angiven lokator (föredras) eller QTH \\
+\texttt{F7} & Inmatning & Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH \\
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
 \texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (märks automatiskt som nytt, ✗) \\
@@ -260,7 +261,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
     \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
     \item \textbf{Automatisk frekvens-, band- och våglängdskoppling:} När du anger en frekvens (t.ex. \texttt{1936 kHz}, \texttt{14,200}, \texttt{14.074}) sätts automatiskt rätt amatörradioband (\texttt{160 m}, \texttt{20 m}). Om frekvensen ligger utanför de etablerade amatörbanden beräknas våglängden automatiskt ($\lambda = 300 / f_{\text{MHz}}$, t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
     \item \textbf{Redigering av QSO:} När du väljer ett QSO i logglistan och trycker \texttt{Enter} laddas alla fält till inmatningsrutan och kontakten märks direkt som ny (\texttt{handled = 0}, rött kryss ✗). När du sparar ändringarna med \texttt{Enter} eller \texttt{F2} uppdateras databasen och posten behåller sin status som ny tills den exporteras.
-    \item \textbf{Manuell QRB-beräkning (F7):} Om du i inmatningsläget trycker på \texttt{F7} görs en omedelbar ny beräkning av QRB. Programmet föredrar den angivna lokatorn; om lokator saknas används i stället motstationens QTH.
+    \item \textbf{Manuell QRB- och QUJ-beräkning (F7):} Om du i inmatningsläget trycker på \texttt{F7} görs en omedelbar ny beräkning av QRB och bäring (QUJ). Programmet föredrar den angivna lokatorn; om lokator saknas används i stället motstationens QTH.
 \end{itemize}
 
 \section{Inställningar (F12)}
@@ -432,10 +433,10 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \caption{Projektets filstruktur.}
 \end{table}
 
-\subsection{Beräkning och Lagring av QRB}
+\subsection{Beräkning och Lagring av QRB och QUJ}
 Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$).
 
-Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält vid registrering, dels i loggradstabellens dedikerade kolumn \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) mellan \texttt{QTH} och statuskolumnen \texttt{Ny}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
+Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält \texttt{QRB} och bäring \texttt{QUJ} vid registrering, dels i loggradstabellens dedikerade kolumner \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) och \texttt{QUJ} (i grader, t.ex.\ \texttt{145°}) mellan \texttt{QTH} och \texttt{Lokator}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
 
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
@@ -446,7 +447,7 @@ Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattand
     \item \textbf{ADIF-import:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz och att felaktiga skalningar återställs.
     \item \textbf{Logghantering och F7:} Verifierar att F7 sätter alla loggrader till hanterade (\texttt{handled = 1}), att statistikcachen invalideras och att flaggan bevaras vid ADIF-sparning.
     \item \textbf{Navigering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt sök- och bandfiltrering.
-    \item \textbf{QRB och lokatorer:} Validering av Maidenhead-lokatorer och avståndsberäkning.
+    \item \textbf{QRB, QUJ och lokatorer:} Validering av Maidenhead-lokatorer, avstånds- och bäringsberäkning samt formatering.
     \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
     \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
     \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.

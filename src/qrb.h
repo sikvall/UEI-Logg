@@ -40,6 +40,16 @@ int locator_to_latlon(const char *loc, double *lat_out, double *lon_out);
 double calculate_distance_km(double lat1, double lon1, double lat2, double lon2);
 
 /**
+ * @brief Beräknar storcirkelbäring (0-359 grader) från punkt 1 till punkt 2.
+ * @param lat1 Latitud för punkt 1.
+ * @param lon1 Longitud för punkt 1.
+ * @param lat2 Latitud för punkt 2.
+ * @param lon2 Longitud för punkt 2.
+ * @return Bäring i grader (0.0 till 359.9).
+ */
+double calculate_bearing_deg(double lat1, double lon1, double lat2, double lon2);
+
+/**
  * @brief Slår upp koordinater för en ort (QTH) via OpenStreetMap Nominatim API.
  * @param qth Ortnamn (t.ex. "Linköping").
  * @param lat_out Utdatapekare för latitud.
@@ -63,6 +73,37 @@ void invalidate_qth_cache(const char *qth);
  * @param out_sz Storlek på målbuffer.
  */
 void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz);
+
+/**
+ * @brief Beräknar både QRB (avstånd i km) och QUJ (bäring i grader) mellan min station och motstationen.
+ * @param my_st Min stations inställningar.
+ * @param target_qso Motstationens QSO-post.
+ * @param qrb_out Buffer för formaterat avstånd (t.ex. "342 km" eller "-"), eller NULL.
+ * @param qrb_sz Storlek på qrb_out.
+ * @param quj_out Buffer för formaterad bäring (t.ex. "145°" eller "-"), eller NULL.
+ * @param quj_sz Storlek på quj_out.
+ */
+void compute_qrb_quj_str(const StationSettings *my_st, const QSO *target_qso,
+                         char *qrb_out, size_t qrb_sz,
+                         char *quj_out, size_t quj_sz);
+
+/**
+ * @brief Beräknar QUJ (bäring i grader) mellan min station och motstationen.
+ * @param my_st Min stations inställningar.
+ * @param target_qso Motstationens QSO-post.
+ * @param out Buffer där bäringen skrivs (t.ex. "145°" eller "-").
+ * @param out_sz Storlek på målbuffer.
+ */
+void compute_quj_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz);
+
+/**
+ * @brief Formaterar bäring för visning i loggtabellens QUJ-kolumn (t.ex. "145°" eller "-").
+ * @param my_st Min stations inställningar.
+ * @param qso QSO-post att formatera QUJ för.
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_quj_display(const StationSettings *my_st, const QSO *qso, char *out, size_t out_sz);
 
 /**
  * @brief Uppdaterar QRB för ett enskilt QSO om det kan beräknas, och sparar till databasen om det ändrats.

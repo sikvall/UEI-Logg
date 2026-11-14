@@ -423,6 +423,28 @@ static void run_locator_and_qrb_tests(void) {
     record_result(batch_qrb_ok,
                   "update_all_missing_qrbs uppdaterar alla saknade QRB-värden i logglistan och databasen", NULL);
 
+    /* 6. Bäringsberäkning (calculate_bearing_deg) och format_quj_display */
+    double b_north = calculate_bearing_deg(50.0, 10.0, 60.0, 10.0);
+    double b_south = calculate_bearing_deg(60.0, 10.0, 50.0, 10.0);
+    double b_east  = calculate_bearing_deg(0.0, 10.0, 0.0, 20.0);
+    double b_west  = calculate_bearing_deg(0.0, 20.0, 0.0, 10.0);
+    int cardinal_ok = (fabs(b_north - 0.0) < 0.1 || fabs(b_north - 360.0) < 0.1) &&
+                      (fabs(b_south - 180.0) < 0.1) &&
+                      (fabs(b_east - 90.0) < 0.1) &&
+                      (fabs(b_west - 270.0) < 0.1);
+
+    double b_sm = calculate_bearing_deg(lat1, lon1, lat2, lon2); /* JO89we -> JO67iq (~230°) */
+    int bearing_sm_ok = (b_sm >= 220.0 && b_sm <= 245.0);
+
+    char quj_dsp1[32] = "", quj_dsp2[32] = "";
+    format_quj_display(&st_qrb, &q_calc, quj_dsp1, sizeof(quj_dsp1));
+    format_quj_display(&st_qrb, &q_dsp2, quj_dsp2, sizeof(quj_dsp2));
+    int quj_dsp_ok = (strstr(quj_dsp1, "°") != NULL && atoi(quj_dsp1) >= 220) &&
+                     (strcmp(quj_dsp2, "-") == 0);
+
+    record_result(cardinal_ok && bearing_sm_ok && quj_dsp_ok,
+                  "QUJ calculate_bearing_deg och format_quj_display beräknar och formaterar bäring korrekt", NULL);
+
     free(batch_qrb_list.items);
     db_close();
     unlink(test_qrb_db);
@@ -1351,19 +1373,19 @@ static void run_swedish_chars_tests(void) {
         record_result(max_ok && min_ok, "QTH-kolumnregler validerade: minsta bredd 10 tkn och maximal bredd 30 tkn", NULL);
     }
 
-    /* 13. QRB döljs före QTH vid minskande fönsterbredd */
+    /* 13. QRB och QUJ döljs samtidigt före QTH vid minskande fönsterbredd */
     {
         LogColumnLayout l_wide, l_mid, l_80;
         calculate_log_column_layout(110, &l_wide);
         calculate_log_column_layout(92, &l_mid);
         calculate_log_column_layout(80, &l_80);
 
-        int wide_ok = (l_wide.w_qrb > 0 && l_wide.w_qth > 0);
-        int mid_ok  = (l_mid.w_qrb == 0 && l_mid.w_qth >= 10); /* QRB dold, QTH kvar */
-        int c80_ok  = (l_80.w_qrb == 0 && l_80.w_qth >= 10);  /* QRB dold, QTH kvar vid 80 kolumner */
+        int wide_ok = (l_wide.w_qrb > 0 && l_wide.w_quj > 0 && l_wide.w_qth > 0);
+        int mid_ok  = (l_mid.w_qrb == 0 && l_mid.w_quj == 0 && l_mid.w_qth >= 10); /* QRB och QUJ dolda, QTH kvar */
+        int c80_ok  = (l_80.w_qrb == 0 && l_80.w_quj == 0 && l_80.w_qth >= 10);  /* QRB och QUJ dolda, QTH kvar vid 80 kolumner */
 
         record_result(wide_ok && mid_ok && c80_ok,
-                      "QRB döljs före QTH vid minskande fönsterbredd (QTH kvarstår medan QRB döljs)", NULL);
+                      "QRB och QUJ döljs samtidigt före QTH vid minskande fönsterbredd", NULL);
     }
 
     /* 14. QTH kvarstår ned till 80 kolumner och döljs vid < 80 kolumner */
@@ -1471,7 +1493,7 @@ static void run_swedish_chars_tests(void) {
             char status_buf[128] = "";
             try_save_current_qso(&form_qso, &tf, &af, &fcp, &idx_to_edit,
                                  &test_st, &edit_list, last_call,
-                                 status_buf, sizeof(status_buf), qrb_buf);
+                                 status_buf, sizeof(status_buf), qrb_buf, NULL);
 
             QSOList reloaded = {NULL, 0, 0};
             db_load_all_qsos(&reloaded);

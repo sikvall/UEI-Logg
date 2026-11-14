@@ -21,7 +21,7 @@
 
 ## Funktioner
 
-- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, Datum, UTC, Notering). F7 i inmatningsläget beräknar om QRB från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
+- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). F7 i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
 - **Titelrad med stationsinfo**: Översta listen presenterar egen anropssignal, QTH och lokator centrerat (`Anropssignal QTH Lokator` utan parenteser runt QTH) tillsammans med lokal tid och UTC.
 - **SQLite3 Databas med WAL-läge**: Persistent, kraschsäker och blixtsnabb databaslagring i `qsolog.sq3`. Automatisk migrering från tidigare `qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
@@ -30,9 +30,9 @@
   - Svenska anropssignaler slås automatiskt upp mot **SM Callbook** (SSA).
   - Utländska anropssignaler slås automatiskt upp mot **QRZ.COM XML API**.
   - Automatisk detektering av Silent Keys (visas med `-SK-` och `SILENT KEY`).
-- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring via Maidenhead-lokatorer eller OpenStreetMap.
+- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring (QUJ i grader, t.ex. 145°) via Maidenhead-lokatorer eller OpenStreetMap.
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
-- **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
+- **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
 - **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
 - **11 Färgscheman**: Välj mellan 11 teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge m.fl.) med interaktiv rullgardinsmeny och live-förhandsgranskning. Spara och avsluta smidigt med F12.
 
@@ -253,7 +253,7 @@ När `ueilog` körs är följande tangenter tillgängliga:
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
 | **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
 | **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
-| **F7** | I inmatningsläge: Ny beräkning av QRB för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
+| **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
 | **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, ADIF import/export, reglage m.m.) |
