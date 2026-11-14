@@ -475,6 +475,15 @@ static void run_dxcc_tests(void) {
     snprintf(detail, sizeof(detail), "SM5UEI -> '%s', DL1ABC -> '%s', W1AW -> '%s'", dxcc_sm, dxcc_dl, dxcc_w);
     record_result(sm_ok && dl_ok && w_ok, "lookup_dxcc identifierar Sverige (Sweden), Tyskland (Germany) och USA", (sm_ok && dl_ok && w_ok) ? NULL : detail);
 
+    char dxcc_w1[64] = "", dxcc_g1[64] = "", dxcc_f1[64] = "";
+    lookup_dxcc("W", dxcc_w1, sizeof(dxcc_w1));
+    lookup_dxcc("G", dxcc_g1, sizeof(dxcc_g1));
+    lookup_dxcc("F", dxcc_f1, sizeof(dxcc_f1));
+    int single_ok = (strcmp(dxcc_w1, "USA") == 0 &&
+                     strcmp(dxcc_g1, "England") == 0 &&
+                     strcmp(dxcc_f1, "Frankrike") == 0);
+    record_result(single_ok, "lookup_dxcc identifierar enbokstavsprefix omedelbart vid inmatning (W->USA, G->England, F->Frankrike)", NULL);
+
     free_dxcc_db();
 }
 
@@ -520,8 +529,16 @@ static void run_settings_tests(void) {
     load_station_settings(tmp_conf, &loaded);
     int notes_ok = (loaded.show_notes == 1);
 
+    /* Validera att SM Callbook hålls avslaget i inställningarna */
+    st.smcb_enabled = 1;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int smcb_disabled_ok = (loaded.smcb_enabled == 0);
+
     unlink(tmp_conf);
     record_result(ok && notes_ok, "save_station_settings och load_station_settings bevarar alla stationsparametrar (inkl. show_notes för F6)", NULL);
+    record_result(smcb_disabled_ok, "SM Callbook hålls dolt och avslaget i inställningarna (smcb_enabled == 0)", NULL);
 
     /* Rymdväder: K/Kp och titelradens högerställda tidsstämpel */
     {

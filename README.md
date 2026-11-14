@@ -27,8 +27,8 @@
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (SFI, SSN, A-index, K-index, solflares, geomagnetiska stormar och HF-konditioner per band).
 - **Automatiska uppslag**:
-  - Svenska anropssignaler slås automatiskt upp mot **SM Callbook** (SSA).
-  - Utländska anropssignaler slås automatiskt upp mot **QRZ.COM XML API**.
+  - DXCC-land slås automatiskt upp i realtid direkt ur `dxcc.txt` när anropssignalen skrivs in.
+  - Anropssignaler slås automatiskt upp mot **QRZ.COM XML API** (om aktiverat). SM Callbook hålls dolt och avslaget tills vidare.
   - Automatisk detektering av Silent Keys (visas med `-SK-` och `SILENT KEY`).
 - **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring (QUJ i grader, t.ex. 145°) via Maidenhead-lokatorer eller OpenStreetMap.
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
@@ -251,7 +251,7 @@ När `ueilog` körs är följande tangenter tillgängliga:
 | **F2** / **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF.<br>I loggläge (Enter): Ladda markerat QSO till formuläret för redigering (märks automatiskt som nytt, ✗) |
 | **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
-| **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
+| **F5** | I inmatningsläge: Manuellt uppslag mot QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
 | **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
 | **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |

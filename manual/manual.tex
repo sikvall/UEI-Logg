@@ -39,7 +39,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: asynkrona signaluppslag via QRZ.com och SM Callbook, beräkning av avstånd och bäring (QRB), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
+\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: automatisk DXCC-identifiering i realtid, asynkrona signaluppslag via QRZ.com, beräkning av avstånd och bäring (QRB/QUJ), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
 \end{abstract}
 
 \vspace{0.5cm}
@@ -56,7 +56,7 @@ Programmets styrkor:
     \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar.
     \item \textbf{Smart fälthantering:} Skrivning i förifyllt fält rensar automatiskt gammal text; \texttt{Delete} tömmer hela fältet direkt.
     \item \textbf{Automatisk DXCC och QRB:} Identifierar direkt land, zon och räknar ut avstånd (km) och kompassbäring utifrån motstationens lokator.
-    \item \textbf{Callbook-integration:} Bakgrundsuppslag mot både lokal SSA/SM Callbook och QRZ.com XML Logbook Service.
+    \item \textbf{Callbook- och DXCC-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen samt bakgrundsuppslag mot QRZ.com XML Logbook Service.
     \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata samt HF-konditioner från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
     \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
@@ -236,7 +236,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (vid redigering sparas ändringen och QSO:t märks som nytt, ✗) \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
-\texttt{F5} & Inmatning & Manuellt uppslag mot SM Callbook / QRZ.COM \\
+\texttt{F5} & Inmatning & Manuellt uppslag mot QRZ.COM \\
 \texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
 \texttt{F7} & Inmatning & Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH \\
@@ -299,7 +299,6 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{Egen profil (Anpassad):} Användarens egna skräddarsydda färgprofil som skapas och redigeras via den inbyggda färgprofilseditorn (\texttt{F7}).
     \end{itemize}
     \item \textbf{Egen färgprofil (\texttt{F7}):} Direktknapp för att starta den interaktiva färgprofilseditorn (se avsnitt~\ref{sec:theme_editor}).
-    \item \textbf{SM Callbook:} \texttt{< På >} / \texttt{< Av >}. Söker i den lokala databasen \texttt{smcallbook.txt}.
     \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
     \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
@@ -308,6 +307,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
+\noindent\textit{Obs: SM Callbook är tills vidare dolt från inställningsmenyn och hålls avslaget.}
 
 \subsection{Egen Färgprofilseditor (F7 i inställningar)}
 \label{sec:theme_editor}

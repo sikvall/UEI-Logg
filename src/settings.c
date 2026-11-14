@@ -93,7 +93,8 @@ void load_station_settings(const char *filename, StationSettings *st) {
                    &st->custom_theme.status_ok,
                    &st->custom_theme.status_warn);
         } else if (strcasecmp(key, "SMCB") == 0) {
-            st->smcb_enabled = (atoi(val) != 0) ? 1 : 0;
+            /* SM Callbook hålls avslaget tills vidare */
+            st->smcb_enabled = 0;
         } else if (strcasecmp(key, "QRZ_USER") == 0) {
             copy_str(st->qrz_username, sizeof(st->qrz_username), val);
         } else if (strcasecmp(key, "QRZ_PASS") == 0) {
@@ -592,14 +593,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 
     int r_qrz_auto = start_y + 7;
     int r_theme    = start_y + 8;
-    int r_smcb     = start_y + 9;
-    int r_rst      = start_y + 10;
-    int r_flt      = start_y + 11;
-    int r_stats    = start_y + 12;
-    int r_sw       = start_y + 13;
-    int r_import   = start_y + 14;
-    int r_export   = start_y + 15;
-    int r_clear    = start_y + 16;
+    int r_rst      = start_y + 9;
+    int r_flt      = start_y + 10;
+    int r_stats    = start_y + 11;
+    int r_sw       = start_y + 12;
+    int r_import   = start_y + 13;
+    int r_export   = start_y + 14;
+    int r_clear    = start_y + 15;
 
     int fcol = colon_col + 2;
 
@@ -656,33 +656,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         }
     }
 
-    /* Fält 9: SM Callbook toggle */
-    const char *lbl_smcb = "SM Callbook (ssa.se)";
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r_smcb, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-    const char *smcb_txt = edit->smcb_enabled ? "På (Slå upp SA-SM, 7S, 8S)" : "Av";
-    if (active == 9) {
-        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        *cur_y = r_smcb;
-        *cur_x = fcol + 2;
-    } else {
-        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-        mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-    }
-
-    /* Fält 10: Automatisk RST 59/59 vid nytt QSO */
+    /* Fält 9: Automatisk RST 59/59 vid nytt QSO */
     const char *lbl_rst = "Auto RST 59/59";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_rst, colon_col - utf8_display_width(lbl_rst), "%s:", lbl_rst);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *rst_txt = edit->auto_rst_59 ? "På (Fyll i 59 / 59 vid nytt QSO)" : "Av";
-    if (active == 10) {
+    if (active == 9) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_rst, fcol, "< %-28s >", rst_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -694,14 +675,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 11: Filtrera loggrader efter anropssignal */
+    /* Fält 10: Filtrera loggrader efter anropssignal */
     const char *lbl_flt = "Filtrera loggrader";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_flt, colon_col - utf8_display_width(lbl_flt), "%s:", lbl_flt);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *flt_txt = edit->filter_log ? "På" : "Av";
-    if (active == 11) {
+    if (active == 10) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_flt, fcol, "< %-28s >", flt_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -713,14 +694,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 12: Statistikruta toggle */
+    /* Fält 11: Statistikruta toggle */
     const char *lbl_stats = "Statistikruta";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_stats, colon_col - utf8_display_width(lbl_stats), "%s:", lbl_stats);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *stats_txt = edit->show_stats ? "På (Visa ovanför QSO)" : "Av";
-    if (active == 12) {
+    if (active == 11) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_stats, fcol, "< %-28s >", stats_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -732,14 +713,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 13: Rymdväderruta toggle */
+    /* Fält 12: Rymdväderruta toggle */
     const char *lbl_sw = "Rymdväderruta";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_sw, colon_col - utf8_display_width(lbl_sw), "%s:", lbl_sw);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *sw_txt = edit->show_space_weather ? "På (hf.avitec.se)" : "Av";
-    if (active == 13) {
+    if (active == 12) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_sw, fcol, "< %-28s >", sw_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -751,13 +732,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 14: Importera ADIF från fil (F5) */
+    /* Fält 13: Importera ADIF från fil (F5) */
     const char *lbl_import = "Importera ADIF (F5)";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_import, colon_col - utf8_display_width(lbl_import), "%s:", lbl_import);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 14) {
+    if (active == 13) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -769,7 +750,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 15: Exportera ADIF till fil (F6) */
+    /* Fält 14: Exportera ADIF till fil (F6) */
     int marked_count = 0;
     if (log_list != NULL) {
         for (size_t i = 0; i < log_list->count; ++i) {
@@ -801,7 +782,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (0 QSO) ]");
     }
 
-    if (active == 15) {
+    if (active == 14) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_export, fcol, "%-s", export_hint);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -813,13 +794,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 16: Töm loggbok och börja på nytt */
+    /* Fält 15: Töm loggbok och börja på nytt */
     const char *lbl_clear = "Töm loggbok";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 16) {
+    if (active == 15) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -1065,7 +1046,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                 apply_color_theme(edit.theme);
             }
             continue;
-        } else if (ch == KEY_F(5) || (active == 14 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(5) || (active == 13 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             char chosen_path[PATH_MAX] = {0};
             int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
             if (chosen && chosen_path[0] != '\0') {
@@ -1108,7 +1089,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(6) || (active == 15 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(6) || (active == 14 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             if (log_list == NULL || log_list->count == 0) {
                 copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
                 apply_color_theme(edit.theme);
@@ -1216,7 +1197,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 16 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (active == 15 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;
@@ -1255,7 +1236,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             } else {
                 apply_color_theme(st->theme);
             }
-        } else if (ch == KEY_F(2) || ch == 19 || (active < 14 && active != 8 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
+        } else if (ch == KEY_F(2) || ch == 19 || (active < 13 && active != 8 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
             to_upper_str(edit.call);
             to_upper_str(edit.gridsquare);
             *st = edit;
@@ -1299,14 +1280,12 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                 active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
             }
         } else if (active == 9 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.smcb_enabled = !edit.smcb_enabled;
-        } else if (active == 10 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.auto_rst_59 = !edit.auto_rst_59;
-        } else if (active == 11 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 10 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.filter_log = !edit.filter_log;
-        } else if (active == 12 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 11 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.show_stats = !edit.show_stats;
-        } else if (active == 13 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+        } else if (active == 12 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.show_space_weather = !edit.show_space_weather;
         } else if (active < 7) {
             char *buf = (active == 0) ? edit.call :

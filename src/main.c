@@ -524,6 +524,9 @@ int main(int argc, char *argv[]) {
                     field_cursor_pos = 0;
                     field_fresh = 1;
                     focus_mode = FOCUS_INPUT;
+                    if (current_qso.dxcc[0] == '\0' && current_qso.call[0] != '\0') {
+                        lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
+                    }
                     compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     if (strcmp(current_qrb, "-") == 0 && current_qso.distance[0] != '\0') {
                         snprintf(current_qrb, sizeof(current_qrb), "%s km", current_qso.distance);
@@ -975,6 +978,7 @@ int main(int argc, char *argv[]) {
                     field_fresh = 0;
                     if (active_field == FLD_CALL) {
                         last_smcb_call[0] = '\0';
+                        current_qso.dxcc[0] = '\0';
                     }
                 }
 

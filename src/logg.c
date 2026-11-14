@@ -744,11 +744,17 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
             qso->qth[0] = '\0';
             copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
             copy_str(status_msg, status_sz, "Från logg: SILENT KEY (-SK-)");
+            if (qso->dxcc[0] == '\0') {
+                lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+            }
             return;
         }
         if (log_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), log_name);
         if (log_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
         if (log_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), log_grid);
+        if (qso->dxcc[0] == '\0') {
+            lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+        }
         snprintf(status_msg, status_sz, "Från logg: %s%s%s",
                  log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth);
         return;
@@ -855,6 +861,10 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
         snprintf(status_msg, status_sz, "QRZ: Slår upp %s...", qso->call);
     }
+
+    if (qso->dxcc[0] == '\0') {
+        lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+    }
 }
 
 /**
@@ -893,6 +903,9 @@ void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
                                    char *current_qrb, size_t qrb_sz,
                                    char *current_quj, size_t quj_sz) {
     if (leaving_field == FLD_CALL) {
+        if (qso->call[0] != '\0') {
+            lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+        }
         maybe_lookup_call_details(qso, log_list, st, last_smcb_call, last_smcb_sz, status_msg, status_sz);
         compute_qrb_quj_str(st, qso, current_qrb, qrb_sz, current_quj, quj_sz);
     }

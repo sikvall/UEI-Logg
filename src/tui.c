@@ -1357,7 +1357,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (form_w_qth < 6) form_w_qth = 6;
     if (form_w_qth > 16) form_w_qth = 16;
 
-    int form_w_dxcc = (COLS >= 88) ? 15 : 14;
+    int form_w_dxcc = (COLS >= 95) ? 14 : (COLS >= 85 ? 12 : 10);
 
     /* Rad 1 (y = 6): Signal, RST T, RST R, Namn */
     draw_field_aligned(input_top + 1, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
