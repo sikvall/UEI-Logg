@@ -670,8 +670,9 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             }
             items[count++] = (FKeyItem){"Enter", "Redigera"};
             items[count++] = (FKeyItem){"F4", "Fokus"};
-            items[count++] = (FKeyItem){"F5", "Hanterad"};
+            items[count++] = (FKeyItem){"F5", "Hant."};
             items[count++] = (FKeyItem){"F6", "Ny"};
+            items[count++] = (FKeyItem){"F7", "Alla hant."};
             items[count++] = (FKeyItem){"F8", "Radera"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
         } else {

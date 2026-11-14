@@ -130,6 +130,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
             "  * F5: Sätter status som Hanterad (visas med ett grönt bockmärke ✓).",
             "  * F6: Sätter status som Ny (visas med ett kryss ✗).",
+            "  * F7: Sätter ALLA loggrader som Hanterade (✓).",
             "  * Om rader är markerade med INS påverkas alla markerade rader samtidigt.",
             "",
             "Redigering och radering:",
@@ -142,7 +143,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck ESC för att återställa sökningen och visa hela loggboken igen.",
             NULL
         },
-        21
+        22
     },
     {
         "[5] Inställningar",

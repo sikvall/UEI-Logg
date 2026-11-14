@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
                 if (f_cnt > 0) {
                     focus_mode = FOCUS_LOG;
                     if (selected_log_pos >= f_cnt) selected_log_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, F5=Hanterad, F6=Ny, F8=Radera, Enter=Redigera.");
+                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, F5=Hant., F6=Ny, F7=Alla hant., F8=Radera, Enter=Redigera.");
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Inga loggrader att välja ännu.");
                 }
@@ -411,6 +411,21 @@ int main(int argc, char *argv[]) {
                     }
                     save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som nytt (✗).", log_list.items[orig_idx].call);
+                }
+            } else if (ch == KEY_F(7)) {
+                /* F7: Markera ALLA loggrader som hanterade (✓) */
+                if (log_list.count > 0) {
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        log_list.items[mi].handled = 1;
+                    }
+                    if (editing_index >= 0 && (size_t)editing_index < log_list.count) {
+                        current_qso.handled = 1;
+                    }
+                    invalidate_log_stats_cache();
+                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    snprintf(status_msg, sizeof(status_msg), "Markerade alla %zu rader som hanterade (✓).", log_list.count);
+                } else {
+                    copy_str(status_msg, sizeof(status_msg), "Loggen är tom.");
                 }
             } else if (ch == KEY_F(8)) {
                 /* F8: Radera markerade rader eller aktuell rad */

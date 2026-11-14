@@ -4,6 +4,10 @@
 \usepackage[T1]{fontenc}
 \usepackage[swedish]{babel}
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pifont}
+\DeclareUnicodeCharacter{2713}{\ensuremath{\checkmark}}
+\DeclareUnicodeCharacter{2717}{\ding{55}}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{parskip}
 \usepackage{booktabs}
@@ -153,7 +157,7 @@ Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
     \item Radnummer (\#), Datum, Tid (UTC), Signal, Frekvens, Band, Mode, Rapporter, Namn, QTH, Lokator och DXCC.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
-    \item \textbf{Statusmarkörer:} En asterisk (\texttt{*}) intill radnumret anger att kontakten är ny (oexporterad). En pil (\texttt{>}) anger att raden är manuellt markerad för export.
+    \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
 \end{itemize}
 
 \subsection{5. Rymdvädersruta}
@@ -192,9 +196,12 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
-\texttt{F5} & Loggläge & Markera samtliga QSO i loggen \\
-\texttt{F6} & Loggläge & Avmarkera alla QSO i loggen \\
-\texttt{Insert (INS)} & Loggläge & Växla markering på markerat QSO \\
+\texttt{F5} & Loggläge & Markera vald / markerade rader som hanterade (✓) \\
+\texttt{F6} & Loggläge & Markera vald / markerade rader som nya (✗) \\
+\texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
+\texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
+\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering \\
+\texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
 \texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
 \texttt{Home / End} & Loggläge & Hoppa direkt till äldsta / senaste QSO \\
 \texttt{F9} & Allmänt & Information om UEI-Logg och version \\
