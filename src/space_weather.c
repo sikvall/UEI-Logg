@@ -7,6 +7,7 @@
 #include "util.h"
 #include <ctype.h>
 #include <curl/curl.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -278,10 +279,14 @@ static void *space_weather_worker_thread(void *arg) {
     while (g_sw_running) {
         /* Sov i 10 minuter eller tills vi väcks via konditionsvariabel */
         pthread_mutex_lock(&g_sw_mutex);
-        for (int i = 0; i < SW_REFRESH_INTERVAL_SEC && g_sw_running && !g_sw_trigger; ++i) {
-            pthread_mutex_unlock(&g_sw_mutex);
-            sleep(1);
-            pthread_mutex_lock(&g_sw_mutex);
+        if (!g_sw_trigger && g_sw_running) {
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += SW_REFRESH_INTERVAL_SEC;
+            while (!g_sw_trigger && g_sw_running) {
+                int rc = pthread_cond_timedwait(&g_sw_cond, &g_sw_mutex, &ts);
+                if (rc == ETIMEDOUT) break;
+            }
         }
         g_sw_trigger = 0;
         pthread_mutex_unlock(&g_sw_mutex);

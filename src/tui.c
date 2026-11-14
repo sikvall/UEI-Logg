@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala och ambra */
+/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day och mörkerläge */
 const char * const THEME_NAMES[] = {
     "Turbo Pascal (MC Default)",
     "MC Darkfar (Svart/Blå)",
@@ -25,7 +25,10 @@ const char * const THEME_NAMES[] = {
     "MC Matrix (Fosforgrön)",
     "Ljust (Grå/Orange/Blå)",
     "Monokrom gråskala",
-    "Ambra (Retro CRT)"
+    "Ambra (Retro CRT)",
+    "Arktisk Natt (Nord Frost)",
+    "Field Day (Vintage Radio)",
+    "Mörkerläge (Crimson Night)"
 };
 
 /**
@@ -68,8 +71,8 @@ void tui_cleanup(void) {
 }
 
 /**
- * @brief Aktiverar och konfigurerar ett av de 8 tillgängliga färgschemana i ncurses.
- * Inkluderar modern gråskala och retro ambra-skärm.
+ * @brief Aktiverar och konfigurerar ett av de 11 tillgängliga färgschemana i ncurses.
+ * Inkluderar modern gråskala, retro ambra, arktisk natt, field day och crimson mörkerläge.
  * @param theme_idx Index på schemat (0..THEME_COUNT-1).
  */
 void apply_color_theme(int theme_idx) {
@@ -365,6 +368,138 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_WARN,          amb_bright,   amb_bg);
             init_pair(CP_SW_BAD,           amb_bright,   amb_bg);
             init_pair(CP_SW_SEVERE,        amb_bg,       amb_bright);
+            break;
+        }
+
+        case 8: { /* 9. Arktisk Natt (Nord Frost - Dämpad skifferblå polarnatt med isblå frost och norrsken) */
+            short bg_nord       = (COLORS >= 256) ? 236 : COLOR_BLACK;
+            short fg_snow       = (COLORS >= 256) ? 254 : COLOR_WHITE;
+            short fg_frost      = (COLORS >= 256) ? 117 : COLOR_CYAN;
+            short fg_ice        = (COLORS >= 256) ? 153 : COLOR_CYAN;
+            short fg_border_dim = (COLORS >= 256) ? 67  : COLOR_CYAN;
+            short fg_aurora_grn = (COLORS >= 256) ? 150 : COLOR_GREEN;
+            short fg_aurora_yel = (COLORS >= 256) ? 222 : COLOR_YELLOW;
+            short fg_aurora_red = (COLORS >= 256) ? 203 : COLOR_RED;
+            short fg_aurora_pur = (COLORS >= 256) ? 139 : COLOR_MAGENTA;
+            short sel_bg        = (COLORS >= 256) ? 111 : COLOR_CYAN;
+
+            init_pair(CP_MAIN_BG,        fg_snow,       bg_nord);
+            init_pair(CP_TOPBAR,         bg_nord,       fg_frost);
+            init_pair(CP_TOPBAR_ACCENT,  fg_aurora_red, fg_frost);
+            init_pair(CP_BORDER,         fg_border_dim, bg_nord);
+            init_pair(CP_BORDER_ACTIVE,  fg_frost,      bg_nord);
+            init_pair(CP_TITLE,          fg_frost,      bg_nord);
+            init_pair(CP_LABEL,          fg_ice,        bg_nord);
+            init_pair(CP_FIELD_INACTIVE, fg_snow,       bg_nord);
+            init_pair(CP_FIELD_ACTIVE,   bg_nord,       fg_frost);
+            init_pair(CP_FROZEN_BADGE,   bg_nord,       fg_aurora_yel);
+            init_pair(CP_LIVE_BADGE,     bg_nord,       fg_aurora_grn);
+            init_pair(CP_EDIT_BADGE,     fg_snow,       fg_aurora_pur);
+            init_pair(CP_TABLE_HEADER,   fg_frost,      bg_nord);
+            init_pair(CP_LOG_ROW,        fg_snow,       bg_nord);
+            init_pair(CP_LOG_SELECTED,   bg_nord,       sel_bg);
+            init_pair(CP_LOG_MARKED,     fg_snow,       fg_aurora_pur);
+            init_pair(CP_FKEY_NUM,       bg_nord,       fg_frost);
+            init_pair(CP_FKEY_LABEL,     fg_snow,       bg_nord);
+            init_pair(CP_STATUS_OK,      fg_frost,      bg_nord);
+            init_pair(CP_STATUS_WARN,    fg_snow,       fg_aurora_red);
+            init_pair(CP_FLAG_NEW,         fg_aurora_red, bg_nord);
+            init_pair(CP_FLAG_HANDLED,     fg_aurora_grn, bg_nord);
+            init_pair(CP_FLAG_NEW_SEL,     fg_aurora_red, sel_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, bg_nord,       sel_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_aurora_red, fg_aurora_pur);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_aurora_grn, fg_aurora_pur);
+            init_pair(CP_SW_NORMAL,        fg_ice,        bg_nord);
+            init_pair(CP_SW_OK,            fg_aurora_grn, bg_nord);
+            init_pair(CP_SW_WARN,          fg_aurora_yel, bg_nord);
+            init_pair(CP_SW_BAD,           fg_aurora_red, bg_nord);
+            init_pair(CP_SW_SEVERE,        fg_aurora_pur, bg_nord);
+            break;
+        }
+
+        case 9: { /* 10. Field Day (Vintage Radio / Gruvbox - Varm mörkbrun bas, bärnsten och analog stationskänsla) */
+            short bg_vintage   = (COLORS >= 256) ? 235 : COLOR_BLACK;
+            short fg_cream     = (COLORS >= 256) ? 229 : COLOR_WHITE;
+            short fg_amber     = (COLORS >= 256) ? 214 : COLOR_YELLOW;
+            short fg_bronze    = (COLORS >= 256) ? 137 : COLOR_YELLOW;
+            short fg_sage      = (COLORS >= 256) ? 107 : COLOR_GREEN;
+            short fg_rust      = (COLORS >= 256) ? 166 : COLOR_YELLOW;
+            short fg_brick_red = (COLORS >= 256) ? 167 : COLOR_RED;
+            short fg_mauve     = (COLORS >= 256) ? 175 : COLOR_MAGENTA;
+            short sel_bg       = (COLORS >= 256) ? 214 : COLOR_YELLOW;
+
+            init_pair(CP_MAIN_BG,        fg_cream,     bg_vintage);
+            init_pair(CP_TOPBAR,         bg_vintage,   fg_amber);
+            init_pair(CP_TOPBAR_ACCENT,  fg_brick_red, fg_amber);
+            init_pair(CP_BORDER,         fg_bronze,    bg_vintage);
+            init_pair(CP_BORDER_ACTIVE,  fg_amber,     bg_vintage);
+            init_pair(CP_TITLE,          fg_amber,     bg_vintage);
+            init_pair(CP_LABEL,          fg_bronze,    bg_vintage);
+            init_pair(CP_FIELD_INACTIVE, fg_cream,     bg_vintage);
+            init_pair(CP_FIELD_ACTIVE,   bg_vintage,   fg_amber);
+            init_pair(CP_FROZEN_BADGE,   bg_vintage,   fg_rust);
+            init_pair(CP_LIVE_BADGE,     bg_vintage,   fg_sage);
+            init_pair(CP_EDIT_BADGE,     fg_cream,     fg_mauve);
+            init_pair(CP_TABLE_HEADER,   fg_amber,     bg_vintage);
+            init_pair(CP_LOG_ROW,        fg_cream,     bg_vintage);
+            init_pair(CP_LOG_SELECTED,   bg_vintage,   sel_bg);
+            init_pair(CP_LOG_MARKED,     fg_cream,     fg_mauve);
+            init_pair(CP_FKEY_NUM,       bg_vintage,   fg_bronze);
+            init_pair(CP_FKEY_LABEL,     fg_cream,     bg_vintage);
+            init_pair(CP_STATUS_OK,      fg_amber,     bg_vintage);
+            init_pair(CP_STATUS_WARN,    fg_cream,     fg_brick_red);
+            init_pair(CP_FLAG_NEW,         fg_brick_red, bg_vintage);
+            init_pair(CP_FLAG_HANDLED,     fg_sage,      bg_vintage);
+            init_pair(CP_FLAG_NEW_SEL,     fg_brick_red, sel_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, bg_vintage,   sel_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_brick_red, fg_mauve);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_sage,      fg_mauve);
+            init_pair(CP_SW_NORMAL,        fg_cream,     bg_vintage);
+            init_pair(CP_SW_OK,            fg_sage,      bg_vintage);
+            init_pair(CP_SW_WARN,          fg_rust,      bg_vintage);
+            init_pair(CP_SW_BAD,           fg_brick_red, bg_vintage);
+            init_pair(CP_SW_SEVERE,        fg_mauve,     bg_vintage);
+            break;
+        }
+
+        case 10: { /* 11. Mörkerläge (Crimson Night - Skonsamt röd-svart tema för nattpass utan att störa mörkerseendet) */
+            short bg_night     = (COLORS >= 256) ? 232 : COLOR_BLACK;
+            short fg_bright    = (COLORS >= 256) ? 196 : COLOR_RED;
+            short fg_light_red = (COLORS >= 256) ? 203 : COLOR_RED;
+            short fg_mid_red   = (COLORS >= 256) ? 160 : COLOR_RED;
+            short fg_dim_red   = (COLORS >= 256) ? 88  : COLOR_RED;
+
+            init_pair(CP_MAIN_BG,        fg_light_red, bg_night);
+            init_pair(CP_TOPBAR,         bg_night,     fg_mid_red);
+            init_pair(CP_TOPBAR_ACCENT,  fg_bright,    bg_night);
+            init_pair(CP_BORDER,         fg_dim_red,   bg_night);
+            init_pair(CP_BORDER_ACTIVE,  fg_bright,    bg_night);
+            init_pair(CP_TITLE,          fg_bright,    bg_night);
+            init_pair(CP_LABEL,          fg_mid_red,   bg_night);
+            init_pair(CP_FIELD_INACTIVE, fg_light_red, bg_night);
+            init_pair(CP_FIELD_ACTIVE,   bg_night,     fg_bright);
+            init_pair(CP_FROZEN_BADGE,   bg_night,     fg_mid_red);
+            init_pair(CP_LIVE_BADGE,     bg_night,     fg_bright);
+            init_pair(CP_EDIT_BADGE,     fg_bright,    fg_dim_red);
+            init_pair(CP_TABLE_HEADER,   fg_bright,    bg_night);
+            init_pair(CP_LOG_ROW,        fg_light_red, bg_night);
+            init_pair(CP_LOG_SELECTED,   bg_night,     fg_mid_red);
+            init_pair(CP_LOG_MARKED,     fg_bright,    fg_dim_red);
+            init_pair(CP_FKEY_NUM,       bg_night,     fg_dim_red);
+            init_pair(CP_FKEY_LABEL,     fg_light_red, bg_night);
+            init_pair(CP_STATUS_OK,      fg_bright,    bg_night);
+            init_pair(CP_STATUS_WARN,    bg_night,     fg_bright);
+            init_pair(CP_FLAG_NEW,         fg_bright,    bg_night);
+            init_pair(CP_FLAG_HANDLED,     fg_dim_red,   bg_night);
+            init_pair(CP_FLAG_NEW_SEL,     fg_bright,    fg_mid_red);
+            init_pair(CP_FLAG_HANDLED_SEL, bg_night,     fg_mid_red);
+            init_pair(CP_FLAG_NEW_MRK,     fg_bright,    fg_dim_red);
+            init_pair(CP_FLAG_HANDLED_MRK, bg_night,     fg_dim_red);
+            init_pair(CP_SW_NORMAL,        fg_mid_red,   bg_night);
+            init_pair(CP_SW_OK,            fg_dim_red,   bg_night);
+            init_pair(CP_SW_WARN,          fg_light_red, bg_night);
+            init_pair(CP_SW_BAD,           fg_bright,    bg_night);
+            init_pair(CP_SW_SEVERE,        bg_night,     fg_bright);
             break;
         }
     }
@@ -671,8 +806,8 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             }
             items[count++] = (FKeyItem){"Enter", "Redigera"};
             items[count++] = (FKeyItem){"F4", "Fokus"};
-            items[count++] = (FKeyItem){"F5", "Hant."};
-            items[count++] = (FKeyItem){"F6", "Ny"};
+            items[count++] = (FKeyItem){"F5", "Hant/Ny"};
+            items[count++] = (FKeyItem){"F6", "Noter"};
             items[count++] = (FKeyItem){"F7", "Alla hant."};
             items[count++] = (FKeyItem){"F8", "Radera"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
@@ -685,6 +820,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
             items[count++] = (FKeyItem){"F5", "Uppslag"};
+            items[count++] = (FKeyItem){"F6", "Noter"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
             items[count++] = (FKeyItem){"F10", "Avsluta"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
@@ -741,7 +877,8 @@ static void print_sw_field(int row, int colon_col, const char *label, const char
 /**
  * @brief Ritar den inramade rymdvädersrutan under loggraderna med data från https://hf.avitec.se.
  * Fälten är alignade på kolon så att etiketterna linjerar lodrätt mellan rad 1 och rad 2.
- * Visar K-index (Kiruna), MUF, LUF, CME på rad 1 samt Solfackla, Solvind, Norrsken på rad 2.
+ * Visar K-index (K/Kp), MUF, LUF, CME på rad 1 samt Solfackla, Solvind, Norrsken på rad 2.
+ * Tiden då rymdvädret senast hämtades visas högerställt i rutans titelrad.
  * @param top_y Översta raden för rutan.
  * @param width Rutans bredd (COLS).
  */
@@ -750,6 +887,19 @@ void draw_space_weather_box(int top_y, int width) {
 
     SpaceWeatherData sw;
     space_weather_get_data(&sw);
+
+    /* Tidsstämpel för senaste uppdatering högerställt i rutans titelrad */
+    if (sw.updated_time[0] != '\0') {
+        char time_str[64];
+        snprintf(time_str, sizeof(time_str), " (kl %s) ", sw.updated_time);
+        int tlen = utf8_display_width(time_str);
+        int tx = (width - 1) - tlen;
+        if (tx > 30) {
+            attron(COLOR_PAIR(CP_TITLE));
+            mvprintw(top_y, tx, "%s", time_str);
+            attroff(COLOR_PAIR(CP_TITLE));
+        }
+    }
 
     /* Beräkna kolumnpositioner för kolon */
     int colon0 = 12;
@@ -760,8 +910,8 @@ void draw_space_weather_box(int top_y, int width) {
     int r1 = top_y + 1;
     int r2 = top_y + 2;
 
-    /* RAD 1: K-index ("K Kiruna"), MUF, LUF, CME */
-    print_sw_field(r1, colon0, "K Kiruna", sw.k_kiruna, sw_tone_to_color_pair(sw.k_tone));
+    /* RAD 1: K-index ("K/Kp"), MUF, LUF, CME */
+    print_sw_field(r1, colon0, "K/Kp", sw.k_kiruna, sw_tone_to_color_pair(sw.k_tone));
     print_sw_field(r1, colon1, "MUF", sw.muf, sw_tone_to_color_pair(sw.muf_tone));
     print_sw_field(r1, colon2, "LUF", sw.luf, sw_tone_to_color_pair(sw.luf_tone));
     print_sw_field(r1, colon3, "CME", sw.cme, sw_tone_to_color_pair(sw.cme_tone));
@@ -770,12 +920,139 @@ void draw_space_weather_box(int top_y, int width) {
     print_sw_field(r2, colon0, "Solfackla", sw.solfackla, sw_tone_to_color_pair(sw.solfackla_tone));
     print_sw_field(r2, colon1, "Solvind", sw.solvind, sw_tone_to_color_pair(sw.solvind_tone));
     print_sw_field(r2, colon2, "Norrsken", sw.norrsken, sw_tone_to_color_pair(sw.norrsken_tone));
+}
 
-    /* Tidsstämpel för senaste uppdatering till höger */
-    if (width >= 70 && sw.updated_time[0] != '\0') {
-        attron(COLOR_PAIR(CP_BORDER));
-        mvprintw(r2, width - 15, "(kl %s)", sw.updated_time);
-        attroff(COLOR_PAIR(CP_BORDER));
+/**
+ * @brief Beräknar kolumnplaceringar och bredder för loggtabellen baserat på terminalens bredd.
+ * QRB döljs före QTH vid minskande bredd, QTH kvarstår ned till 80 kolumner,
+ * och QSO-nummerkolumnen tas bort vid < 90 kolumner.
+ * @param total_cols Fönsterbredd (COLS).
+ * @param layout Utdatapekare till LogColumnLayout-struktur.
+ */
+void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
+    if (!layout) return;
+    memset(layout, 0, sizeof(*layout));
+
+    layout->show_qso_num = (total_cols >= 90) ? 1 : 0;
+
+    int max_col = total_cols - 5;
+
+    const int base_name = 14;
+    const int base_qth  = 13;
+    const int min_qth   = 10;
+    const int max_qth   = 30;
+    const int base_qrb  = 6;  /* Siffra utan 'km' */
+    const int base_loc  = 8;
+    const int base_dxcc = 16;
+
+    if (layout->show_qso_num) {
+        layout->col_date = 7;
+        layout->col_time = 14;
+        layout->col_call = 19;
+        layout->col_freq = 30;
+        layout->col_band = 39;
+        layout->col_mode = 46;
+        layout->col_rst  = 51;
+        layout->col_name = 62;
+    } else {
+        layout->col_date = 2;
+        layout->col_time = 9;
+        layout->col_call = 14;
+        layout->col_freq = 25;
+        layout->col_band = 34;
+        layout->col_mode = 41;
+        layout->col_rst  = 46;
+        layout->col_name = 57;
+    }
+
+    int col_name = layout->col_name;
+    int avail_total = max_col - col_name + 1;
+
+    if (max_col >= col_name + 60) {
+        /* Full bredd: Alla kolumner visas (Namn, QTH, QRB, Lokator, DXCC) */
+        layout->w_dxcc = base_dxcc;
+        layout->w_loc = base_loc;
+        layout->w_qrb = base_qrb;
+        layout->w_name = base_name;
+        int extra = max_col - (col_name + 60);
+        int qth_extra = (extra > (max_qth - base_qth)) ? (max_qth - base_qth) : extra;
+        layout->w_qth = base_qth + qth_extra;
+        int rem = extra - qth_extra;
+        if (rem > 0) {
+            int name_extra = (rem > 6) ? 6 : rem;
+            layout->w_name += name_extra;
+        }
+        layout->col_qth  = col_name + layout->w_name + 1;
+        layout->col_qrb  = layout->col_qth + layout->w_qth + 1;
+        layout->col_loc  = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_dxcc = layout->col_loc + layout->w_loc + 1;
+    } else if (max_col >= col_name + 43) {
+        /* DXCC döljs först: Namn, QTH, QRB, Lokator visas */
+        layout->w_dxcc = 0;
+        layout->w_loc = base_loc;
+        layout->w_qrb = base_qrb;
+        layout->w_name = base_name;
+        int extra = max_col - (col_name + 43);
+        layout->w_qth = base_qth + extra;
+        if (layout->w_qth > max_qth) layout->w_qth = max_qth;
+        layout->col_qth = col_name + layout->w_name + 1;
+        layout->col_qrb = layout->col_qth + layout->w_qth + 1;
+        layout->col_loc = layout->col_qrb + layout->w_qrb + 1;
+    } else if (max_col >= col_name + 35) {
+        /* Lokator döljs därefter: Namn, QTH (>= 13), QRB visas */
+        layout->w_dxcc = 0;
+        layout->w_loc = 0;
+        layout->w_qrb = base_qrb;
+        layout->w_name = base_name;
+        int extra = max_col - (col_name + 35);
+        layout->w_qth = base_qth + extra;
+        if (layout->w_qth > max_qth) layout->w_qth = max_qth;
+        layout->col_qth = col_name + layout->w_name + 1;
+        layout->col_qrb = layout->col_qth + layout->w_qth + 1;
+    } else if (max_col >= col_name + 32) {
+        /* Lokator döljs, QTH minskas mot 10 tecken, QRB visas fortfarande */
+        layout->w_dxcc = 0;
+        layout->w_loc = 0;
+        layout->w_qrb = base_qrb;
+        layout->w_name = base_name;
+        layout->w_qth = max_col - (col_name + base_name + 1 + base_qrb + 1);
+        if (layout->w_qth < min_qth) layout->w_qth = min_qth;
+        if (layout->w_qth > max_qth) layout->w_qth = max_qth;
+        layout->col_qth = col_name + layout->w_name + 1;
+        layout->col_qrb = layout->col_qth + layout->w_qth + 1;
+    } else if (total_cols >= 80) {
+        /* QRB döljs FÖRE QTH. QTH förblir synlig så länge total_cols >= 80 */
+        layout->w_dxcc = 0;
+        layout->w_loc = 0;
+        layout->w_qrb = 0;
+        if (avail_total >= base_name + 1 + min_qth) {
+            layout->w_name = base_name;
+            int qth_space = avail_total - (base_name + 1);
+            if (qth_space > max_qth) qth_space = max_qth;
+            if (qth_space < min_qth) qth_space = min_qth;
+            layout->w_qth = qth_space;
+            layout->col_qth = col_name + layout->w_name + 1;
+        } else {
+            layout->w_qth = min_qth;
+            layout->w_name = avail_total - (min_qth + 1);
+            if (layout->w_name < 3) layout->w_name = 3;
+            layout->col_qth = col_name + layout->w_name + 1;
+        }
+    } else if (max_col >= col_name + 3) {
+        /* Vid < 80 kolumner döljs QTH helt; endast Namn visas */
+        layout->w_dxcc = 0;
+        layout->w_loc = 0;
+        layout->w_qrb = 0;
+        layout->w_qth = 0;
+        layout->w_name = max_col - col_name + 1;
+        if (layout->w_name > base_name) layout->w_name = base_name;
+    } else {
+        /* Mycket smalt fönster */
+        layout->w_dxcc = 0;
+        layout->w_loc = 0;
+        layout->w_qrb = 0;
+        layout->w_qth = 0;
+        layout->w_name = 0;
     }
 }
 
@@ -901,6 +1178,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(input_top + 4, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
 
     /* RITA LOGGRADSKOMPONENTEN */
+    int show_notes = (st == NULL || st->show_notes);
     int show_sw = (st == NULL || st->show_space_weather);
     int sw_reserved = (show_sw && LINES >= 25) ? 4 : 0;
     int log_top = input_top + input_h;
@@ -915,128 +1193,45 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
     draw_box_with_title(log_top, 0, log_h, COLS, log_title, (focus_mode == FOCUS_LOG));
 
-    /* Kolumnrubriker */
+    /* Kolumnrubriker och dynamisk layout */
     int col_ny = COLS - 4;
-    int max_col = COLS - 5;
 
-    /* Bestäm vilka kolumner som ryms.
-     * Prioritetsordning vid minskande bredd: dölj DXCC först, sedan Lokator, sedan QTH, sedan Namn.
-     * QTH tillåts expandera dynamiskt om det finns ledig plats för långa ortsnamn.
-     */
-    int w_name = 0, w_qth_col = 0, w_qrb_col = 0, w_loc = 0, w_dxcc = 0;
-    int col_name = 62;
-    int col_qth  = 0;
-    int col_qrb  = 0;
-    int col_loc  = 0;
-    int col_dxcc = 0;
-
-    const int base_name = 14;
-    const int base_qth  = 13;
-    const int base_qrb  = 6;  /* Siffra utan 'km' */
-    const int base_loc  = 8;
-    const int base_dxcc = 16;
-
-    if (max_col >= col_name + 60) {
-        /* Full bredd (>= 122): Alla kolumner visas (Namn, QTH, QRB, Lokator, DXCC) */
-        w_dxcc = base_dxcc;
-        w_loc = base_loc;
-        w_qrb_col = base_qrb;
-        w_name = base_name;
-        int extra = max_col - (col_name + 60);
-        int qth_extra = (extra > 17) ? 17 : extra;
-        w_qth_col = base_qth + qth_extra; /* Expanderar upp till max 30 tecken */
-        int rem = extra - qth_extra;
-        if (rem > 0) {
-            int name_extra = (rem > 6) ? 6 : rem;
-            w_name += name_extra;
-        }
-        col_qth  = col_name + w_name + 1;
-        col_qrb  = col_qth + w_qth_col + 1;
-        col_loc  = col_qrb + w_qrb_col + 1;
-        col_dxcc = col_loc + w_loc + 1;
-    } else if (max_col >= col_name + 43) {
-        /* DXCC döljs först (105..121): Namn, QTH, QRB, Lokator visas */
-        w_dxcc = 0;
-        w_loc = base_loc;
-        w_qrb_col = base_qrb;
-        w_name = base_name;
-        int extra = max_col - (col_name + 43);
-        w_qth_col = base_qth + extra;
-        if (w_qth_col > 30) w_qth_col = 30; /* Max 30 tecken */
-        col_qth  = col_name + w_name + 1;
-        col_qrb  = col_qth + w_qth_col + 1;
-        col_loc  = col_qrb + w_qrb_col + 1;
-    } else if (max_col >= col_name + 34) {
-        /* Lokator döljs därefter (96..104): Namn, QTH, QRB visas */
-        w_dxcc = 0;
-        w_loc = 0;
-        w_qrb_col = base_qrb;
-        w_name = base_name;
-        int extra = max_col - (col_name + 34);
-        w_qth_col = base_qth + extra;
-        if (w_qth_col > 30) w_qth_col = 30; /* Max 30 tecken */
-        col_qth  = col_name + w_name + 1;
-        col_qrb  = col_qth + w_qth_col + 1;
-    } else if (max_col >= col_name + 31) {
-        /* QTH minskas ner mot min 10 tecken (93..95) innan det döljs helt */
-        w_dxcc = 0;
-        w_loc = 0;
-        w_qrb_col = base_qrb;
-        w_name = base_name;
-        w_qth_col = max_col - (col_name + base_name + 1 + base_qrb + 1);
-        if (w_qth_col < 10) w_qth_col = 10;
-        if (w_qth_col > 30) w_qth_col = 30;
-        col_qth  = col_name + w_name + 1;
-        col_qrb  = col_qth + w_qth_col + 1;
-    } else if (max_col >= col_name + 20) {
-        /* QTH döljs då det rymmer < 10 tecken (82..92): Endast Namn och QRB ryms */
-        w_dxcc = 0;
-        w_loc = 0;
-        w_qth_col = 0;
-        w_name = base_name;
-        w_qrb_col = base_qrb;
-        col_qrb = col_name + w_name + 1;
-    } else if (max_col >= col_name + 3) {
-        /* Endast Namn ryms (delvis eller helt) */
-        w_dxcc = 0;
-        w_loc = 0;
-        w_qth_col = 0;
-        w_qrb_col = 0;
-        w_name = max_col - col_name + 1;
-        if (w_name > base_name) w_name = base_name;
-    }
+    LogColumnLayout layout;
+    calculate_log_column_layout(COLS, &layout);
 
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
     mvhline(log_top + 1, 1, ' ', COLS - 2);
-    mvprintw(log_top + 1, 2, "   #");
-    mvprintw(log_top + 1, 7, "YYMMDD");
-    mvprintw(log_top + 1, 14, "HHMM");
-    mvprintw(log_top + 1, 19, "Signal    ");
-    mvprintw(log_top + 1, 30, "%-8s", "Frekv");
-    mvprintw(log_top + 1, 39, "%6s", "Band");
-    mvprintw(log_top + 1, 46, "Mode");
-    mvprintw(log_top + 1, 51, "%-10s", "RST");
+    if (layout.show_qso_num) {
+        mvprintw(log_top + 1, 2, "   #");
+    }
+    mvprintw(log_top + 1, layout.col_date, "YYMMDD");
+    mvprintw(log_top + 1, layout.col_time, "HHMM");
+    mvprintw(log_top + 1, layout.col_call, "Signal    ");
+    mvprintw(log_top + 1, layout.col_freq, "%-8s", "Frekv");
+    mvprintw(log_top + 1, layout.col_band, "%6s", "Band");
+    mvprintw(log_top + 1, layout.col_mode, "Mode");
+    mvprintw(log_top + 1, layout.col_rst,  "%-10s", "RST");
 
     char h_buf[64];
-    if (w_name > 0) {
-        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Namn", w_name, 0);
-        mvprintw(log_top + 1, col_name, "%s", h_buf);
+    if (layout.w_name > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Namn", layout.w_name, 0);
+        mvprintw(log_top + 1, layout.col_name, "%s", h_buf);
     }
-    if (w_qth_col > 0) {
-        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QTH", w_qth_col, 0);
-        mvprintw(log_top + 1, col_qth, "%s", h_buf);
+    if (layout.w_qth > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QTH", layout.w_qth, 0);
+        mvprintw(log_top + 1, layout.col_qth, "%s", h_buf);
     }
-    if (w_qrb_col > 0) {
-        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QRB", w_qrb_col, 1);
-        mvprintw(log_top + 1, col_qrb, "%s", h_buf);
+    if (layout.w_qrb > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QRB", layout.w_qrb, 1);
+        mvprintw(log_top + 1, layout.col_qrb, "%s", h_buf);
     }
-    if (w_loc > 0) {
-        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Lokator", w_loc, 0);
-        mvprintw(log_top + 1, col_loc, "%s", h_buf);
+    if (layout.w_loc > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "Lokator", layout.w_loc, 0);
+        mvprintw(log_top + 1, layout.col_loc, "%s", h_buf);
     }
-    if (w_dxcc > 0) {
-        utf8_pad_or_clip(h_buf, sizeof(h_buf), "DXCC", w_dxcc, 0);
-        mvprintw(log_top + 1, col_dxcc, "%s", h_buf);
+    if (layout.w_dxcc > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "DXCC", layout.w_dxcc, 0);
+        mvprintw(log_top + 1, layout.col_dxcc, "%s", h_buf);
     }
 
     mvprintw(log_top + 1, col_ny, "Ny");
@@ -1060,7 +1255,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             for (int idx = *log_scroll_offset; idx <= selected_log_pos; ++idx) {
                 lines++;
                 int orig = filtered_indices[idx];
-                if (log_list->items[orig].comment[0] != '\0') {
+                if (show_notes && log_list->items[orig].comment[0] != '\0') {
                     lines++;
                 }
             }
@@ -1093,54 +1288,58 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         mvhline(row_y, 1, ' ', COLS - 2);
 
         char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
-        mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
+        if (layout.show_qso_num) {
+            mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
+        } else {
+            mvprintw(row_y, 1, "%c", mark_char);
+        }
 
         char d_str[16];
         format_date_yymmdd(item->date, d_str, sizeof(d_str));
-        mvprintw(row_y, 7, "%-6s", d_str);
+        mvprintw(row_y, layout.col_date, "%-6s", d_str);
 
         char t_str[16];
         format_time_hhmm(item->time_utc, t_str, sizeof(t_str));
-        mvprintw(row_y, 14, "%-4s", t_str);
+        mvprintw(row_y, layout.col_time, "%-4s", t_str);
 
-        mvprintw(row_y, 19, "%-10s", item->call);
-        mvprintw(row_y, 30, "%-8s", item->freq);
+        mvprintw(row_y, layout.col_call, "%-10s", item->call);
+        mvprintw(row_y, layout.col_freq, "%-8s", item->freq);
 
         char band_dsp[16];
         format_band_display(item->band, band_dsp, sizeof(band_dsp));
-        mvprintw(row_y, 39, "%6s", band_dsp);
+        mvprintw(row_y, layout.col_band, "%6s", band_dsp);
 
-        mvprintw(row_y, 46, "%-4s", item->mode);
+        mvprintw(row_y, layout.col_mode, "%-4s", item->mode);
 
         char rst_str[32];
         format_rst_combined(item->rst_sent, item->rst_rcvd, rst_str, sizeof(rst_str));
-        mvprintw(row_y, 51, "%-10.10s", rst_str);
+        mvprintw(row_y, layout.col_rst, "%-10.10s", rst_str);
 
         char cell_buf[128];
-        if (w_name > 0) {
-            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->name, w_name, 0);
-            mvprintw(row_y, col_name, "%s", cell_buf);
+        if (layout.w_name > 0) {
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->name, layout.w_name, 0);
+            mvprintw(row_y, layout.col_name, "%s", cell_buf);
         }
-        if (w_qth_col > 0) {
-            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->qth, w_qth_col, 0);
-            mvprintw(row_y, col_qth, "%s", cell_buf);
+        if (layout.w_qth > 0) {
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->qth, layout.w_qth, 0);
+            mvprintw(row_y, layout.col_qth, "%s", cell_buf);
         }
-        if (w_qrb_col > 0) {
+        if (layout.w_qrb > 0) {
             if (item->distance[0] == '\0' || strcmp(item->distance, "-") == 0) {
                 update_qso_qrb(st, (QSO *)item);
             }
             char qrb_dsp[16];
             format_qrb_display(item, qrb_dsp, sizeof(qrb_dsp));
-            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), qrb_dsp, w_qrb_col, 1);
-            mvprintw(row_y, col_qrb, "%s", cell_buf);
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), qrb_dsp, layout.w_qrb, 1);
+            mvprintw(row_y, layout.col_qrb, "%s", cell_buf);
         }
-        if (w_loc > 0) {
-            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->gridsquare, w_loc, 0);
-            mvprintw(row_y, col_loc, "%s", cell_buf);
+        if (layout.w_loc > 0) {
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->gridsquare, layout.w_loc, 0);
+            mvprintw(row_y, layout.col_loc, "%s", cell_buf);
         }
-        if (w_dxcc > 0) {
-            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->dxcc, w_dxcc, 0);
-            mvprintw(row_y, col_dxcc, "%s", cell_buf);
+        if (layout.w_dxcc > 0) {
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->dxcc, layout.w_dxcc, 0);
+            mvprintw(row_y, layout.col_dxcc, "%s", cell_buf);
         }
 
         attroff(COLOR_PAIR(row_color) | row_attr);
@@ -1156,18 +1355,19 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
         if (is_selected) {
             *cur_y = row_y;
-            *cur_x = 2;
+            *cur_x = layout.show_qso_num ? 2 : 1;
         }
 
         cur_screen_row++;
 
-        /* Om det finns en Notering och det finns plats kvar i rutan: visa den på raden under */
-        if (item->comment[0] != '\0' && cur_screen_row < log_avail_rows) {
+        /* Om det finns en Notering och visning av noteringar är på och det finns plats kvar: visa den på raden under */
+        if (show_notes && item->comment[0] != '\0' && cur_screen_row < log_avail_rows) {
             int note_y = log_top + 2 + cur_screen_row;
             attron(COLOR_PAIR(row_color) | row_attr);
             mvhline(note_y, 1, ' ', COLS - 2);
 
-            int max_note_w = COLS - 19;
+            int note_col = layout.show_qso_num ? 7 : layout.col_date;
+            int max_note_w = COLS - (note_col + 12);
             if (max_note_w < 5) max_note_w = 5;
 
             char note_buf[512];
@@ -1178,12 +1378,12 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             }
 
             if (is_selected || is_marked) {
-                mvprintw(note_y, 7, "Notering: %s", note_buf);
+                mvprintw(note_y, note_col, "Notering: %s", note_buf);
                 attroff(COLOR_PAIR(row_color) | row_attr);
             } else {
                 attroff(COLOR_PAIR(row_color) | row_attr);
                 attron(COLOR_PAIR(CP_LABEL));
-                mvprintw(note_y, 7, "Notering: ");
+                mvprintw(note_y, note_col, "Notering: ");
                 attroff(COLOR_PAIR(CP_LABEL));
                 attron(COLOR_PAIR(CP_LOG_ROW));
                 printw("%s", note_buf);

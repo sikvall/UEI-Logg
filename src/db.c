@@ -241,8 +241,7 @@ int db_delete_qso(int64_t id) {
 int db_delete_marked(const QSOList *list) {
     if (s_db == NULL || list == NULL) return 0;
 
-    char *errmsg = NULL;
-    sqlite3_exec(s_db, "BEGIN TRANSACTION;", NULL, NULL, &errmsg);
+    sqlite3_exec(s_db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
 
     const char *sql = "DELETE FROM qsos WHERE id = ?;";
     sqlite3_stmt *stmt = NULL;

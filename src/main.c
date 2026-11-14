@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
                 if (f_cnt > 0) {
                     focus_mode = FOCUS_LOG;
                     if (selected_log_pos >= f_cnt) selected_log_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, F5=Hant., F6=Ny, F7=Alla hant., F8=Radera, Enter=Redigera.");
+                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, F5=Hant/Ny, F6=Noter, F7=Alla hant., F8=Radera, Enter=Redigera.");
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Inga loggrader att välja ännu.");
                 }
@@ -266,6 +266,13 @@ int main(int argc, char *argv[]) {
                 field_fresh = 1;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
             }
+            continue;
+        } else if (ch == KEY_F(6)) {
+            /* F6: Växla visning av noteringar i loggraderna (på/av) */
+            station.show_notes = !station.show_notes;
+            save_station_settings(CONFIG_FILE, &station);
+            snprintf(status_msg, sizeof(status_msg), "Noteringar i loggen: %s",
+                     station.show_notes ? "PÅ" : "AV");
             continue;
         } else if (ch == KEY_F(9)) {
             /* F9: Visa tangentbordshjälp */
@@ -310,7 +317,7 @@ int main(int argc, char *argv[]) {
                     int start_idx = f_cnt - 1;
                     for (int idx = f_cnt - 1; idx >= 0; --idx) {
                         int orig = f_idx[idx];
-                        int qso_lines = (log_list.items[orig].comment[0] != '\0') ? 2 : 1;
+                        int qso_lines = (station.show_notes && log_list.items[orig].comment[0] != '\0') ? 2 : 1;
                         if (lines + qso_lines > avail && lines > 0) {
                             break;
                         }
@@ -356,74 +363,51 @@ int main(int argc, char *argv[]) {
                              log_list.items[orig_idx].call, m_cnt);
                 }
             } else if (ch == KEY_F(5)) {
-                /* F5: Markera som hanterad (✓) för markerade rader eller aktuell rad */
+                /* F5: Växla status mellan hanterad (✓) och ny (✗) för markerade rader eller aktuell rad */
                 int m_cnt = 0;
                 for (size_t mi = 0; mi < log_list.count; ++mi) {
                     if (log_list.items[mi].marked) m_cnt++;
                 }
                 if (m_cnt > 0) {
+                    int all_handled = 1;
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        if (log_list.items[mi].marked && !log_list.items[mi].handled) {
+                            all_handled = 0;
+                            break;
+                        }
+                    }
+                    int new_status = all_handled ? 0 : 1;
                     for (size_t mi = 0; mi < log_list.count; ++mi) {
                         if (log_list.items[mi].marked) {
-                            log_list.items[mi].handled = 1;
+                            log_list.items[mi].handled = new_status;
                             if (db_is_open() && log_list.items[mi].id > 0) {
-                                db_set_handled(log_list.items[mi].id, 1);
+                                db_set_handled(log_list.items[mi].id, new_status);
                             }
                         }
                     }
                     if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
-                        current_qso.handled = 1;
+                        current_qso.handled = new_status;
                     }
                     if (!db_is_open()) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
-                    snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som hanterade (✓).", m_cnt);
+                    snprintf(status_msg, sizeof(status_msg),
+                             new_status ? "Markerade %d rader som hanterade (✓)." : "Markerade %d rader som nya (✗).", m_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
-                    log_list.items[orig_idx].handled = 1;
+                    int new_status = !log_list.items[orig_idx].handled;
+                    log_list.items[orig_idx].handled = new_status;
                     if (editing_index == orig_idx) {
-                        current_qso.handled = 1;
+                        current_qso.handled = new_status;
                     }
                     if (db_is_open() && log_list.items[orig_idx].id > 0) {
-                        db_set_handled(log_list.items[orig_idx].id, 1);
+                        db_set_handled(log_list.items[orig_idx].id, new_status);
                     } else if (!db_is_open()) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
-                    snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som hanterat (✓).", log_list.items[orig_idx].call);
-                }
-            } else if (ch == KEY_F(6)) {
-                /* F6: Markera som ny (✗) för markerade rader eller aktuell rad */
-                int m_cnt = 0;
-                for (size_t mi = 0; mi < log_list.count; ++mi) {
-                    if (log_list.items[mi].marked) m_cnt++;
-                }
-                if (m_cnt > 0) {
-                    for (size_t mi = 0; mi < log_list.count; ++mi) {
-                        if (log_list.items[mi].marked) {
-                            log_list.items[mi].handled = 0;
-                            if (db_is_open() && log_list.items[mi].id > 0) {
-                                db_set_handled(log_list.items[mi].id, 0);
-                            }
-                        }
-                    }
-                    if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
-                        current_qso.handled = 0;
-                    }
-                    if (!db_is_open()) {
-                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
-                    }
-                    snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som nya (✗).", m_cnt);
-                } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
-                    int orig_idx = f_idx[selected_log_pos];
-                    log_list.items[orig_idx].handled = 0;
-                    if (editing_index == orig_idx) {
-                        current_qso.handled = 0;
-                    }
-                    if (db_is_open() && log_list.items[orig_idx].id > 0) {
-                        db_set_handled(log_list.items[orig_idx].id, 0);
-                    } else if (!db_is_open()) {
-                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
-                    }
-                    snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som nytt (✗).", log_list.items[orig_idx].call);
+                    snprintf(status_msg, sizeof(status_msg),
+                             new_status ? "Markerade QSO med %s som hanterat (✓)." : "Markerade QSO med %s som nytt (✗).",
+                             log_list.items[orig_idx].call);
                 }
             } else if (ch == KEY_F(7)) {
                 /* F7: Markera ALLA loggrader som hanterade (✓) */
@@ -458,7 +442,9 @@ int main(int argc, char *argv[]) {
                     if (!db_is_open()) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
-                    editing_index = -1;
+                    if (editing_index >= 0) {
+                        reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Raderade %d markerade QSO:n.", del_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
@@ -471,7 +457,11 @@ int main(int argc, char *argv[]) {
                     if (!db_is_open()) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
-                    editing_index = -1;
+                    if (editing_index == orig_idx) {
+                        reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                    } else if (editing_index > orig_idx) {
+                        editing_index--;
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Raderade QSO med %s.", del_call);
                 }
                 if (log_list.count == 0) {

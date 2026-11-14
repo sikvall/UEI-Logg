@@ -41,6 +41,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "F3 el. ^F    - Sök och filtrera rader i logglistan i realtid",
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
             "F5           - Manuellt uppslag (SM Callbook vid svensk signal, annars QRZ.COM)",
+            "F6           - Växla visning av noteringar i loggraderna (på/av)",
             "F9           - Denna hjälpdialog (tillgänglig i logg- och inställningsskärm)",
             "F10 el. ^Q   - Avsluta UEI-Logg på ett säkert sätt",
             "F12          - Stationsinställningar, ADIF-filhantering & färgscheman",
@@ -53,7 +54,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        15
+        16
     },
     {
         "[2] Inmatning",
@@ -129,8 +130,8 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Multimarkering och statusändring:",
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
-            "  * F5: Sätter status som Hanterad (visas med ett grönt bockmärke ✓).",
-            "  * F6: Sätter status som Ny (visas med ett kryss ✗).",
+            "  * F5: Växlar status mellan Hanterad (✓) och Ny (✗).",
+            "  * F6: Växlar visning av noteringar i loggraderna (på/av).",
             "  * F7: Sätter ALLA loggrader som Hanterade (✓).",
             "  * Om rader är markerade med INS påverkas alla markerade rader samtidigt.",
             "",
@@ -182,7 +183,7 @@ static const HelpTopic HELP_TOPICS[] = {
         {
             "Realtidsdata hämtas asynkront i bakgrunden utan fördröjning:",
             "",
-            "Geomagnetiskt K-index (Kiruna):",
+            "Geomagnetiskt K-index (K/Kp):",
             "  * 0 - 2 (Grönt):  Lugna geomagnetiska förhållanden. Utmärkta HF-signaler.",
             "  * 3 - 4 (Gult):   Oroliga förhållanden. Risk för fading och dämpning i norr.",
             "  * 5 - 9 (Rött):   Geomagnetisk storm! Kraftig dämpning av HF-vågor och absorption.",

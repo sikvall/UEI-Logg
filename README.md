@@ -22,15 +22,18 @@
 ## Funktioner
 
 - **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, QTH, Lokator, QRB, DXCC, Frekvens, Band, Mode, Datum, UTC, Notering).
+- **SQLite3 Databas med WAL-läge**: Persistent, kraschsäker och blixtsnabb databaslagring i `qsolog.sq3`. Automatisk migrering från tidigare `qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (SFI, SSN, A-index, K-index, solflares, geomagnetiska stormar och HF-konditioner per band).
 - **Automatiska uppslag**:
   - Svenska anropssignaler slås automatiskt upp mot **SM Callbook** (SSA).
   - Utländska anropssignaler slås automatiskt upp mot **QRZ.COM XML API**.
   - Automatisk detektering av Silent Keys (visas med `-SK-` och `SILENT KEY`).
-- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer) och bäring via Maidenhead-lokatorer.
+- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring via Maidenhead-lokatorer eller OpenStreetMap.
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
-- **Flera färgscheman**: Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix m.fl.
+- **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
+- **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
+- **11 Färgscheman**: Välj mellan 11 teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge m.fl.) med interaktiv rullgardinsmeny och live-förhandsgranskning. Spara och avsluta smidigt med F12.
 
 ---
 
@@ -53,15 +56,12 @@ Statistikrutan är placerad högst upp i programmet, direkt ovanför QSO-inmatni
 
 ### 2. Rymdvädersrutan (nedre delen)
 
-Rymdvädersrutan är placerad längst ner i terminalfönstret (ovanför funktionstangentraden) och presenterar aktuella jonosfäriska, sol- och geomagnetiska förhållanden för HF-amatörbanden.
+Rymdvädersrutan är placerad längst ner i terminalfönstret (ovanför funktionstangentraden) och presenterar aktuella jonosfäriska, sol- och geomagnetiska förhållanden för HF-amatörbanden. Tidpunkten för senaste datahämtning visas högerställt i rutans titelrad (t.ex. `(kl 16:45)`).
 
 - **Visningsvillkor**: Visas när terminalfönstret har minst 25 rader (`LINES >= 25`). Vid lägre fönsterhöjder döljs den automatiskt så att formulär och logghistorik prioriteras.
 - **Asynkron datahämtning**: Data hämtas i bakgrunden via en separat POSIX-tråd från `hf.avitec.se` och uppdateras automatiskt utan att störa eller fördröja pågående QSO-inmatning.
 - **Presentation och nyckelvärden**:
-  - **SFI (Solar Flux Index)**: Solens radiostrålning vid 2,8 GHz (10,7 cm). Högre värden (>100–150) indikerar god jonisering och förbättrade dagsförhållanden på de högre HF-banden (20 m till 10 m).
-  - **SSN (Sunspot Number)**: Aktuellt solfläckstal. Fler solfläckar ger generellt starkare jonisering i jonosfärens F-skikt och högre maximal användbar frekvens (MUF).
-  - **A-index**: Globalt geomagnetiskt dygnsvärde (linjär skala). Låga värden (0–7) innebär lugna magnetiska förhållanden.
-  - **K-index**: Planetärt och lokalt geomagnetiskt index för de senaste 3 timmarna (skala 0–9, mätt bl.a. i Kiruna):
+  - **K/Kp**: Lokalt och planetärt geomagnetiskt index för de senaste 3 timmarna (skala 0–9):
     - *0–2 (Grönt)*: Lugna och stabila geomagnetiska förhållanden. Mycket goda HF-signaler och lågt atmosfäriskt brus.
     - *3–4 (Gult)*: Oroligt/aktiverat magnetfält. Risk för fading och dämpning, särskilt på polar- och nordliga signalvägar.
     - *5–9 (Rött)*: Geomagnetisk storm (G1–G5). Kraftig absorption, störd polarkalott och radioutslag (men ger möjlighet till polarskensreflektion/aurorastuds på 6 m och 2 m).
@@ -247,14 +247,15 @@ När `ueilog` körs är följande tangenter tillgängliga:
 
 | Tangent | Beskrivning |
 |---|---|
-| **F2** / **Enter** | Spara och logga aktuellt QSO till ADIF-filen |
+| **F2** / **Enter** | Spara och logga aktuellt QSO till SQLite-databasen och ADIF |
 | **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
-| **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Sätt status till Hanterad (grönt bockmärke ✓) |
-| **F6** | I loggläge: Sätt status till Ny (rött kryss ✗) |
+| **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
+| **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
+| **F7** | I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
-| **F12** | Öppna inställningsdialogen (Min Station, QRZ-inloggning, färgteman, ADIF import/export, reglage för statistikruta m.m.) |
+| **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, ADIF import/export, reglage m.m.) |
 | **Ctrl+Q** / **Ctrl+C** | Avsluta programmet |
 | **Tab** / **Skift+Tab** | Stega framåt / bakåt mellan inmatningsfälten |
 | **Pilar Upp/Ned/Vänster/Höger** | Navigera i formulär, fält och menyer |
@@ -268,8 +269,9 @@ När `ueilog` körs är följande tangenter tillgängliga:
 
 ## Filer och konfiguration
 
-- **`station.conf`**: Konfigurationsfil för stationen (anropssignal, operatörsnamn, QTH, lokator, tidszon, QRZ-inloggning, färgtema, reglage för statistikruta m.m.).
-- **`qsolog.adi`**: Standardloggfil i ADIF-format där alla genomförda kontakter lagras.
+- **`station.conf`**: Konfigurationsfil för stationen (anropssignal, operatörsnamn, QTH, lokator, tidszon, QRZ-inloggning, färgtema, reglage för noteringar, statistikruta m.m.).
+- **`qsolog.sq3`**: Primär lokal SQLite3-databas (med Write-Ahead Logging) där alla genomförda kontakter lagras säkert.
+- **`qsolog.adi`**: Standardfil i ADIF-format för import och export.
 - **`dxcc.txt`**: DXCC-prefix- och undantagsdatabas med över 3 900 regler och svenska översättningar.
 - **`dxcc.txt.bak`**: Automatisk säkerhetskopia som skapas vid körning av `./dxcc update`.
 

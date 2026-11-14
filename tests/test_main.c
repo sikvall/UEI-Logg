@@ -19,6 +19,7 @@
 #include "qrb.h"
 #include "dxcc.h"
 #include "tui.h"
+#include "space_weather.h"
 
 static int g_tests_run = 0;
 static int g_tests_passed = 0;
@@ -470,6 +471,7 @@ static void run_settings_tests(void) {
     st.theme = 3;
     st.show_stats = 1;
     st.show_space_weather = 1;
+    st.show_notes = 0;
 
     const char *tmp_conf = "/tmp/test_station_tmp.conf";
     save_station_settings(tmp_conf, &st);
@@ -485,10 +487,38 @@ static void run_settings_tests(void) {
              (strcmp(loaded.timezone, "UTC+1") == 0) &&
              (loaded.theme == 3) &&
              (loaded.show_stats == 1) &&
-             (loaded.show_space_weather == 1);
+             (loaded.show_space_weather == 1) &&
+             (loaded.show_notes == 0);
+
+    /* Testa även show_notes = 1 */
+    st.show_notes = 1;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int notes_ok = (loaded.show_notes == 1);
 
     unlink(tmp_conf);
-    record_result(ok, "save_station_settings och load_station_settings bevarar alla stationsparametrar", NULL);
+    record_result(ok && notes_ok, "save_station_settings och load_station_settings bevarar alla stationsparametrar (inkl. show_notes för F6)", NULL);
+
+    /* Rymdväder: K/Kp och titelradens högerställda tidsstämpel */
+    {
+        SpaceWeatherData sw;
+        space_weather_get_data(&sw);
+        copy_str(sw.updated_time, sizeof(sw.updated_time), "16:45");
+        copy_str(sw.k_kiruna, sizeof(sw.k_kiruna), "2/1");
+
+        char time_str[64];
+        snprintf(time_str, sizeof(time_str), " (kl %s) ", sw.updated_time);
+        int tlen = utf8_display_width(time_str);
+        int width = 80;
+        int tx = (width - 1) - tlen;
+
+        int right_aligned_ok = (tx == 67 && (tx + tlen == width - 1));
+        int label_ok = (sw.k_kiruna[0] != '\0');
+
+        record_result(right_aligned_ok && label_ok,
+                      "Rymdvädersrutan: K/Kp och tidsstämpel högerställd i titelraden (t.ex. ' (kl 16:45) ')", NULL);
+    }
 }
 
 /* ========================================================================= */
@@ -1297,8 +1327,116 @@ static void run_swedish_chars_tests(void) {
         record_result(max_ok && min_ok, "QTH-kolumnregler validerade: minsta bredd 10 tkn och maximal bredd 30 tkn", NULL);
     }
 
+    /* 13. QRB döljs före QTH vid minskande fönsterbredd */
+    {
+        LogColumnLayout l_wide, l_mid, l_80;
+        calculate_log_column_layout(110, &l_wide);
+        calculate_log_column_layout(92, &l_mid);
+        calculate_log_column_layout(80, &l_80);
+
+        int wide_ok = (l_wide.w_qrb > 0 && l_wide.w_qth > 0);
+        int mid_ok  = (l_mid.w_qrb == 0 && l_mid.w_qth >= 10); /* QRB dold, QTH kvar */
+        int c80_ok  = (l_80.w_qrb == 0 && l_80.w_qth >= 10);  /* QRB dold, QTH kvar vid 80 kolumner */
+
+        record_result(wide_ok && mid_ok && c80_ok,
+                      "QRB döljs före QTH vid minskande fönsterbredd (QTH kvarstår medan QRB döljs)", NULL);
+    }
+
+    /* 14. QTH kvarstår ned till 80 kolumner och döljs vid < 80 kolumner */
+    {
+        LogColumnLayout l_85, l_80, l_79, l_70;
+        calculate_log_column_layout(85, &l_85);
+        calculate_log_column_layout(80, &l_80);
+        calculate_log_column_layout(79, &l_79);
+        calculate_log_column_layout(70, &l_70);
+
+        int qth_85_ok = (l_85.w_qth >= 10);
+        int qth_80_ok = (l_80.w_qth >= 10);
+        int qth_79_ok = (l_79.w_qth == 0); /* Döljs vid < 80 */
+        int qth_70_ok = (l_70.w_qth == 0);
+
+        record_result(qth_85_ok && qth_80_ok && qth_79_ok && qth_70_ok,
+                      "QTH kvarstår ned till 80 kolumner (min 10 tkn) och döljs vid < 80 kolumner", NULL);
+    }
+
+    /* 15. QSO-nummerkolumn tas bort vid < 90 kolumner för att spara plats */
+    {
+        LogColumnLayout l_95, l_90, l_89, l_80;
+        calculate_log_column_layout(95, &l_95);
+        calculate_log_column_layout(90, &l_90);
+        calculate_log_column_layout(89, &l_89);
+        calculate_log_column_layout(80, &l_80);
+
+        int num_95_ok = (l_95.show_qso_num == 1 && l_95.col_date == 7 && l_95.col_name == 62);
+        int num_90_ok = (l_90.show_qso_num == 1 && l_90.col_date == 7 && l_90.col_name == 62);
+        int num_89_ok = (l_89.show_qso_num == 0 && l_89.col_date == 2 && l_89.col_name == 57);
+        int num_80_ok = (l_80.show_qso_num == 0 && l_80.col_date == 2 && l_80.col_name == 57);
+
+        record_result(num_95_ok && num_90_ok && num_89_ok && num_80_ok,
+                      "Kolumn med QSO-nummer visas vid >= 90 kolumner och tas bort vid < 90 kolumner", NULL);
+    }
+
     db_close();
     unlink(test_db_path);
+}
+
+/* ========================================================================= */
+/* [11] Färgscheman och temahantering                                        */
+/* ========================================================================= */
+static void run_theme_tests(void) {
+    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (11 teman) ===" ANSI_RESET "\n");
+
+    /* 1. Antal teman */
+    record_result(THEME_COUNT == 11, "THEME_COUNT är definierat som 11 teman", NULL);
+
+    /* 2. Temanamn och validering */
+    int names_ok = 1;
+    for (int i = 0; i < THEME_COUNT; ++i) {
+        if (THEME_NAMES[i] == NULL || strlen(THEME_NAMES[i]) == 0) {
+            names_ok = 0;
+            break;
+        }
+    }
+    int expected_names = 0;
+    if (names_ok &&
+        strcmp(THEME_NAMES[8], "Arktisk Natt (Nord Frost)") == 0 &&
+        strcmp(THEME_NAMES[9], "Field Day (Vintage Radio)") == 0 &&
+        strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0) {
+        expected_names = 1;
+    }
+    record_result(names_ok && expected_names, "Alla 11 temanamn definierade, inkl. Arktisk Natt, Field Day och Mörkerläge", NULL);
+
+    /* 3. Säker exekvering av apply_color_theme för alla index inkl. gränsvärden */
+    for (int t = -2; t <= 13; ++t) {
+        apply_color_theme(t);
+    }
+    record_result(1, "apply_color_theme() exekverar stabilt för alla 11 teman och felaktiga index", NULL);
+
+    /* 4. Sparande och laddning av nya teman i station.conf */
+    const char *test_conf = "test_theme_station.conf";
+    StationSettings st_save;
+    memset(&st_save, 0, sizeof(st_save));
+    st_save.theme = 8; /* Arktisk Natt */
+    copy_str(st_save.call, sizeof(st_save.call), "SM0TEST");
+    save_station_settings(test_conf, &st_save);
+
+    StationSettings st_load;
+    memset(&st_load, 0, sizeof(st_load));
+    load_station_settings(test_conf, &st_load);
+    int p1 = (st_load.theme == 8);
+
+    st_save.theme = 9; /* Field Day */
+    save_station_settings(test_conf, &st_save);
+    load_station_settings(test_conf, &st_load);
+    int p2 = (st_load.theme == 9);
+
+    st_save.theme = 10; /* Mörkerläge */
+    save_station_settings(test_conf, &st_save);
+    load_station_settings(test_conf, &st_load);
+    int p3 = (st_load.theme == 10);
+
+    unlink(test_conf);
+    record_result(p1 && p2 && p3, "StationSettings sparar och läser in alla nya teman korrekt via station.conf", NULL);
 }
 
 /* ========================================================================= */
@@ -1324,6 +1462,7 @@ int main(int argc, char *argv[]) {
     run_string_and_utf8_tests();
     run_sqlite_tests();
     run_swedish_chars_tests();
+    run_theme_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

@@ -75,6 +75,39 @@ void apply_color_theme(int theme_idx);
 int get_avail_log_rows(const StationSettings *st);
 
 /**
+ * @brief Struktur som beskriver den dynamiska kolumnlayouten för loggraderna baserat på fönsterbredd.
+ */
+typedef struct {
+    int show_qso_num; /**< 1 om QSO-nummerkolumn (#) visas (COLS >= 90), 0 om den döljs (COLS < 90) */
+    int col_date;     /**< X-position för datum (YYMMDD) */
+    int col_time;     /**< X-position för tid (HHMM) */
+    int col_call;     /**< X-position för anropssignal */
+    int col_freq;     /**< X-position för frekvens */
+    int col_band;     /**< X-position för band */
+    int col_mode;     /**< X-position för mode */
+    int col_rst;      /**< X-position för RST */
+    int col_name;     /**< X-position för Namn */
+    int w_name;       /**< Bredd för Namn-kolumn */
+    int col_qth;      /**< X-position för QTH */
+    int w_qth;        /**< Bredd för QTH-kolumn (min 10, max 30; döljs vid COLS < 80) */
+    int col_qrb;      /**< X-position för QRB */
+    int w_qrb;        /**< Bredd för QRB-kolumn (döljs före QTH vid platsbrist) */
+    int col_loc;      /**< X-position för Lokator */
+    int w_loc;        /**< Bredd för Lokator-kolumn */
+    int col_dxcc;     /**< X-position för DXCC */
+    int w_dxcc;       /**< Bredd för DXCC-kolumn */
+} LogColumnLayout;
+
+/**
+ * @brief Beräknar kolumnplaceringar och bredder för loggtabellen baserat på terminalens bredd.
+ * QRB döljs före QTH vid minskande bredd, QTH kvarstår ned till 80 kolumner,
+ * och QSO-nummerkolumnen tas bort vid < 90 kolumner.
+ * @param total_cols Fönsterbredd (COLS).
+ * @param layout Utdatapekare till LogColumnLayout-struktur.
+ */
+void calculate_log_column_layout(int total_cols, LogColumnLayout *layout);
+
+/**
  * @brief Bygger en array med index över loggrader som matchar ett visst sökfilter.
  * @param log_list Logglistan.
  * @param search_filter Söktext (eller NULL för alla rader).

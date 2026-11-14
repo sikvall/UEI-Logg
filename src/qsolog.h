@@ -60,9 +60,9 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra m.fl.) */
+/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge m.fl.) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 8
+#define THEME_COUNT 11
 
 /**
  * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).
@@ -118,6 +118,7 @@ typedef struct {
     int  filter_log;       /**< 1 om loggrader filtreras automatiskt efter inmatad signal */
     int  show_stats;       /**< 1 om statistikrutan ovanför QSO-inmatningen ska visas (default 1) */
     int  show_space_weather; /**< 1 om rymdvädersrutan längst ned ska visas (default 1) */
+    int  show_notes;       /**< 1 om noteringsrader i loggen ska visas (default 1) */
     char last_freq[32];    /**< Senast använda frekvens */
     char last_band[16];    /**< Senast använda band */
     char last_mode[16];    /**< Senast använda mode */

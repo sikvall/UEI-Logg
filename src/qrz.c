@@ -88,7 +88,7 @@ static void format_title_case(char *s) {
             if (*p >= 'a' && *p <= 'z') {
                 *p = (unsigned char)toupper(*p);
                 p++;
-            } else if (*p == 0xC3) {
+            } else if (*p == 0xC3 && *(p + 1) != '\0') {
                 if (*(p + 1) == 0xA5) *(p + 1) = 0x85;      /* å -> Å */
                 else if (*(p + 1) == 0xA4) *(p + 1) = 0x84; /* ä -> Ä */
                 else if (*(p + 1) == 0xB6) *(p + 1) = 0x96; /* ö -> Ö */
@@ -102,7 +102,7 @@ static void format_title_case(char *s) {
             if (*p >= 'A' && *p <= 'Z') {
                 *p = (unsigned char)tolower(*p);
                 p++;
-            } else if (*p == 0xC3) {
+            } else if (*p == 0xC3 && *(p + 1) != '\0') {
                 if (*(p + 1) == 0x85) *(p + 1) = 0xA5;      /* Å -> å */
                 else if (*(p + 1) == 0x84) *(p + 1) = 0xA4; /* Ä -> ä */
                 else if (*(p + 1) == 0x96) *(p + 1) = 0xB6; /* Ö -> ö */

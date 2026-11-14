@@ -192,20 +192,20 @@ Inmatningsfältet är ordnat på fyra rader:
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
     \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
-    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QTH} och slutligen \textbf{Namn}. Fältet för \textbf{QTH} har en minimibredd på 10 tecken (mindre utrymme döljer kolumnen) och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. Kärndata (signal, frekvens, band, mode, rapport och QRB) förblir alltid synliga.
+    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
     \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
 \end{itemize}
 
 \subsection{5. Rymdvädersruta}
-När terminalen har minst 25 rader och funktionen är aktiverad i inställningarna visas en informationsruta med data från \texttt{hf.avitec.se}:
+När terminalen har minst 25 rader och funktionen är aktiverad i inställningarna visas en informationsruta med data från \texttt{hf.avitec.se}. Tiden för senaste datahämtning presenteras högerställt i rutans titelrad (t.ex.\ \texttt{(kl 16:45)}).
 \begin{itemize}
-    \item \textbf{SFI:} Solar Flux Index (solens strålning vid 10,7 cm våglängd; högre värde gynnar högre HF-band).
-    \item \textbf{SSN:} Sunspot Number (solfläckstal).
-    \item \textbf{A- och K-index:} Geomagnetisk oro i jordens magnetfält ($K \le 2$ betyder lugna förhållanden).
-    \item \textbf{Solvind:} Hastighet i km/s och partikeldensitet ($p/\text{cm}^3$).
-    \item \textbf{Röntgenflöde (X-ray):} Soleruptioner (flare-klasser A, B, C, M, X).
-    \item \textbf{HF-Konditioner:} Summerad bedömning för dag- och nattrafik på 80m--10m.
+    \item \textbf{K/Kp:} Lokalt och planetärt geomagnetiskt K-index ($K \le 2$ betyder lugna förhållanden).
+    \item \textbf{MUF och LUF:} Maximal och lägsta användbara frekvens för jonosfärisk vågutbredning.
+    \item \textbf{CME:} Koronamassutkastningar från solen mot jorden.
+    \item \textbf{Solfackla:} Röntgenflöde och senaste solutbrott (klasser A, B, C, M, X).
+    \item \textbf{Solvind:} Hastighet i km/s och partikeltäthet.
+    \item \textbf{Norrsken (Aurora):} Polarskensaktivitet och förutsättningar för aurorareflektion på VHF.
 \end{itemize}
 
 \subsection{6. Snabbvalstangentrad}
@@ -233,8 +233,8 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
-\texttt{F5} & Loggläge & Markera vald / markerade rader som hanterade (✓) \\
-\texttt{F6} & Loggläge & Markera vald / markerade rader som nya (✗) \\
+\texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
+\texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
 \texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering \\
@@ -260,7 +260,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \section{Inställningar (F12)}
 \label{sec:settings}
 
-Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras stationen, anslutningar och visningslägen. Alla inställningar sparas till \texttt{station.conf} i projektkatalogen med \texttt{Enter} eller \texttt{F2}.
+Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras stationen, anslutningar och visningslägen. Alla inställningar sparas automatiskt till \texttt{station.conf} i projektkatalogen med \texttt{Enter}, \texttt{F2} eller genom att avsluta med \texttt{F12}. För att avbryta utan att spara trycker du på \texttt{Esc}.
 
 \subsection{Konfigurationsfält}
 \begin{enumerate}
@@ -271,16 +271,19 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
     \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
     \item \textbf{QRZ-uppslag:} \texttt{< På >} / \texttt{< Av >}. Hämtar automatiskt motstationens namn, QTH och lokator över nätet.
-    \item \textbf{Färgtema:} Välj mellan 8 klassiska färgteman:
+    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 11 färgteman finns tillgängliga:
     \begin{itemize}
-        \item \emph{Turbo Pascal (MC Default):} Klassisk blå/cyan/vit layout.
+        \item \emph{Turbo Pascal (MC Default):} Klassisk borlandblå/cyan/vit layout.
         \item \emph{MC Darkfar:} Mörkblå/svart bakgrund med hög kontrast.
         \item \emph{MC Gotar:} Svart/gul stil.
         \item \emph{MC Sand:} Ljusgrå bakgrund med mörk text.
-        \item \emph{MC Matrix:} Retro fosforgrön terminalstil.
-        \item \emph{Ljust tema:} Modern ljusgrå och blå design.
+        \item \emph{MC Matrix:} Retro fosforgrön terminalstil på svart botten.
+        \item \emph{Ljust tema:} Modern ljusgrå och blå design med orange accenter.
         \item \emph{Monokrom gråskala:} Perfekt för enkla terminaler och seriekonsoler.
-        \item \emph{Ambra:} Varm bärnstensgul CRT-retrokänsla.
+        \item \emph{Ambra:} Varm bärnstensgul CRT-retrokänsla på svart botten.
+        \item \emph{Arktisk Natt (Nord Frost):} Svalt och vilsamt tema inspirerat av Nord-paletten med polarnattsblå bas, frostcyan och norrskensgrönt; minimerar ögontrötthet vid sena pass.
+        \item \emph{Field Day (Vintage Radio):} Varm, analog transceiver-atmosfär inspirerad av Gruvbox, mörk antracitbotten, ockragul/bärnsten och läderbrunt.
+        \item \emph{Mörkerläge (Crimson Night):} Djupröd och svart mörkeranpassad skärm som bevarar det skotopiska mörkerseendet vid nattliga contester i nedsläckta schack.
     \end{itemize}
     \item \textbf{SM Callbook:} \texttt{< På >} / \texttt{< Av >}. Söker i den lokala databasen \texttt{smcallbook.txt}.
     \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
@@ -301,7 +304,8 @@ UEI-Logg använder en lokal relationsdatabas med **SQLite3** (\texttt{qsolog.sq3
 All loggdata lagras lokalt i SQLite3-databasen \texttt{qsolog.sq3}. Detta ger:
 \begin{itemize}
     \item \textbf{ACID-säkerhet:} Transaktioner och Write-Ahead Logging (WAL) förhindrar korruption vid plötsliga strömavbrott eller krascher.
-    \item \textbf{Prestanda i realtid:} Tangenttryckningar (F5/F6/F7 för att ändra hanteringsstatus eller F8 för radering) uppdaterar databasen omedelbart via SQL utan att skriva om tiotusentals rader på disk.
+    \item \textbf{Prestanda i realtid:} Tangenttryckningar (F5/F7 för att ändra hanteringsstatus eller F8 för radering) uppdaterar databasen omedelbart via SQL utan att skriva om tiotusentals rader på disk.
+    \item \textbf{Kompakt visning med F6:} Med tangenten \texttt{F6} kan visningen av noteringar i loggraderna snabbt växlas på eller av. När noteringar är avstängda komprimeras tabellen så att varje QSO tar exakt en rad, vilket maximerar antalet synliga kontakter.
     \item \textbf{Sömlös migrering:} Om \texttt{qsolog.sq3} saknas men en tidigare \texttt{qsolog.adi} finns i katalogen, migreras alla kontakter automatiskt vid första start.
 \end{itemize}
 
