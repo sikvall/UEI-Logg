@@ -2,6 +2,7 @@ station.conf
 ueilog
 qsolog
 dxcc
+testing
 *.o
 *.adi
 *.bak

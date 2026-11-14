@@ -301,8 +301,33 @@ int utf8_contains_ci(const char *haystack, const char *needle) {
     return 0;
 }
 
+typedef enum {
+    FREQ_UNIT_NONE = 0,
+    FREQ_UNIT_HZ,
+    FREQ_UNIT_KHZ,
+    FREQ_UNIT_MHZ,
+    FREQ_UNIT_GHZ
+} FreqUnit;
+
+static FreqUnit detect_freq_unit(const char *str) {
+    if (!str) return FREQ_UNIT_NONE;
+    for (const char *p = str; *p; ++p) {
+        if (isalpha((unsigned char)*p)) {
+            if (strncasecmp(p, "ghz", 3) == 0) return FREQ_UNIT_GHZ;
+            if (strncasecmp(p, "mhz", 3) == 0) return FREQ_UNIT_MHZ;
+            if (strncasecmp(p, "khz", 3) == 0 || strncasecmp(p, "kc", 2) == 0) return FREQ_UNIT_KHZ;
+            if (strncasecmp(p, "hz", 2) == 0) return FREQ_UNIT_HZ;
+            if (*p == 'g' || *p == 'G') return FREQ_UNIT_GHZ;
+            if (*p == 'k' || *p == 'K') return FREQ_UNIT_KHZ;
+            if (*p == 'm' || *p == 'M') return FREQ_UNIT_MHZ;
+        }
+    }
+    return FREQ_UNIT_NONE;
+}
+
 /**
  * @brief Tolkar och normaliserar frekvensinmatning till MHz med 3 decimaler (t.ex. "14.200" eller "14200" -> "14.200").
+ * Hanterar även explicita enheter som "1936 kHz", "8 MHz", "27 MHz" samt decimalkomma "14,200".
  * @param in Indatasträng med frekvens.
  * @param norm_out Buffer för normaliserat MHz-värde (kan vara NULL).
  * @param out_sz Storlek på målbuffer.
@@ -314,11 +339,13 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
         return 0.0;
     }
 
-    while (*in == ' ' || *in == '\t') in++;
+    while (*in == ' ' || *in == '\t' || *in == '\r' || *in == '\n') in++;
     if (*in == '\0') {
         if (norm_out && out_sz > 0) norm_out[0] = '\0';
         return 0.0;
     }
+
+    FreqUnit unit = detect_freq_unit(in);
 
     const char *sep = NULL;
     for (const char *p = in; *p != '\0'; ++p) {
@@ -346,6 +373,8 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
         for (const char *p = sep + 1; *p != '\0' && fj < sizeof(frac_digits) - 1; ++p) {
             if (isdigit((unsigned char)*p)) {
                 frac_digits[fj++] = *p;
+            } else if (isalpha((unsigned char)*p) || isspace((unsigned char)*p)) {
+                break;
             }
         }
         frac_digits[fj] = '\0';
@@ -356,25 +385,49 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
             frac_val += (frac_digits[i] - '0') * scale;
             scale *= 0.1;
         }
-        mhz = (double)int_part + frac_val;
+        double val = (double)int_part + frac_val;
+
+        if (unit == FREQ_UNIT_GHZ) {
+            mhz = val * 1000.0;
+        } else if (unit == FREQ_UNIT_MHZ) {
+            mhz = val;
+        } else if (unit == FREQ_UNIT_KHZ) {
+            mhz = val / 1000.0;
+        } else if (unit == FREQ_UNIT_HZ) {
+            mhz = val / 1000000.0;
+        } else {
+            /* Ingen enhet: decimaltal antas vara i MHz */
+            mhz = val;
+        }
     } else {
-        char khz_digits[24];
-        size_t kj = 0;
-        for (const char *p = in; *p != '\0' && kj < sizeof(khz_digits) - 1; ++p) {
+        char num_digits[24];
+        size_t dj = 0;
+        for (const char *p = in; *p != '\0' && dj < sizeof(num_digits) - 1; ++p) {
             if (isdigit((unsigned char)*p)) {
-                khz_digits[kj++] = *p;
+                num_digits[dj++] = *p;
+            } else if (isalpha((unsigned char)*p) || isspace((unsigned char)*p)) {
+                if (dj > 0) break;
             }
         }
-        khz_digits[kj] = '\0';
+        num_digits[dj] = '\0';
 
-        if (kj > 0) {
-            unsigned long khz = strtoul(khz_digits, NULL, 10);
-            if (khz < 1000) {
-                mhz = (double)khz;
-            } else if (khz >= 1240 && khz <= 1300) {
-                mhz = (double)khz; /* 23 cm bandet (1240-1300 MHz) */
+        if (dj > 0) {
+            double val = atof(num_digits);
+            if (unit == FREQ_UNIT_GHZ) {
+                mhz = val * 1000.0;
+            } else if (unit == FREQ_UNIT_MHZ) {
+                mhz = val;
+            } else if (unit == FREQ_UNIT_KHZ) {
+                mhz = val / 1000.0;
+            } else if (unit == FREQ_UNIT_HZ) {
+                mhz = val / 1000000.0;
             } else {
-                mhz = (double)khz / 1000.0;
+                /* Ingen enhet och inga decimaler */
+                if (val >= 1000.0 && !(val >= 1240.0 && val <= 1300.0)) {
+                    mhz = val / 1000.0;
+                } else {
+                    mhz = val;
+                }
             }
         }
     }
@@ -397,30 +450,72 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
 }
 
 /**
- * @brief Gissar amatörband utifrån ett numeriskt frekvensvärde i MHz.
+ * @brief Identifierar officiellt amatörradioband för en frekvens i MHz.
  * @param f Frekvens i MHz.
- * @return Pekare till konstant bandnamn, eller NULL om utanför standardbanden.
+ * @return Pekare till konstant bandnamn, eller NULL om utanför amatörbanden.
  */
-const char *guess_band_from_mhz(double f) {
+const char *get_amateur_band_mhz(double f) {
     if (f <= 0.0) return NULL;
 
-    if (f >= 1.810   && f <= 2.000)   return "160 m";
-    if (f >= 3.500   && f <= 3.800)   return "80 m";
-    if (f >= 5.3515  && f <= 5.3665)  return "60 m";
-    if (f >= 7.000   && f <= 7.200)   return "40 m";
+    if (f >= 0.1357  && f <= 0.1378)  return "2190 m";
+    if (f >= 0.472   && f <= 0.479)   return "630 m";
+    if (f >= 1.800   && f <= 2.000)   return "160 m";
+    if (f >= 3.500   && f <= 4.000)   return "80 m";
+    if (f >= 5.250   && f <= 5.450)   return "60 m";
+    if (f >= 7.000   && f <= 7.300)   return "40 m";
     if (f >= 10.100  && f <= 10.150)  return "30 m";
     if (f >= 14.000  && f <= 14.350)  return "20 m";
     if (f >= 18.068  && f <= 18.168)  return "17 m";
     if (f >= 21.000  && f <= 21.450)  return "15 m";
     if (f >= 24.890  && f <= 24.990)  return "12 m";
     if (f >= 28.000  && f <= 29.700)  return "10 m";
-    if (f >= 50.000  && f <= 52.000)  return "6 m";
+    if (f >= 50.000  && f <= 54.000)  return "6 m";
     if (f >= 70.000  && f <= 70.500)  return "4 m";
-    if (f >= 144.000 && f <= 146.000) return "2 m";
-    if (f >= 430.000 && f <= 440.000) return "70 cm";
+    if (f >= 144.000 && f <= 148.000) return "2 m";
+    if (f >= 222.000 && f <= 225.000) return "1.25 m";
+    if (f >= 430.000 && f <= 450.000) return "70 cm";
+    if (f >= 902.000 && f <= 928.000) return "33 cm";
     if (f >= 1240.0  && f <= 1300.0)  return "23 cm";
+    if (f >= 2300.0  && f <= 2450.0)  return "13 cm";
+    if (f >= 3300.0  && f <= 3500.0)  return "9 cm";
+    if (f >= 5650.0  && f <= 5925.0)  return "6 cm";
+    if (f >= 10000.0 && f <= 10500.0) return "3 cm";
+    if (f >= 24000.0 && f <= 24250.0) return "1.25 cm";
 
     return NULL;
+}
+
+/**
+ * @brief Gissar amatörband utifrån ett numeriskt frekvensvärde i MHz, eller beräknar våglängden.
+ * Utanför amatörband beräknas våglängden enligt lambda = 300 / f_MHz (t.ex. 8 MHz -> 38 m, 27 MHz -> 11 m).
+ * @param f Frekvens i MHz.
+ * @return Pekare till bandnamn eller våglängd.
+ */
+const char *guess_band_from_mhz(double f) {
+    if (f <= 0.0) return NULL;
+
+    const char *ham = get_amateur_band_mhz(f);
+    if (ham != NULL) {
+        return ham;
+    }
+
+    /* Beräkna våglängd: lambda = 300 / f_MHz */
+    static _Thread_local char s_calc_band[32];
+    double lambda_m = 300.0 / f;
+
+    if (lambda_m >= 1.0) {
+        long wl = (long)(lambda_m + 0.5);
+        snprintf(s_calc_band, sizeof(s_calc_band), "%ld m", wl);
+        return s_calc_band;
+    } else if (lambda_m >= 0.01) {
+        long wl_cm = (long)(lambda_m * 100.0 + 0.5);
+        snprintf(s_calc_band, sizeof(s_calc_band), "%ld cm", wl_cm);
+        return s_calc_band;
+    } else {
+        long wl_mm = (long)(lambda_m * 1000.0 + 0.5);
+        snprintf(s_calc_band, sizeof(s_calc_band), "%ld mm", wl_mm);
+        return s_calc_band;
+    }
 }
 
 /**
@@ -479,7 +574,7 @@ double parse_and_normalize_freq_adif(const char *in, char *norm_out, size_t out_
         /* Återställning om frekvensen tidigare felaktigt delats med 1000 (t.ex. 0.021 -> 21.000) */
         if (mhz > 0.0 && mhz < 1.0) {
             double test_mhz = mhz * 1000.0;
-            if (guess_band_from_mhz(test_mhz) != NULL) {
+            if (get_amateur_band_mhz(test_mhz) != NULL) {
                 mhz = test_mhz;
             }
         }
@@ -565,6 +660,11 @@ int find_band_index(const char *band_str) {
     }
     clean[cj] = '\0';
 
+    size_t clen = strlen(clean);
+    if (clen > 5 && strcmp(clean + clen - 5, "meter") == 0) {
+        clean[clen - 4] = '\0'; /* t.ex. "20meter" -> "20m" */
+    }
+
     for (int i = 0; i < BAND_OPTION_COUNT; ++i) {
         char opt_clean[16];
         size_t oj = 0;
@@ -611,6 +711,9 @@ void format_band_display(const char *in, char *out, size_t out_sz) {
     }
     digits[dj] = '\0';
     unit[uj] = '\0';
+    if (strcmp(unit, "meter") == 0) {
+        copy_str(unit, sizeof(unit), "m");
+    }
     if (dj > 0 && uj > 0) {
         snprintf(out, out_sz, "%s %s", digits, unit);
     } else {
@@ -626,8 +729,10 @@ void format_band_display(const char *in, char *out, size_t out_sz) {
  */
 void normalize_band_adif(const char *in, char *out, size_t out_sz) {
     if (out == NULL || out_sz == 0) return;
+    char disp[32];
+    format_band_display(in, disp, sizeof(disp));
     size_t oj = 0;
-    for (const char *p = in ? in : ""; *p != '\0' && oj < out_sz - 1; ++p) {
+    for (const char *p = disp; *p != '\0' && oj < out_sz - 1; ++p) {
         if (!isspace((unsigned char)*p)) {
             out[oj++] = (char)toupper((unsigned char)*p);
         }

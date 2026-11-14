@@ -217,7 +217,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
     \item \textbf{Rensa vid ny inmatning:} Om ett fält redan innehåller text och du trycker på en bokstav eller siffra, rensas fältet automatiskt innan det nya tecknet skrivs in. Därefter fungerar skrivningen som vanligt. Vill du istället redigera befintlig text trycker du först på en piltangent.
     \item \textbf{DEL-tangenten:} Tryck på \texttt{Delete} för att tömma hela fältet direkt.
     \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
-    \item \textbf{Automatisk frekvens- och bandkoppling:} När du anger en frekvens i MHz (t.ex. \texttt{14.074}) sätts automatiskt rätt band (\texttt{20m}) och lämpligt rapportförslag.
+    \item \textbf{Automatisk frekvens-, band- och våglängdskoppling:} När du anger en frekvens (t.ex. \texttt{1936 kHz}, \texttt{14,200}, \texttt{14.074}) sätts automatiskt rätt amatörradioband (\texttt{160 m}, \texttt{20 m}). Om frekvensen ligger utanför de etablerade amatörbanden beräknas våglängden automatiskt ($\lambda = 300 / f_{\text{MHz}}$, t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
 \end{itemize}
 
 \section{Inställningar (F12)}
@@ -364,6 +364,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/callbook.c} & Snabb sökning i SSA/SM Callbook. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
 \texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
@@ -375,6 +376,29 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 
 \subsection{Beräkning av QRB}
 Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$). Resultatet visas direkt i fältet \texttt{DXCC} i inmatningsrutan.
+
+\section{Automatiserade Enhetstester (testing)}
+\label{sec:testing}
+
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattande verifieringstester mot projektets funktioner:
+\begin{itemize}
+    \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
+    \item \textbf{ADIF-import:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz och att felaktiga skalningar återställs.
+    \item \textbf{Logghantering och F7:} Verifierar att F7 sätter alla loggrader till hanterade (\texttt{handled = 1}), att statistikcachen invalideras och att flaggan bevaras vid ADIF-sparning.
+    \item \textbf{Navigering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt sök- och bandfiltrering.
+    \item \textbf{QRB och lokatorer:} Validering av Maidenhead-lokatorer och avståndsberäkning.
+    \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
+    \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
+    \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.
+\end{itemize}
+
+Testsviten körs från kommandoraden med:
+\begin{verbatim}
+$ make test
+# eller direkt via:
+$ ./testing
+\end{verbatim}
+Varje test rapporterar med \texttt{[OK]} eller \texttt{[FEL]} och binären returnerar statuskod 0 vid felfri körning.
 
 \section{Sammanfattning}
 \label{sec:summary}

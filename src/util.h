@@ -148,9 +148,16 @@ double parse_and_normalize_freq(const char *freq_str, char *norm_out, size_t out
 double parse_and_normalize_freq_adif(const char *in, char *norm_out, size_t out_sz);
 
 /**
- * @brief Gissar amatörband utifrån ett flyttal i MHz.
+ * @brief Kontrollerar om en frekvens i MHz tillhör ett officiellt amatörradioband.
  * @param f Frekvens i MHz.
- * @return Namn på bandet (t.ex. "20 m"), eller NULL om utanför amatörbanden.
+ * @return Konstant namn på bandet (t.ex. "20 m"), eller NULL om utanför amatörbanden.
+ */
+const char *get_amateur_band_mhz(double f);
+
+/**
+ * @brief Gissar amatörband eller beräknar våglängd (t.ex. "38 m", "11 m") utifrån ett flyttal i MHz.
+ * @param f Frekvens i MHz.
+ * @return Namn på bandet eller beräknad våglängd i meter/cm/mm.
  */
 const char *guess_band_from_mhz(double f);
 
