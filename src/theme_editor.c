@@ -165,11 +165,11 @@ void custom_theme_init_preset(CustomTheme *ct, int preset) {
             ct->sel_bg = 10; ct->sel_fg = 0; ct->topbar_bg = 10; ct->topbar_fg = 0;
             ct->status_ok = 10; ct->status_warn = 17;
             break;
-        case 6: /* Bärnsten CRT (Ambra) */
-            ct->bg_main = 0; ct->fg_text = 13; ct->border = 13; ct->border_active = 14;
-            ct->title = 14; ct->label = 13; ct->field_act_bg = 13; ct->field_act_fg = 0;
-            ct->sel_bg = 13; ct->sel_fg = 0; ct->topbar_bg = 13; ct->topbar_fg = 0;
-            ct->status_ok = 13; ct->status_warn = 14;
+        case 6: /* Ambra CRT (Orange) */
+            ct->bg_main = 0; ct->fg_text = 15; ct->border = 15; ct->border_active = 15;
+            ct->title = 15; ct->label = 15; ct->field_act_bg = 15; ct->field_act_fg = 0;
+            ct->sel_bg = 15; ct->sel_fg = 0; ct->topbar_bg = 15; ct->topbar_fg = 0;
+            ct->status_ok = 15; ct->status_warn = 17;
             break;
         case 7: /* Mörkerläge (Crimson Night) */
             ct->bg_main = 0; ct->fg_text = 16; ct->border = 16; ct->border_active = 17;
@@ -418,7 +418,7 @@ int run_color_theme_editor(StationSettings *edit) {
                 "Neon Skymning (Dracula)",
                 "Fältgrön (Militär)",
                 "Fosforgrön (Matrix)",
-                "Bärnsten CRT (Ambra)",
+                "Ambra CRT (Orange)",
                 "Mörkerläge (Crimson Night)"
             };
             int p_sel = 0;

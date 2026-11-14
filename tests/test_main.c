@@ -536,9 +536,80 @@ static void run_settings_tests(void) {
     load_station_settings(tmp_conf, &loaded);
     int smcb_disabled_ok = (loaded.smcb_enabled == 0);
 
+    /* Validera Auto QRZ.COM inställningar: Av (0), Auto (1) och Manuell (2) */
+    st.qrz_enabled = QRZ_MODE_OFF;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_off_ok = (loaded.qrz_enabled == QRZ_MODE_OFF);
+
+    st.qrz_enabled = QRZ_MODE_AUTO;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_auto_ok = (loaded.qrz_enabled == QRZ_MODE_AUTO);
+
+    st.qrz_enabled = QRZ_MODE_MANUAL;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_manual_ok = (loaded.qrz_enabled == QRZ_MODE_MANUAL);
+
+    /* Testa textbaserad tolkning av QRZ_ENABLED i station.conf */
+    FILE *t_fp = fopen(tmp_conf, "w");
+    if (t_fp) {
+        fprintf(t_fp, "QRZ_ENABLED=auto\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_auto_ok = (loaded.qrz_enabled == QRZ_MODE_AUTO);
+
+        t_fp = fopen(tmp_conf, "w");
+        fprintf(t_fp, "QRZ_ENABLED=manuell\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_manual_ok = (loaded.qrz_enabled == QRZ_MODE_MANUAL);
+
+        t_fp = fopen(tmp_conf, "w");
+        fprintf(t_fp, "QRZ_ENABLED=av\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_off_ok = (loaded.qrz_enabled == QRZ_MODE_OFF);
+
+        qrz_off_ok = qrz_off_ok && parse_auto_ok && parse_manual_ok && parse_off_ok;
+    }
+
     unlink(tmp_conf);
     record_result(ok && notes_ok, "save_station_settings och load_station_settings bevarar alla stationsparametrar (inkl. show_notes för F6)", NULL);
     record_result(smcb_disabled_ok, "SM Callbook hålls dolt och avslaget i inställningarna (smcb_enabled == 0)", NULL);
+    record_result(qrz_off_ok && qrz_auto_ok && qrz_manual_ok,
+                  "Auto QRZ.COM inställning stöder Av (0), Auto (1) och Manuell (2)", NULL);
+
+    /* Testa att maybe_lookup_call_details inte startar QRZ i QRZ_MODE_MANUAL eller QRZ_MODE_OFF */
+    {
+        QSO test_qso;
+        memset(&test_qso, 0, sizeof(test_qso));
+        copy_str(test_qso.call, sizeof(test_qso.call), "JA1ABC");
+        char last_call[32] = "";
+        char s_msg[128] = "";
+        QSOList empty_list = {NULL, 0, 0};
+        StationSettings manual_st;
+        memset(&manual_st, 0, sizeof(manual_st));
+        copy_str(manual_st.qrz_username, sizeof(manual_st.qrz_username), "user");
+        copy_str(manual_st.qrz_password, sizeof(manual_st.qrz_password), "pass");
+        manual_st.qrz_enabled = QRZ_MODE_MANUAL;
+
+        maybe_lookup_call_details(&test_qso, &empty_list, &manual_st, last_call, sizeof(last_call), s_msg, sizeof(s_msg));
+        int manual_did_not_trigger_qrz = (strstr(s_msg, "QRZ:") == NULL);
+
+        manual_st.qrz_enabled = QRZ_MODE_OFF;
+        s_msg[0] = '\0';
+        last_call[0] = '\0';
+        maybe_lookup_call_details(&test_qso, &empty_list, &manual_st, last_call, sizeof(last_call), s_msg, sizeof(s_msg));
+        int off_did_not_trigger_qrz = (strstr(s_msg, "QRZ:") == NULL);
+
+        record_result(manual_did_not_trigger_qrz && off_did_not_trigger_qrz,
+                      "Vid Manuell och Av sker inget automatiskt QRZ-uppslag vid inmatning", NULL);
+    }
 
     /* Rymdväder: K/Kp och titelradens högerställda tidsstämpel */
     {

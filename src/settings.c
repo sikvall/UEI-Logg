@@ -34,7 +34,7 @@
 void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
-    st->qrz_enabled = 0;
+    st->qrz_enabled = QRZ_MODE_OFF;
     st->show_stats = 1;
     st->show_space_weather = 1;
     st->show_notes = 1;
@@ -100,7 +100,13 @@ void load_station_settings(const char *filename, StationSettings *st) {
         } else if (strcasecmp(key, "QRZ_PASS") == 0) {
             copy_str(st->qrz_password, sizeof(st->qrz_password), val);
         } else if (strcasecmp(key, "QRZ_ENABLED") == 0) {
-            st->qrz_enabled = (atoi(val) != 0) ? 1 : 0;
+            if (strcasecmp(val, "auto") == 0 || strcmp(val, "1") == 0) {
+                st->qrz_enabled = QRZ_MODE_AUTO;
+            } else if (strcasecmp(val, "manual") == 0 || strcasecmp(val, "manuell") == 0 || strcmp(val, "2") == 0) {
+                st->qrz_enabled = QRZ_MODE_MANUAL;
+            } else {
+                st->qrz_enabled = QRZ_MODE_OFF;
+            }
         } else if (strcasecmp(key, "AUTO_RST") == 0) {
             st->auto_rst_59 = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "FILTER_LOG") == 0) {
@@ -159,7 +165,7 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "SMCB=%d\n", st->smcb_enabled ? 1 : 0);
     fprintf(fp, "QRZ_USER=%s\n", st->qrz_username);
     fprintf(fp, "QRZ_PASS=%s\n", st->qrz_password);
-    fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled ? 1 : 0);
+    fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled);
     fprintf(fp, "AUTO_RST=%d\n", st->auto_rst_59 ? 1 : 0);
     fprintf(fp, "FILTER_LOG=%d\n", st->filter_log ? 1 : 0);
     fprintf(fp, "SHOW_STATS=%d\n", st->show_stats ? 1 : 0);
@@ -603,13 +609,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 
     int fcol = colon_col + 2;
 
-    /* Fält 7: Auto QRZ.COM toggle */
+    /* Fält 7: Auto QRZ.COM toggle (Av / Auto / Manuell) */
     const char *lbl_qrz = "Auto QRZ.COM";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_qrz_auto, colon_col - utf8_display_width(lbl_qrz), "%s:", lbl_qrz);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    const char *qrz_txt = edit->qrz_enabled ? "På (Slå upp via qrz.com)" : "Av";
+    const char *qrz_txt = (edit->qrz_enabled == QRZ_MODE_AUTO)   ? "Auto" :
+                          (edit->qrz_enabled == QRZ_MODE_MANUAL) ? "Manuell" : "Av";
     if (active == 7) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_qrz_auto, fcol, "< %-28s >", qrz_txt);
@@ -1263,7 +1270,11 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                          (active == 5) ? utf8_display_width(edit.qrz_username) :
                          (active == 6) ? utf8_display_width(edit.qrz_password) : 0;
         } else if (active == 7 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.qrz_enabled = !edit.qrz_enabled;
+            if (ch == KEY_LEFT) {
+                edit.qrz_enabled = (edit.qrz_enabled + 2) % 3;
+            } else {
+                edit.qrz_enabled = (edit.qrz_enabled + 1) % 3;
+            }
         } else if (active == 8 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || ch == KEY_LEFT || ch == KEY_RIGHT)) {
             int ret = run_theme_dropdown(&edit, log_list, status_msg);
             if (ret == 4) {

@@ -785,8 +785,8 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         }
         if (was_cached) {
             int is_blocked = is_smcb_blocked();
-            /* SMCB har ingen träff: prova QRZ.COM om det är aktiverat */
-            if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+            /* SMCB har ingen träff: prova QRZ.COM om Auto är aktiverat */
+            if (st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
                 int qrz_cached = 0;
                 char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
                 if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
@@ -827,8 +827,8 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         return;
     }
 
-    /* 3. Icke-svensk signal (eller svensk om SMCB avstängt): slå upp i QRZ.COM om aktiverat */
-    if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+    /* 3. Icke-svensk signal (eller svensk om SMCB avstängt): slå upp i QRZ.COM om Auto är aktiverat */
+    if (st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
         if (strcasecmp(qso->call, last_smcb_call) == 0) return;
         copy_str(last_smcb_call, last_smcb_sz, qso->call);
 

@@ -105,6 +105,15 @@ enum {
 };
 
 /**
+ * @brief Lägen för QRZ.COM-uppslag (inställning: Auto QRZ.COM).
+ */
+enum {
+    QRZ_MODE_OFF    = 0, /**< Av helt och hållet */
+    QRZ_MODE_AUTO   = 1, /**< Auto: Slå upp automatiskt vid inmatning */
+    QRZ_MODE_MANUAL = 2  /**< Manuell: Uppslag endast vid manuell F5-tryckning */
+};
+
+/**
  * @brief Index för inmatningsfälten i visnings- och tabulatorordning (4 rader).
  */
 enum {
@@ -134,7 +143,7 @@ typedef struct {
     char timezone[32];     /**< Lokal tidszon (t.ex. UTC+1, Europe/Stockholm) */
     char qrz_username[36]; /**< QRZ.COM användarnamn */
     char qrz_password[36]; /**< QRZ.COM lösenord */
-    int  qrz_enabled;      /**< 1 om automatisk QRZ-uppslagning är aktiv */
+    int  qrz_enabled;      /**< QRZ-läge: QRZ_MODE_OFF (0), QRZ_MODE_AUTO (1), QRZ_MODE_MANUAL (2) */
     int  theme;            /**< Index för aktivt färgschema (0..THEME_COUNT-1) */
     CustomTheme custom_theme; /**< Egen anpassad färgprofil */
     int  smcb_enabled;     /**< 1 om automatisk SM Callbook-uppslagning är aktiv */

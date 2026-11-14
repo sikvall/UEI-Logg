@@ -379,26 +379,26 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 8: { /* 9. Ambra / Retro CRT (Bärnsten / klassisk ambra monokrom skärm på svart bakgrund) */
-            short amb_bright = (COLORS >= 256) ? 214 : COLOR_YELLOW;
-            short amb_mid    = (COLORS >= 256) ? 208 : COLOR_YELLOW;
-            short amb_dark   = (COLORS >= 256) ? 130 : COLOR_YELLOW;
+        case 8: { /* 9. Ambra / Retro CRT (Varm orange monokrom skärm på svart bakgrund) */
+            short amb_bright = (COLORS >= 256) ? 208 : COLOR_YELLOW; /* Klar varm orange (#ff8700) */
+            short amb_mid    = (COLORS >= 256) ? 166 : COLOR_YELLOW; /* Djup bärnstens-orange (#d75f00) */
+            short amb_dark   = (COLORS >= 256) ? 130 : COLOR_RED;    /* Mörk bärnsten (#af5f00) */
             short amb_bg     = COLOR_BLACK;
 
-            init_pair(CP_MAIN_BG,        amb_mid,      amb_bg);
+            init_pair(CP_MAIN_BG,        amb_bright,   amb_bg);
             init_pair(CP_TOPBAR,         amb_bg,       amb_bright);
             init_pair(CP_TOPBAR_ACCENT,  amb_dark,     amb_bright);
-            init_pair(CP_BORDER,         amb_dark,     amb_bg);
+            init_pair(CP_BORDER,         amb_mid,      amb_bg);
             init_pair(CP_BORDER_ACTIVE,  amb_bright,   amb_bg);
             init_pair(CP_TITLE,          amb_bright,   amb_bg);
-            init_pair(CP_LABEL,          amb_mid,      amb_bg);
-            init_pair(CP_FIELD_INACTIVE, amb_mid,      amb_bg);
+            init_pair(CP_LABEL,          amb_bright,   amb_bg);
+            init_pair(CP_FIELD_INACTIVE, amb_bright,   amb_bg);
             init_pair(CP_FIELD_ACTIVE,   amb_bg,       amb_bright);
             init_pair(CP_FROZEN_BADGE,   amb_bg,       amb_mid);
             init_pair(CP_LIVE_BADGE,     amb_bg,       amb_bright);
             init_pair(CP_EDIT_BADGE,     amb_bright,   amb_dark);
             init_pair(CP_TABLE_HEADER,   amb_bright,   amb_bg);
-            init_pair(CP_LOG_ROW,        amb_mid,      amb_bg);
+            init_pair(CP_LOG_ROW,        amb_bright,   amb_bg);
             init_pair(CP_LOG_SELECTED,   amb_bg,       amb_bright);
             init_pair(CP_LOG_MARKED,     amb_bg,       amb_mid);
             init_pair(CP_FKEY_NUM,       amb_bg,       amb_dark);
@@ -406,14 +406,14 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_STATUS_OK,      amb_bright,   amb_bg);
             init_pair(CP_STATUS_WARN,    amb_bg,       amb_bright);
             init_pair(CP_FLAG_NEW,         amb_bright,   amb_bg);
-            init_pair(CP_FLAG_HANDLED,     amb_dark,     amb_bg);
+            init_pair(CP_FLAG_HANDLED,     amb_mid,      amb_bg);
             init_pair(CP_FLAG_NEW_SEL,     amb_bg,       amb_bright);
-            init_pair(CP_FLAG_HANDLED_SEL, amb_dark,     amb_bright);
-            init_pair(CP_FLAG_NEW_MRK,     amb_bright,   amb_dark);
-            init_pair(CP_FLAG_HANDLED_MRK, amb_bg,       amb_dark);
-            init_pair(CP_SW_NORMAL,        amb_mid,      amb_bg);
-            init_pair(CP_SW_OK,            amb_mid,      amb_bg);
-            init_pair(CP_SW_WARN,          amb_bright,   amb_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, amb_mid,      amb_bright);
+            init_pair(CP_FLAG_NEW_MRK,     amb_bright,   amb_mid);
+            init_pair(CP_FLAG_HANDLED_MRK, amb_bg,       amb_mid);
+            init_pair(CP_SW_NORMAL,        amb_bright,   amb_bg);
+            init_pair(CP_SW_OK,            amb_bright,   amb_bg);
+            init_pair(CP_SW_WARN,          amb_mid,      amb_bg);
             init_pair(CP_SW_BAD,           amb_bright,   amb_bg);
             init_pair(CP_SW_SEVERE,        amb_bg,       amb_bright);
             break;

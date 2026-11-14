@@ -236,7 +236,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (vid redigering sparas ändringen och QSO:t märks som nytt, ✗) \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
-\texttt{F5} & Inmatning & Manuellt uppslag mot QRZ.COM \\
+\texttt{F5} & Inmatning & Manuellt uppslag mot QRZ.COM (vid läge Auto eller Manuell) \\
 \texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
 \texttt{F7} & Inmatning & Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH \\
@@ -278,7 +278,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Min lokator:} Stationens Maidenhead-lokator (t.ex. \texttt{JO89we}), utgångspunkt för avstånd och bäring.
     \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
     \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
-    \item \textbf{QRZ-uppslag:} \texttt{< På >} / \texttt{< Av >}. Hämtar automatiskt motstationens namn, QTH och lokator över nätet.
+    \item \textbf{Auto QRZ.COM:} \texttt{< Av >} / \texttt{< Auto >} / \texttt{< Manuell >}. Vid \texttt{Auto} slås motstationens data (namn, QTH och lokator) upp i bakgrunden vid inmatning och paus; vid \texttt{Manuell} sker uppslag endast när operatören trycker \texttt{F5}; vid \texttt{Av} är QRZ-uppslag helt och hållet avslaget.
     \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 16 färgteman finns tillgängliga:
     \begin{itemize}
         \item \emph{UEI-tema (Standard, default):} Programmets signaturschema i marinblå bas, solgula accenter, skogsgröna ramar, bärnstensfokus och havsblå markering.

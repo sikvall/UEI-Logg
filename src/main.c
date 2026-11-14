@@ -591,8 +591,8 @@ int main(int argc, char *argv[]) {
                 smcb_blocked = (sm_hit == -1);
             }
 
-            /* Om inte träff i SMCB, inte svensk signal, eller om SMCB är avslagen: prova QRZ.COM */
-            int qrz_ready = station.qrz_enabled &&
+            /* Om QRZ är aktiverat (Auto eller Manuell) och inloggningsuppgifter finns: prova QRZ.COM */
+            int qrz_ready = (station.qrz_enabled != QRZ_MODE_OFF) &&
                             (station.qrz_username[0] != '\0') &&
                             (station.qrz_password[0] != '\0');
 
@@ -633,6 +633,9 @@ int main(int argc, char *argv[]) {
                     if (qrz_grid[0] != '\0') {
                         copy_str(current_qso.gridsquare, sizeof(current_qso.gridsquare), qrz_grid);
                     }
+                    if (current_qso.dxcc[0] == '\0') {
+                        lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
+                    }
                     compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
                     field_cursor_pos = 0;
                     if (qrz_grid[0] != '\0') {
@@ -652,34 +655,11 @@ int main(int argc, char *argv[]) {
                     }
                 }
             } else {
-                /* QRZ.COM kunde inte sökas (inaktiverad eller uppgifter saknas) */
-                if (smcb_queried) {
-                    if (smcb_blocked) {
-                        if (!station.qrz_enabled) {
-                            snprintf(status_msg, sizeof(status_msg), "SMCB: Blockerat av SSA webbläsarkontroll (aktivera QRZ.COM i F12).");
-                        } else {
-                            snprintf(status_msg, sizeof(status_msg), "SMCB: Blockerat av SSA webbläsarkontroll (QRZ användarnamn/lösen saknas).");
-                        }
-                    } else {
-                        if (!station.qrz_enabled) {
-                            snprintf(status_msg, sizeof(status_msg), "SMCB: Ingen träff för %s (QRZ.COM ej aktiverat).", base_call);
-                        } else {
-                            snprintf(status_msg, sizeof(status_msg), "SMCB: Ingen träff för %s (QRZ användarnamn/lösen saknas).", base_call);
-                        }
-                    }
-                } else if (is_swedish && !station.smcb_enabled) {
-                    if (!station.qrz_enabled) {
-                        copy_str(status_msg, sizeof(status_msg), "Både SM Callbook och QRZ.COM är inaktiverade i inställningarna (F12).");
-                    } else {
-                        copy_str(status_msg, sizeof(status_msg), "SM Callbook är av. QRZ.COM användarnamn/lösen saknas (F12).");
-                    }
-                } else {
-                    /* Icke-svensk signal */
-                    if (!station.qrz_enabled) {
-                        copy_str(status_msg, sizeof(status_msg), "QRZ.COM är inaktiverat i inställningarna (F12).");
-                    } else {
-                        copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
-                    }
+                /* QRZ.COM kunde inte sökas (helt avslagen eller uppgifter saknas) */
+                if (station.qrz_enabled == QRZ_MODE_OFF) {
+                    copy_str(status_msg, sizeof(status_msg), "QRZ.COM är helt avslaget i inställningarna (F12).");
+                } else if (station.qrz_username[0] == '\0' || station.qrz_password[0] == '\0') {
+                    copy_str(status_msg, sizeof(status_msg), "QRZ.COM användarnamn/lösen saknas (F12).");
                 }
             }
             continue;
