@@ -288,41 +288,27 @@ int main(int argc, char *argv[]) {
                 if (selected_log_pos > 0) selected_log_pos--;
             } else if (ch == KEY_DOWN || ch == KEY_RIGHT) {
                 if (selected_log_pos + 1 < f_cnt) selected_log_pos++;
-            } else if (ch == KEY_CTRL_HOME) {
-                /* Ctrl-Home: gå till översta raden i hela loggen */
+            } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1 || ch == KEY_CTRL_HOME) {
+                /* Home: gå längst upp i aktuell lista */
                 selected_log_pos = 0;
                 log_scroll_offset = 0;
-            } else if (ch == KEY_CTRL_END) {
-                /* Ctrl-End: gå till sista raden i hela loggen */
+            } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1 || ch == KEY_CTRL_END) {
+                /* End: gå längst ned i aktuell lista */
                 if (f_cnt > 0) {
                     selected_log_pos = f_cnt - 1;
                     int avail = get_avail_log_rows(&station);
-                    log_scroll_offset = f_cnt - avail;
-                    if (log_scroll_offset < 0) log_scroll_offset = 0;
-                }
-            } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_A1) {
-                /* Home: gå till första raden på den sida vi ser */
-                if (f_cnt > 0) {
-                    selected_log_pos = log_scroll_offset;
-                    if (selected_log_pos >= f_cnt) selected_log_pos = f_cnt - 1;
-                    if (selected_log_pos < 0) selected_log_pos = 0;
-                }
-            } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_LL || ch == KEY_C1) {
-                /* End: gå till sista raden på den sida vi ser */
-                if (f_cnt > 0) {
-                    int avail = get_avail_log_rows(&station);
                     int lines = 0;
-                    int last_vis = log_scroll_offset;
-                    for (int idx = log_scroll_offset; idx < f_cnt; ++idx) {
+                    int start_idx = f_cnt - 1;
+                    for (int idx = f_cnt - 1; idx >= 0; --idx) {
                         int orig = f_idx[idx];
                         int qso_lines = (log_list.items[orig].comment[0] != '\0') ? 2 : 1;
                         if (lines + qso_lines > avail && lines > 0) {
                             break;
                         }
                         lines += qso_lines;
-                        last_vis = idx;
+                        start_idx = idx;
                     }
-                    selected_log_pos = last_vis;
+                    log_scroll_offset = start_idx;
                 }
             } else if (ch == KEY_PPAGE) {
                 /* PgUp: bläddra en sida uppåt */

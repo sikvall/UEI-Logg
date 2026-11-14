@@ -125,6 +125,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck F4 (eller Ctrl+O) för att växla mellan formulär och loggrader.",
             "  * Piltangenterna Upp / Ned stegar radvis i loggen.",
             "  * Page Up / Page Down bläddrar hela sidor i logghistoriken.",
+            "  * Home / End: Går längst upp respektive längst ned i aktuell logglista.",
             "",
             "Multimarkering och statusändring:",
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
@@ -143,7 +144,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck ESC för att återställa sökningen och visa hela loggboken igen.",
             NULL
         },
-        22
+        23
     },
     {
         "[5] Inställningar",
