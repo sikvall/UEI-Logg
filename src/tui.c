@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day och mörkerläge */
+/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula och militärradio */
 const char * const THEME_NAMES[] = {
     "Turbo Pascal (MC Default)",
     "MC Darkfar (Svart/Blå)",
@@ -28,7 +28,10 @@ const char * const THEME_NAMES[] = {
     "Ambra (Retro CRT)",
     "Arktisk Natt (Nord Frost)",
     "Field Day (Vintage Radio)",
-    "Mörkerläge (Crimson Night)"
+    "Mörkerläge (Crimson Night)",
+    "Solarized Dark (Djuphav)",
+    "Dracula (Neon Skymning)",
+    "Militärradio (Fältgrön)"
 };
 
 /**
@@ -71,8 +74,9 @@ void tui_cleanup(void) {
 }
 
 /**
- * @brief Aktiverar och konfigurerar ett av de 11 tillgängliga färgschemana i ncurses.
- * Inkluderar modern gråskala, retro ambra, arktisk natt, field day och crimson mörkerläge.
+ * @brief Aktiverar och konfigurerar ett av de 14 tillgängliga färgschemana i ncurses.
+ * Inkluderar modern gråskala, retro ambra, arktisk natt, field day, crimson mörkerläge,
+ * solarized dark, dracula och militärradio.
  * @param theme_idx Index på schemat (0..THEME_COUNT-1).
  */
 void apply_color_theme(int theme_idx) {
@@ -500,6 +504,146 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_WARN,          fg_light_red, bg_night);
             init_pair(CP_SW_BAD,           fg_bright,    bg_night);
             init_pair(CP_SW_SEVERE,        bg_night,     fg_bright);
+            break;
+        }
+
+        case 11: { /* 12. Solarized Dark (Djuphav - Ethan Schoonovers vetenskapligt balanserade mörkblå marinpalett) */
+            short bg_sol     = (COLORS >= 256) ? 234 : COLOR_BLACK;
+            short fg_base0   = (COLORS >= 256) ? 250 : COLOR_WHITE;
+            short fg_base1   = (COLORS >= 256) ? 254 : COLOR_WHITE;
+            short fg_base01  = (COLORS >= 256) ? 241 : COLOR_CYAN;
+            short fg_cyan    = (COLORS >= 256) ? 37  : COLOR_CYAN;
+            short fg_blue    = (COLORS >= 256) ? 33  : COLOR_BLUE;
+            short fg_yellow  = (COLORS >= 256) ? 178 : COLOR_YELLOW;
+            short fg_orange  = (COLORS >= 256) ? 166 : COLOR_YELLOW;
+            short fg_red     = (COLORS >= 256) ? 160 : COLOR_RED;
+            short fg_magenta = (COLORS >= 256) ? 134 : COLOR_MAGENTA;
+            short fg_green   = (COLORS >= 256) ? 106 : COLOR_GREEN;
+            short sel_bg     = (COLORS >= 256) ? 24  : COLOR_BLUE;
+
+            init_pair(CP_MAIN_BG,        fg_base0,     bg_sol);
+            init_pair(CP_TOPBAR,         bg_sol,       fg_cyan);
+            init_pair(CP_TOPBAR_ACCENT,  fg_yellow,    fg_cyan);
+            init_pair(CP_BORDER,         fg_base01,    bg_sol);
+            init_pair(CP_BORDER_ACTIVE,  fg_cyan,      bg_sol);
+            init_pair(CP_TITLE,          fg_cyan,      bg_sol);
+            init_pair(CP_LABEL,          fg_blue,      bg_sol);
+            init_pair(CP_FIELD_INACTIVE, fg_base0,     bg_sol);
+            init_pair(CP_FIELD_ACTIVE,   bg_sol,       fg_cyan);
+            init_pair(CP_FROZEN_BADGE,   bg_sol,       fg_yellow);
+            init_pair(CP_LIVE_BADGE,     bg_sol,       fg_green);
+            init_pair(CP_EDIT_BADGE,     fg_base1,     fg_magenta);
+            init_pair(CP_TABLE_HEADER,   fg_cyan,      bg_sol);
+            init_pair(CP_LOG_ROW,        fg_base0,     bg_sol);
+            init_pair(CP_LOG_SELECTED,   fg_base1,     sel_bg);
+            init_pair(CP_LOG_MARKED,     fg_base1,     fg_magenta);
+            init_pair(CP_FKEY_NUM,       bg_sol,       fg_base01);
+            init_pair(CP_FKEY_LABEL,     fg_base0,     bg_sol);
+            init_pair(CP_STATUS_OK,      fg_cyan,      bg_sol);
+            init_pair(CP_STATUS_WARN,    fg_base1,     fg_red);
+            init_pair(CP_FLAG_NEW,         fg_red,       bg_sol);
+            init_pair(CP_FLAG_HANDLED,     fg_green,     bg_sol);
+            init_pair(CP_FLAG_NEW_SEL,     fg_red,       sel_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_green,     sel_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_red,       fg_magenta);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_green,     fg_magenta);
+            init_pair(CP_SW_NORMAL,        fg_base0,     bg_sol);
+            init_pair(CP_SW_OK,            fg_green,     bg_sol);
+            init_pair(CP_SW_WARN,          fg_yellow,    bg_sol);
+            init_pair(CP_SW_BAD,           fg_orange,    bg_sol);
+            init_pair(CP_SW_SEVERE,        fg_magenta,   bg_sol);
+            break;
+        }
+
+        case 12: { /* 13. Dracula (Neon Skymning - Modern mörk violett palett med neonlila, cyan och rosa accenter) */
+            short bg_drac        = (COLORS >= 256) ? 236 : COLOR_BLACK;
+            short fg_drac_fg     = (COLORS >= 256) ? 255 : COLOR_WHITE;
+            short fg_drac_purple = (COLORS >= 256) ? 141 : COLOR_MAGENTA;
+            short fg_drac_cyan   = (COLORS >= 256) ? 117 : COLOR_CYAN;
+            short fg_drac_green  = (COLORS >= 256) ? 84  : COLOR_GREEN;
+            short fg_drac_yellow = (COLORS >= 256) ? 228 : COLOR_YELLOW;
+            short fg_drac_orange = (COLORS >= 256) ? 215 : COLOR_YELLOW;
+            short fg_drac_pink   = (COLORS >= 256) ? 212 : COLOR_MAGENTA;
+            short fg_drac_red    = (COLORS >= 256) ? 203 : COLOR_RED;
+            short fg_drac_slate  = (COLORS >= 256) ? 61  : COLOR_BLUE;
+            short sel_drac_bg    = (COLORS >= 256) ? 60  : COLOR_MAGENTA;
+
+            init_pair(CP_MAIN_BG,        fg_drac_fg,     bg_drac);
+            init_pair(CP_TOPBAR,         bg_drac,        fg_drac_purple);
+            init_pair(CP_TOPBAR_ACCENT,  fg_drac_pink,   fg_drac_purple);
+            init_pair(CP_BORDER,         fg_drac_slate,  bg_drac);
+            init_pair(CP_BORDER_ACTIVE,  fg_drac_purple, bg_drac);
+            init_pair(CP_TITLE,          fg_drac_cyan,   bg_drac);
+            init_pair(CP_LABEL,          fg_drac_pink,   bg_drac);
+            init_pair(CP_FIELD_INACTIVE, fg_drac_fg,     bg_drac);
+            init_pair(CP_FIELD_ACTIVE,   bg_drac,        fg_drac_cyan);
+            init_pair(CP_FROZEN_BADGE,   bg_drac,        fg_drac_orange);
+            init_pair(CP_LIVE_BADGE,     bg_drac,        fg_drac_green);
+            init_pair(CP_EDIT_BADGE,     fg_drac_fg,     fg_drac_pink);
+            init_pair(CP_TABLE_HEADER,   fg_drac_purple, bg_drac);
+            init_pair(CP_LOG_ROW,        fg_drac_fg,     bg_drac);
+            init_pair(CP_LOG_SELECTED,   fg_drac_fg,     sel_drac_bg);
+            init_pair(CP_LOG_MARKED,     fg_drac_fg,     fg_drac_pink);
+            init_pair(CP_FKEY_NUM,       bg_drac,        fg_drac_purple);
+            init_pair(CP_FKEY_LABEL,     fg_drac_fg,     bg_drac);
+            init_pair(CP_STATUS_OK,      fg_drac_cyan,   bg_drac);
+            init_pair(CP_STATUS_WARN,    fg_drac_fg,     fg_drac_red);
+            init_pair(CP_FLAG_NEW,         fg_drac_red,    bg_drac);
+            init_pair(CP_FLAG_HANDLED,     fg_drac_green,  bg_drac);
+            init_pair(CP_FLAG_NEW_SEL,     fg_drac_red,    sel_drac_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_drac_green,  sel_drac_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_drac_red,    fg_drac_pink);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_drac_green,  fg_drac_pink);
+            init_pair(CP_SW_NORMAL,        fg_drac_cyan,   bg_drac);
+            init_pair(CP_SW_OK,            fg_drac_green,  bg_drac);
+            init_pair(CP_SW_WARN,          fg_drac_yellow, bg_drac);
+            init_pair(CP_SW_BAD,           fg_drac_red,    bg_drac);
+            init_pair(CP_SW_SEVERE,        fg_drac_pink,   bg_drac);
+            break;
+        }
+
+        case 13: { /* 14. Militärradio (Fältgrön - Taktisk olivdrab bas, khaki duktext och mässingsdetaljer) */
+            short bg_tac     = (COLORS >= 256) ? 234 : COLOR_BLACK;
+            short fg_khaki   = (COLORS >= 256) ? 187 : COLOR_WHITE;
+            short fg_olive   = (COLORS >= 256) ? 107 : COLOR_GREEN;
+            short fg_camo    = (COLORS >= 256) ? 65  : COLOR_GREEN;
+            short fg_brass   = (COLORS >= 256) ? 178 : COLOR_YELLOW;
+            short fg_sig_yel = (COLORS >= 256) ? 221 : COLOR_YELLOW;
+            short fg_haz_red = (COLORS >= 256) ? 167 : COLOR_RED;
+            short fg_sig_orn = (COLORS >= 256) ? 172 : COLOR_YELLOW;
+            short sel_tac_bg = (COLORS >= 256) ? 58  : COLOR_GREEN;
+
+            init_pair(CP_MAIN_BG,        fg_khaki,     bg_tac);
+            init_pair(CP_TOPBAR,         bg_tac,       fg_brass);
+            init_pair(CP_TOPBAR_ACCENT,  fg_haz_red,   fg_brass);
+            init_pair(CP_BORDER,         fg_camo,      bg_tac);
+            init_pair(CP_BORDER_ACTIVE,  fg_brass,     bg_tac);
+            init_pair(CP_TITLE,          fg_brass,     bg_tac);
+            init_pair(CP_LABEL,          fg_olive,     bg_tac);
+            init_pair(CP_FIELD_INACTIVE, fg_khaki,     bg_tac);
+            init_pair(CP_FIELD_ACTIVE,   bg_tac,       fg_brass);
+            init_pair(CP_FROZEN_BADGE,   bg_tac,       fg_sig_orn);
+            init_pair(CP_LIVE_BADGE,     bg_tac,       fg_olive);
+            init_pair(CP_EDIT_BADGE,     fg_khaki,     fg_sig_orn);
+            init_pair(CP_TABLE_HEADER,   fg_brass,     bg_tac);
+            init_pair(CP_LOG_ROW,        fg_khaki,     bg_tac);
+            init_pair(CP_LOG_SELECTED,   fg_brass,     sel_tac_bg);
+            init_pair(CP_LOG_MARKED,     fg_khaki,     fg_sig_orn);
+            init_pair(CP_FKEY_NUM,       bg_tac,       fg_olive);
+            init_pair(CP_FKEY_LABEL,     fg_khaki,     bg_tac);
+            init_pair(CP_STATUS_OK,      fg_brass,     bg_tac);
+            init_pair(CP_STATUS_WARN,    fg_khaki,     fg_haz_red);
+            init_pair(CP_FLAG_NEW,         fg_haz_red,   bg_tac);
+            init_pair(CP_FLAG_HANDLED,     fg_olive,     bg_tac);
+            init_pair(CP_FLAG_NEW_SEL,     fg_haz_red,   sel_tac_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_khaki,     sel_tac_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_haz_red,   fg_sig_orn);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_olive,     fg_sig_orn);
+            init_pair(CP_SW_NORMAL,        fg_khaki,     bg_tac);
+            init_pair(CP_SW_OK,            fg_olive,     bg_tac);
+            init_pair(CP_SW_WARN,          fg_sig_yel,   bg_tac);
+            init_pair(CP_SW_BAD,           fg_haz_red,   bg_tac);
+            init_pair(CP_SW_SEVERE,        fg_sig_orn,   bg_tac);
             break;
         }
     }

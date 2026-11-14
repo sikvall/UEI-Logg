@@ -157,7 +157,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
             "  * Inloggningsuppgifter för QRZ.COM (lösenord maskeras med **********).",
             "  * På/Av för automatiskt uppslag mot SM Callbook och QRZ.COM.",
-            "  * Färgscheman: välj mellan Mörkblå, Amber Retro, Grön CRT, Matrix m.fl.",
+            "  * Färgscheman: välj mellan 14 teman inkl. Solarized, Dracula, Militärradio m.fl.",
             "",
             "ADIF Import (F5 i inställningar):",
             "  * Interaktiv katalogbläddrare med filter för .adi och .adif-filer.",

@@ -60,9 +60,9 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge m.fl.) */
+/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 11
+#define THEME_COUNT 14
 
 /**
  * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).

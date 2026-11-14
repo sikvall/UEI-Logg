@@ -1526,10 +1526,10 @@ static void run_swedish_chars_tests(void) {
 /* [11] Färgscheman och temahantering                                        */
 /* ========================================================================= */
 static void run_theme_tests(void) {
-    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (11 teman) ===" ANSI_RESET "\n");
+    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (14 teman) ===" ANSI_RESET "\n");
 
     /* 1. Antal teman */
-    record_result(THEME_COUNT == 11, "THEME_COUNT är definierat som 11 teman", NULL);
+    record_result(THEME_COUNT == 14, "THEME_COUNT är definierat som 14 teman", NULL);
 
     /* 2. Temanamn och validering */
     int names_ok = 1;
@@ -1543,42 +1543,45 @@ static void run_theme_tests(void) {
     if (names_ok &&
         strcmp(THEME_NAMES[8], "Arktisk Natt (Nord Frost)") == 0 &&
         strcmp(THEME_NAMES[9], "Field Day (Vintage Radio)") == 0 &&
-        strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0) {
+        strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0 &&
+        strcmp(THEME_NAMES[11], "Solarized Dark (Djuphav)") == 0 &&
+        strcmp(THEME_NAMES[12], "Dracula (Neon Skymning)") == 0 &&
+        strcmp(THEME_NAMES[13], "Militärradio (Fältgrön)") == 0) {
         expected_names = 1;
     }
-    record_result(names_ok && expected_names, "Alla 11 temanamn definierade, inkl. Arktisk Natt, Field Day och Mörkerläge", NULL);
+    record_result(names_ok && expected_names, "Alla 14 temanamn definierade, inkl. Solarized Dark, Dracula och Militärradio", NULL);
 
     /* 3. Säker exekvering av apply_color_theme för alla index inkl. gränsvärden */
-    for (int t = -2; t <= 13; ++t) {
+    for (int t = -2; t <= 16; ++t) {
         apply_color_theme(t);
     }
-    record_result(1, "apply_color_theme() exekverar stabilt för alla 11 teman och felaktiga index", NULL);
+    record_result(1, "apply_color_theme() exekverar stabilt för alla 14 teman och felaktiga index", NULL);
 
     /* 4. Sparande och laddning av nya teman i station.conf */
-    const char *test_conf = "test_theme_station.conf";
+    const char *test_conf = "/tmp/test_theme_station.conf";
     StationSettings st_save;
     memset(&st_save, 0, sizeof(st_save));
-    st_save.theme = 8; /* Arktisk Natt */
+    st_save.theme = 11; /* Solarized Dark */
     copy_str(st_save.call, sizeof(st_save.call), "SM0TEST");
     save_station_settings(test_conf, &st_save);
 
     StationSettings st_load;
     memset(&st_load, 0, sizeof(st_load));
     load_station_settings(test_conf, &st_load);
-    int p1 = (st_load.theme == 8);
+    int p1 = (st_load.theme == 11);
 
-    st_save.theme = 9; /* Field Day */
+    st_save.theme = 12; /* Dracula */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p2 = (st_load.theme == 9);
+    int p2 = (st_load.theme == 12);
 
-    st_save.theme = 10; /* Mörkerläge */
+    st_save.theme = 13; /* Militärradio */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p3 = (st_load.theme == 10);
+    int p3 = (st_load.theme == 13);
 
     unlink(test_conf);
-    record_result(p1 && p2 && p3, "StationSettings sparar och läser in alla nya teman korrekt via station.conf", NULL);
+    record_result(p1 && p2 && p3, "StationSettings sparar och läser in alla nya teman (11, 12, 13) korrekt via station.conf", NULL);
 }
 
 /* ========================================================================= */
