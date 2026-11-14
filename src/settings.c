@@ -4,6 +4,7 @@
  */
 
 #include "settings.h"
+#include "db.h"
 #include "dxcc.h"
 #include "logg.h"
 #include "qrb.h"
@@ -137,10 +138,14 @@ int clear_log_book(QSOList *log_list, const StationSettings *st) {
     if (log_list != NULL) {
         log_list->count = 0;
     }
-    FILE *fp = fopen(LOG_FILE, "w");
-    if (fp == NULL) return -1;
-    write_adif_header(fp);
-    fclose(fp);
+    if (db_is_open()) {
+        db_clear_all_qsos();
+    } else {
+        FILE *fp = fopen(LOG_FILE, "w");
+        if (fp == NULL) return -1;
+        write_adif_header(fp);
+        fclose(fp);
+    }
     return 0;
 }
 
@@ -325,7 +330,12 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
 
     if (imported_count > 0) {
         qsort(list->items, list->count, sizeof(QSO), cmp_qso_chronological);
-        save_all_qsos_adif(LOG_FILE, list, st);
+        if (db_is_open()) {
+            db_clear_all_qsos();
+            db_batch_insert(list->items, list->count);
+        } else {
+            save_all_qsos_adif(LOG_FILE, list, st);
+        }
     }
 
     return imported_count;
@@ -364,6 +374,9 @@ int export_qsos_adif(const char *filename, QSOList *list, const StationSettings 
 
         if (should_export) {
             list->items[i].handled = 1;
+            if (db_is_open() && list->items[i].id > 0) {
+                db_set_handled(list->items[i].id, 1);
+            }
             write_qso_record_adif(fp, &list->items[i], st);
             count++;
         }
@@ -371,8 +384,8 @@ int export_qsos_adif(const char *filename, QSOList *list, const StationSettings 
 
     fclose(fp);
 
-    /* Spara loggen så att handled-flaggan bevaras i qsolog.adi */
-    if (count > 0) {
+    /* Spara loggen om databas inte är öppen (fallback till ADIF) */
+    if (count > 0 && !db_is_open()) {
         save_all_qsos_adif(LOG_FILE, list, st);
     }
 

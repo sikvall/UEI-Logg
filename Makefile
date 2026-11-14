@@ -1,19 +1,19 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -O2 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE_EXTENDED -Isrc -pthread
-LDFLAGS = -lncursesw -lcurl -lm -pthread
+LDFLAGS = -lncursesw -lcurl -lsqlite3 -lm -pthread
 TARGET = ueilog
 TOOL_TARGET = dxcc
 TEST_TARGET = testing
 MANUAL_SRC = manual/manual.tex
 MANUAL_PDF = manual/manual.pdf
 
-SRCS = src/main.c src/tui.c src/logg.c src/settings.c src/callbook.c src/dxcc.c src/qrb.c src/util.c src/space_weather.c src/qrz.c src/file_dialog.c src/help.c
+SRCS = src/main.c src/db.c src/tui.c src/logg.c src/settings.c src/callbook.c src/dxcc.c src/qrb.c src/util.c src/space_weather.c src/qrz.c src/file_dialog.c src/help.c
 OBJS = $(SRCS:.c=.o)
 HEADERS = $(wildcard src/*.h)
 
 TEST_SRCS = tests/test_main.c
 TEST_OBJS = $(TEST_SRCS:.c=.o)
-TEST_DEPS = src/tui.o src/logg.o src/settings.o src/callbook.o src/dxcc.o src/qrb.o src/util.o src/space_weather.o src/qrz.o src/file_dialog.o src/help.o
+TEST_DEPS = src/db.o src/tui.o src/logg.o src/settings.o src/callbook.o src/dxcc.o src/qrb.o src/util.o src/space_weather.o src/qrz.o src/file_dialog.o src/help.o
 
 # Standardmål: Bygg huvudprogrammet, hjälpbinären, testbinären och manualen
 all: $(TARGET) $(TOOL_TARGET) $(TEST_TARGET) manual

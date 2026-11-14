@@ -4,6 +4,7 @@
  */
 
 #include "logg.h"
+#include "db.h"
 #include "callbook.h"
 #include "dxcc.h"
 #include "qrb.h"
@@ -970,22 +971,35 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
 
     if (*editing_index >= 0 && (size_t)(*editing_index) < log_list->count) {
         int idx = *editing_index;
+        qso->id = log_list->items[idx].id;
         log_list->items[idx] = *qso;
         invalidate_log_stats_cache();
-        if (save_all_qsos_adif(LOG_FILE, log_list, st) == 0) {
+        int ok = 0;
+        if (db_is_open()) {
+            ok = (db_update_qso(qso) == 0);
+        } else {
+            ok = (save_all_qsos_adif(LOG_FILE, log_list, st) == 0);
+        }
+        if (ok) {
             snprintf(status_msg, status_sz, "Uppdaterade QSO #%d med %s", idx + 1, qso->call);
             reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
         } else {
-            copy_str(status_msg, status_sz, "Fel: Kunde inte spara ändring till ADIF!");
+            copy_str(status_msg, status_sz, "Fel: Kunde inte spara ändring!");
         }
     } else {
-        if (append_qso_adif(LOG_FILE, qso, st) == 0) {
+        int ok = 0;
+        if (db_is_open()) {
+            ok = (db_insert_qso(qso) == 0);
+        } else {
+            ok = (append_qso_adif(LOG_FILE, qso, st) == 0);
+        }
+        if (ok) {
             qso_list_push(log_list, qso);
             snprintf(status_msg, status_sz, "Loggade %s (%s %s)",
                      qso->call, qso->band, qso->mode);
             reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
         } else {
-            copy_str(status_msg, status_sz, "Fel: Kunde inte spara till ADIF!");
+            copy_str(status_msg, status_sz, "Fel: Kunde inte spara till loggen!");
         }
     }
 }

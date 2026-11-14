@@ -12,6 +12,7 @@
 #include <locale.h>
 
 #include "qsolog.h"
+#include "db.h"
 #include "util.h"
 #include "logg.h"
 #include "settings.h"
@@ -443,6 +444,162 @@ static void run_string_and_utf8_tests(void) {
 }
 
 /* ========================================================================= */
+/* [9] SQLite3 Databaslagring (qsolog.sq3)                                   */
+/* ========================================================================= */
+static void run_sqlite_tests(void) {
+    printf(ANSI_BLUE "\n=== [9] SQLite3 Databaslagring (qsolog.sq3) ===" ANSI_RESET "\n");
+
+    const char *test_db_path = "/tmp/test_log_suite.sq3";
+    unlink(test_db_path);
+
+    /* 1. Öppna databas och initiera schema */
+    int rc = db_open(test_db_path);
+    int is_open = db_is_open();
+    int initial_cnt = db_count_qsos();
+    record_result((rc == 0) && is_open && (initial_cnt == 0),
+                  "db_open skapar och initierar 'qsos' tabell och index i SQLite3", NULL);
+
+    /* 2. Infoga QSO och verifiera genererat ID */
+    QSO q1, q2, q3;
+    memset(&q1, 0, sizeof(q1));
+    copy_str(q1.call, sizeof(q1.call), "SM5UEI");
+    copy_str(q1.date, sizeof(q1.date), "2026-11-14");
+    copy_str(q1.time_utc, sizeof(q1.time_utc), "10:00");
+    copy_str(q1.band, sizeof(q1.band), "20 m");
+    copy_str(q1.mode, sizeof(q1.mode), "SSB");
+    copy_str(q1.freq, sizeof(q1.freq), "14.200");
+    copy_str(q1.rst_sent, sizeof(q1.rst_sent), "59");
+    copy_str(q1.rst_rcvd, sizeof(q1.rst_rcvd), "59");
+    q1.handled = 0;
+
+    memset(&q2, 0, sizeof(q2));
+    copy_str(q2.call, sizeof(q2.call), "DL1ABC");
+    copy_str(q2.date, sizeof(q2.date), "2026-11-14");
+    copy_str(q2.time_utc, sizeof(q2.time_utc), "10:15");
+    copy_str(q2.band, sizeof(q2.band), "40 m");
+    copy_str(q2.mode, sizeof(q2.mode), "CW");
+    copy_str(q2.freq, sizeof(q2.freq), "7.020");
+    copy_str(q2.rst_sent, sizeof(q2.rst_sent), "599");
+    copy_str(q2.rst_rcvd, sizeof(q2.rst_rcvd), "579");
+    q2.handled = 1;
+
+    memset(&q3, 0, sizeof(q3));
+    copy_str(q3.call, sizeof(q3.call), "K1ZZ");
+    copy_str(q3.date, sizeof(q3.date), "2026-11-14");
+    copy_str(q3.time_utc, sizeof(q3.time_utc), "10:30");
+    copy_str(q3.band, sizeof(q3.band), "20 m");
+    copy_str(q3.mode, sizeof(q3.mode), "SSB");
+    copy_str(q3.freq, sizeof(q3.freq), "14.225");
+    copy_str(q3.rst_sent, sizeof(q3.rst_sent), "59");
+    copy_str(q3.rst_rcvd, sizeof(q3.rst_rcvd), "59");
+    q3.handled = 0;
+
+    int ins1 = db_insert_qso(&q1);
+    int ins2 = db_insert_qso(&q2);
+    int ins3 = db_insert_qso(&q3);
+    int ins_ok = (ins1 == 0 && ins2 == 0 && ins3 == 0) &&
+                 (q1.id > 0 && q2.id > 0 && q3.id > 0 && q2.id > q1.id);
+    record_result(ins_ok, "db_insert_qso infogar poster och tilldelar unika auto-ID:n", NULL);
+
+    /* 3. db_load_all_qsos */
+    QSOList loaded;
+    memset(&loaded, 0, sizeof(loaded));
+    int load_cnt = db_load_all_qsos(&loaded);
+    int load_ok = (load_cnt == 3) && (loaded.count == 3) &&
+                  (strcmp(loaded.items[0].call, "SM5UEI") == 0) &&
+                  (strcmp(loaded.items[1].call, "DL1ABC") == 0) &&
+                  (strcmp(loaded.items[2].call, "K1ZZ") == 0);
+    record_result(load_ok, "db_load_all_qsos läser in samtliga sparade QSO:n i kronologisk ordning", NULL);
+
+    /* 4. db_update_qso */
+    copy_str(loaded.items[0].comment, sizeof(loaded.items[0].comment), "Uppdaterad testkommentar");
+    copy_str(loaded.items[0].rst_sent, sizeof(loaded.items[0].rst_sent), "55");
+    int upd_rc = db_update_qso(&loaded.items[0]);
+
+    QSOList reloaded;
+    memset(&reloaded, 0, sizeof(reloaded));
+    db_load_all_qsos(&reloaded);
+    int upd_ok = (upd_rc == 0) && (reloaded.count == 3) &&
+                 (strcmp(reloaded.items[0].comment, "Uppdaterad testkommentar") == 0) &&
+                 (strcmp(reloaded.items[0].rst_sent, "55") == 0);
+    record_result(upd_ok, "db_update_qso uppdaterar fält för ett befintligt QSO baserat på ID", NULL);
+    free(reloaded.items);
+
+    /* 5. db_set_handled och db_set_all_handled (F7) */
+    db_set_handled(loaded.items[0].id, 1);
+    db_set_handled(loaded.items[2].id, 0);
+    int set_all_cnt = db_set_all_handled(1);
+
+    memset(&reloaded, 0, sizeof(reloaded));
+    db_load_all_qsos(&reloaded);
+    int f7_db_ok = (set_all_cnt >= 3) &&
+                   (reloaded.items[0].handled == 1) &&
+                   (reloaded.items[1].handled == 1) &&
+                   (reloaded.items[2].handled == 1);
+    record_result(f7_db_ok, "db_set_all_handled (F7) sätter handled = 1 för samtliga poster i SQLite", NULL);
+    free(reloaded.items);
+
+    /* 6. db_delete_qso och db_delete_marked */
+    int del1_rc = db_delete_qso(loaded.items[2].id);
+    int cnt_after_del = db_count_qsos();
+    loaded.items[0].marked = 1;
+    int del_marked_cnt = db_delete_marked(&loaded);
+    int cnt_after_marked = db_count_qsos();
+    int del_ok = (del1_rc == 0) && (cnt_after_del == 2) &&
+                 (del_marked_cnt == 1) && (cnt_after_marked == 1);
+    record_result(del_ok, "db_delete_qso och db_delete_marked raderar specificerade poster ur databasen", NULL);
+
+    /* 7. db_clear_all_qsos */
+    db_clear_all_qsos();
+    record_result(db_count_qsos() == 0, "db_clear_all_qsos tömmer tabellen fullständigt", NULL);
+
+    /* 8. db_migrate_from_adif (Automatisk migrering från tidigare .adi) */
+    const char *tmp_migr_adi = "/tmp/test_migr_source.adi";
+    StationSettings st;
+    memset(&st, 0, sizeof(st));
+    copy_str(st.call, sizeof(st.call), "SM5UEI");
+
+    QSOList migr_src;
+    memset(&migr_src, 0, sizeof(migr_src));
+    qso_list_push(&migr_src, &q1);
+    qso_list_push(&migr_src, &q2);
+    save_all_qsos_adif(tmp_migr_adi, &migr_src, &st);
+
+    int migr_cnt = db_migrate_from_adif(tmp_migr_adi, &st);
+    int migr_db_cnt = db_count_qsos();
+    int migr_ok = (migr_cnt == 2) && (migr_db_cnt == 2);
+    record_result(migr_ok, "db_migrate_from_adif migrerar automatiskt poster från ADIF till SQLite3", NULL);
+
+    unlink(tmp_migr_adi);
+    free(migr_src.items);
+
+    /* 9. ADIF-export och import med SQLite */
+    const char *tmp_export_adi = "/tmp/test_export_sqlite.adi";
+    memset(&reloaded, 0, sizeof(reloaded));
+    db_load_all_qsos(&reloaded);
+
+    int exp_cnt = export_qsos_adif(tmp_export_adi, &reloaded, &st, EXPORT_MODE_ALL);
+    int exp_ok = (exp_cnt == 2);
+
+    /* Rensa databas och importera tillbaka från ADIF-filen */
+    db_clear_all_qsos();
+    QSOList import_list;
+    memset(&import_list, 0, sizeof(import_list));
+    int imp_cnt = import_qsos_from_adif(tmp_export_adi, &import_list, &st);
+    int imp_db_cnt = db_count_qsos();
+    int roundtrip_ok = exp_ok && (imp_cnt == 2) && (imp_db_cnt == 2);
+    record_result(roundtrip_ok, "ADIF-export och import fungerar sömlöst tillsammans med SQLite-databasen", NULL);
+
+    unlink(tmp_export_adi);
+    free(import_list.items);
+    free(reloaded.items);
+    free(loaded.items);
+
+    db_close();
+    unlink(test_db_path);
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -463,6 +620,7 @@ int main(int argc, char *argv[]) {
     run_dxcc_tests();
     run_settings_tests();
     run_string_and_utf8_tests();
+    run_sqlite_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

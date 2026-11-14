@@ -95,7 +95,7 @@ static const HelpTopic HELP_TOPICS[] = {
         "Uppslagsfunktioner & Prioritetsordning",
         {
             "Prioritetsordning vid uppslag av anropssignal:",
-            "  1. Den lokala loggboken (qsolog.adi) kontrolleras alltid först.",
+            "  1. Den lokala loggboken (qsolog.sq3) kontrolleras alltid först.",
             "  2. Om ej i loggen och anropssignalen är svensk: SM Callbook (om aktiverat).",
             "  3. Om SMCB saknar träff eller om signalen är utländsk: QRZ.COM (om aktiverat).",
             "",

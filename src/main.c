@@ -4,6 +4,7 @@
  */
 
 #include "qsolog.h"
+#include "db.h"
 #include "callbook.h"
 #include "dxcc.h"
 #include "logg.h"
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printf("Användning: ueilog [alternativ]\n\n"
                    "Alternativ:\n"
-                   "  -l, --logfile <filnamn>  Använd angiven ADIF-fil som loggbok (skapas om den saknas)\n"
+                   "  -l, --logfile <filnamn>  Använd angiven databasfil som loggbok (default: qsolog.sq3)\n"
                    "  -h, --help               Visa denna hjälpinformation\n"
                    "  -v, --version            Visa versionsinformation\n");
             return 0;
@@ -65,21 +66,21 @@ int main(int argc, char *argv[]) {
     StationSettings station;
     load_station_settings(CONFIG_FILE, &station);
 
-    /* Kontrollera om loggfilen finns, annars skapas den med giltig ADIF-header */
-    FILE *chk_fp = fopen(g_log_filename, "r");
-    if (chk_fp != NULL) {
-        fclose(chk_fp);
-    } else {
-        FILE *new_fp = fopen(g_log_filename, "w");
-        if (new_fp != NULL) {
-            write_adif_header(new_fp);
-            fclose(new_fp);
-        }
+    /* Öppna eller skapa SQLite3-databasen för lokal lagring */
+    db_open(g_log_filename);
+
+    /* Om databasen är tom och qsolog.adi finns, migrera automatiskt från tidigare ADIF-logg */
+    if (strcmp(g_log_filename, DEFAULT_LOG_FILE) == 0) {
+        db_migrate_from_adif("qsolog.adi", &station);
     }
 
-    /* Läs in loggboken från loggfilen */
+    /* Läs in loggboken från databasen (eller ADIF som fallback om DB inte öppnades) */
     QSOList log_list = {NULL, 0, 0};
-    load_qsos_from_adif(LOG_FILE, &log_list);
+    if (db_is_open()) {
+        db_load_all_qsos(&log_list);
+    } else {
+        load_qsos_from_adif(LOG_FILE, &log_list);
+    }
 
     /* Starta asynkron inhämtning av rymdväder från https://hf.avitec.se */
     space_weather_init();
@@ -356,12 +357,17 @@ int main(int argc, char *argv[]) {
                     for (size_t mi = 0; mi < log_list.count; ++mi) {
                         if (log_list.items[mi].marked) {
                             log_list.items[mi].handled = 1;
+                            if (db_is_open() && log_list.items[mi].id > 0) {
+                                db_set_handled(log_list.items[mi].id, 1);
+                            }
                         }
                     }
                     if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
                         current_qso.handled = 1;
                     }
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som hanterade (✓).", m_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
@@ -369,7 +375,11 @@ int main(int argc, char *argv[]) {
                     if (editing_index == orig_idx) {
                         current_qso.handled = 1;
                     }
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (db_is_open() && log_list.items[orig_idx].id > 0) {
+                        db_set_handled(log_list.items[orig_idx].id, 1);
+                    } else if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som hanterat (✓).", log_list.items[orig_idx].call);
                 }
             } else if (ch == KEY_F(6)) {
@@ -382,12 +392,17 @@ int main(int argc, char *argv[]) {
                     for (size_t mi = 0; mi < log_list.count; ++mi) {
                         if (log_list.items[mi].marked) {
                             log_list.items[mi].handled = 0;
+                            if (db_is_open() && log_list.items[mi].id > 0) {
+                                db_set_handled(log_list.items[mi].id, 0);
+                            }
                         }
                     }
                     if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
                         current_qso.handled = 0;
                     }
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Markerade %d rader som nya (✗).", m_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
@@ -395,7 +410,11 @@ int main(int argc, char *argv[]) {
                     if (editing_index == orig_idx) {
                         current_qso.handled = 0;
                     }
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (db_is_open() && log_list.items[orig_idx].id > 0) {
+                        db_set_handled(log_list.items[orig_idx].id, 0);
+                    } else if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Markerade QSO med %s som nytt (✗).", log_list.items[orig_idx].call);
                 }
             } else if (ch == KEY_F(7)) {
@@ -408,7 +427,11 @@ int main(int argc, char *argv[]) {
                         current_qso.handled = 1;
                     }
                     invalidate_log_stats_cache();
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (db_is_open()) {
+                        db_set_all_handled(1);
+                    } else {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     snprintf(status_msg, sizeof(status_msg), "Markerade alla %zu rader som hanterade (✓).", log_list.count);
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Loggen är tom.");
@@ -420,16 +443,26 @@ int main(int argc, char *argv[]) {
                     if (log_list.items[mi].marked) m_cnt++;
                 }
                 if (m_cnt > 0) {
+                    if (db_is_open()) {
+                        db_delete_marked(&log_list);
+                    }
                     int del_cnt = qso_list_delete_marked(&log_list);
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     editing_index = -1;
                     snprintf(status_msg, sizeof(status_msg), "Raderade %d markerade QSO:n.", del_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
                     char del_call[32];
                     copy_str(del_call, sizeof(del_call), log_list.items[orig_idx].call);
+                    if (db_is_open() && log_list.items[orig_idx].id > 0) {
+                        db_delete_qso(log_list.items[orig_idx].id);
+                    }
                     qso_list_delete_at(&log_list, (size_t)orig_idx);
-                    save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
                     editing_index = -1;
                     snprintf(status_msg, sizeof(status_msg), "Raderade QSO med %s.", del_call);
                 }
@@ -883,6 +916,7 @@ int main(int argc, char *argv[]) {
     tui_cleanup();
     free(log_list.items);
     free_dxcc_db();
+    db_close();
     curl_global_cleanup();
 
     return 0;

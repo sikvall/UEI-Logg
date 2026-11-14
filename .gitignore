@@ -3,6 +3,8 @@ ueilog
 qsolog
 dxcc
 testing
+qsolog.sq3
+*.sq3
 *.o
 *.adi
 *.bak

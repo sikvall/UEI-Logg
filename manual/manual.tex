@@ -255,22 +255,30 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
 
-\section{ADIF Import och Export}
+\section{Lokal Databas (SQLite3) samt ADIF Import och Export}
 \label{sec:adif}
 
-UEI-Logg har komplett stöd för standarden **ADIF 3** (Amateur Data Interchange Format).
+UEI-Logg använder en lokal relationsdatabas med **SQLite3** (\texttt{qsolog.sq3}) för all persistent lagring, samtidigt som programmet behåller fullt stöd för standarden **ADIF 3** (Amateur Data Interchange Format) vid utbyte av loggdata.
 
-\subsection{Export av loggboken}
+\subsection{Lokal databas: qsolog.sq3}
+All loggdata lagras lokalt i SQLite3-databasen \texttt{qsolog.sq3}. Detta ger:
+\begin{itemize}
+    \item \textbf{ACID-säkerhet:} Transaktioner och Write-Ahead Logging (WAL) förhindrar korruption vid plötsliga strömavbrott eller krascher.
+    \item \textbf{Prestanda i realtid:} Tangenttryckningar (F5/F6/F7 för att ändra hanteringsstatus eller F8 för radering) uppdaterar databasen omedelbart via SQL utan att skriva om tiotusentals rader på disk.
+    \item \textbf{Sömlös migrering:} Om \texttt{qsolog.sq3} saknas men en tidigare \texttt{qsolog.adi} finns i katalogen, migreras alla kontakter automatiskt vid första start.
+\end{itemize}
+
+\subsection{Export av loggboken (ADIF)}
 Export startas med \texttt{F6} (eller via inställningsmenyn). Du kan välja mellan tre exportlägen:
 \begin{itemize}
-    \item \textbf{Endast nya (oexporterade) QSO:} Exporterar de kontakter som ännu inte exporterats tidigare. Efter export sätts posternas status till hanterade.
+    \item \textbf{Endast nya (oexporterade) QSO:} Exporterar de kontakter som ännu inte exporterats tidigare. Efter export sätts posternas status till hanterade (✓).
     \item \textbf{Endast markerade QSO:} Exporterar de poster du manuellt markerat i loggtabellen med \texttt{Insert}-tangenten.
     \item \textbf{Hela loggboken:} Exporterar samtliga QSO till en komplett säkerhetskopia.
 \end{itemize}
-Den inbyggda filväljaren föreslår automatiskt ett standardfilnamn baserat på signal och datum, till exempel \texttt{SM0XYZ\_20261113.adi}, och låter dig bläddra fritt bland kataloger.
+Den inbyggda filväljaren föreslår automatiskt ett standardfilnamn baserat på signal och datum, till exempel \texttt{SM0XYZ\_20261114.adi}, och låter dig bläddra fritt bland kataloger.
 
 \subsection{Import av ADIF}
-Via \texttt{F5} i inställningsmenyn kan du läsa in loggfiler från WSJT-X, N1MM, Log4OM, MacLoggerDX eller andra loggprogram. Fält som signal, frekvens, band, mode, datum, tid, rapporter, namn, QTH och lokator importeras och kontrolleras mot dubbletter.
+Via \texttt{F5} i inställningsmenyn kan du läsa in externa ADIF-filer från WSJT-X, N1MM, Log4OM, MacLoggerDX eller andra loggprogram. Fält som signal, frekvens, band, mode, datum, tid, rapporter, namn, QTH och lokator importeras, kontrolleras mot dubbletter och sparas direkt i \texttt{qsolog.sq3}.
 
 \section{Hjälpprogrammet dxcc}
 \label{sec:dxcc}
@@ -353,6 +361,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \textbf{Fil / Katalog} & \textbf{Beskrivning} \\
 \midrule
 \texttt{src/main.c} & Huvudloop, händelselyssnare och tangentbordsstyrning. \\
+\texttt{src/db.c} / \texttt{db.h} & SQLite3-databaslager för \texttt{qsolog.sq3} (schema, CRUD, WAL). \\
 \texttt{src/tui.c} / \texttt{tui.h} & Terminalgränssnitt i ncurses, färgteman och rutfördelning. \\
 \texttt{src/logg.c} / \texttt{logg.h} & QSO-datastrukturer, filsparning och ADIF import/export. \\
 \texttt{src/settings.c} & Inställningsmodal (F12) och konfiguration. \\
@@ -366,6 +375,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
 \texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
+\texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
 \texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
 \texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
 \texttt{smcallbook.txt} & Databas över svenska radioamatörer. \\
@@ -390,6 +400,7 @@ Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattand
     \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
     \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
     \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.
+    \item \textbf{SQLite3-databaslagring:} Verifierar schemainitiering, insert med auto-ID, kronologisk laddning, uppdatering, F7 i databasen, radering, tömning, automatisk ADIF-migrering samt import/export.
 \end{itemize}
 
 Testsviten körs från kommandoraden med:

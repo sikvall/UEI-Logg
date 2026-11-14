@@ -16,6 +16,7 @@
 #include <locale.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 #endif
 
 #ifndef DEFAULT_LOG_FILE
-#define DEFAULT_LOG_FILE "qsolog.adi"
+#define DEFAULT_LOG_FILE "qsolog.sq3"
 #endif
 
 extern char g_log_filename[256];
@@ -126,6 +127,7 @@ typedef struct {
  * @brief Data för ett enskilt QSO (kontakt).
  */
 typedef struct {
+    int64_t id;          /**< Primärnyckel (rowid) i SQLite3-databasen */
     char call[32];       /**< Motstationens anropssignal (ADIF: CALL) */
     char name[64];       /**< Motstationens operatörsnamn (ADIF: NAME) */
     char date[16];       /**< QSO-datum i format YYYY-MM-DD (ADIF: QSO_DATE) */
