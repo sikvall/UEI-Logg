@@ -38,6 +38,7 @@ void load_station_settings(const char *filename, StationSettings *st) {
     st->show_stats = 1;
     st->show_space_weather = 1;
     st->show_notes = 1;
+    st->theme = THEME_DEFAULT;
     st->qrz_username[0] = '\0';
     st->qrz_password[0] = '\0';
     custom_theme_init_defaults(&st->custom_theme);
@@ -627,7 +628,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     mvprintw(r_theme, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    int t_idx = (edit->theme >= 0 && edit->theme < THEME_COUNT) ? edit->theme : 0;
+    int t_idx = (edit->theme >= 0 && edit->theme < THEME_COUNT) ? edit->theme : THEME_DEFAULT;
     char theme_disp[64];
     utf8_pad_or_clip(theme_disp, sizeof(theme_disp), THEME_NAMES[t_idx], 26, 0);
 
@@ -859,7 +860,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, const char *status_msg) {
     int orig_theme = edit->theme;
     if (orig_theme < 0 || orig_theme >= THEME_COUNT) {
-        orig_theme = 0;
+        orig_theme = THEME_DEFAULT;
     }
     int sel_idx = orig_theme;
 

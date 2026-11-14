@@ -1527,10 +1527,10 @@ static void run_swedish_chars_tests(void) {
 /* [11] Färgscheman och temahantering                                        */
 /* ========================================================================= */
 static void run_theme_tests(void) {
-    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (15 teman inkl. egen profil) ===" ANSI_RESET "\n");
+    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (16 teman med UEI-tema som default) ===" ANSI_RESET "\n");
 
     /* 1. Antal teman */
-    record_result(THEME_COUNT == 15, "THEME_COUNT är definierat som 15 teman (inkl. Egen profil)", NULL);
+    record_result(THEME_COUNT == 16, "THEME_COUNT är definierat som 16 teman (inkl. UEI-tema och Egen profil)", NULL);
 
     /* 2. Temanamn och validering */
     int names_ok = 1;
@@ -1542,52 +1542,59 @@ static void run_theme_tests(void) {
     }
     int expected_names = 0;
     if (names_ok &&
-        strcmp(THEME_NAMES[8], "Arktisk Natt (Nord Frost)") == 0 &&
-        strcmp(THEME_NAMES[9], "Field Day (Vintage Radio)") == 0 &&
-        strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0 &&
-        strcmp(THEME_NAMES[11], "Solarized Dark (Djuphav)") == 0 &&
-        strcmp(THEME_NAMES[12], "Dracula (Neon Skymning)") == 0 &&
-        strcmp(THEME_NAMES[13], "Militärradio (Fältgrön)") == 0 &&
-        strcmp(THEME_NAMES[14], "Egen profil (Anpassad)") == 0) {
+        strcmp(THEME_NAMES[0], "UEI-tema") == 0 &&
+        strcmp(THEME_NAMES[1], "Turbo Pascal (MC Default)") == 0 &&
+        strcmp(THEME_NAMES[9], "Arktisk Natt (Nord Frost)") == 0 &&
+        strcmp(THEME_NAMES[10], "Field Day (Vintage Radio)") == 0 &&
+        strcmp(THEME_NAMES[11], "Mörkerläge (Crimson Night)") == 0 &&
+        strcmp(THEME_NAMES[12], "Solarized Dark (Djuphav)") == 0 &&
+        strcmp(THEME_NAMES[13], "Dracula (Neon Skymning)") == 0 &&
+        strcmp(THEME_NAMES[14], "Militärradio (Fältgrön)") == 0 &&
+        strcmp(THEME_NAMES[15], "Egen profil (Anpassad)") == 0) {
         expected_names = 1;
     }
-    record_result(names_ok && expected_names, "Alla 15 temanamn definierade, inkl. Solarized, Dracula, Militär och Egen profil", NULL);
+    record_result(names_ok && expected_names, "Alla 16 temanamn definierade, med UEI-tema som default och Egen profil som anpassad", NULL);
 
     /* 3. Säker exekvering av apply_color_theme för alla index inkl. gränsvärden */
-    for (int t = -2; t <= 17; ++t) {
+    for (int t = -2; t <= 18; ++t) {
         apply_color_theme(t);
     }
-    record_result(1, "apply_color_theme() exekverar stabilt för alla 15 teman och felaktiga index", NULL);
+    record_result(1, "apply_color_theme() exekverar stabilt för alla 16 teman och felaktiga index", NULL);
 
     /* 4. Sparande och laddning av nya teman i station.conf */
     const char *test_conf = "/tmp/test_theme_station.conf";
     StationSettings st_save;
     memset(&st_save, 0, sizeof(st_save));
-    st_save.theme = 11; /* Solarized Dark */
+    st_save.theme = 0; /* UEI-tema */
     copy_str(st_save.call, sizeof(st_save.call), "SM0TEST");
     save_station_settings(test_conf, &st_save);
 
     StationSettings st_load;
     memset(&st_load, 0, sizeof(st_load));
     load_station_settings(test_conf, &st_load);
-    int p1 = (st_load.theme == 11);
+    int p0 = (st_load.theme == 0);
 
-    st_save.theme = 12; /* Dracula */
+    st_save.theme = 12; /* Solarized Dark */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p2 = (st_load.theme == 12);
+    int p1 = (st_load.theme == 12);
 
-    st_save.theme = 13; /* Militärradio */
+    st_save.theme = 13; /* Dracula */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p3 = (st_load.theme == 13);
+    int p2 = (st_load.theme == 13);
+
+    st_save.theme = 14; /* Militärradio */
+    save_station_settings(test_conf, &st_save);
+    load_station_settings(test_conf, &st_load);
+    int p3 = (st_load.theme == 14);
 
     /* 5. Egen färgprofil (CustomTheme) initiering, presets och persistens */
     CustomTheme def_ct, preset_ct;
     custom_theme_init_defaults(&def_ct);
     custom_theme_init_preset(&preset_ct, 3); /* Dracula preset */
 
-    int ct_init_ok = (def_ct.bg_main == 3 && def_ct.fg_text == 1 && def_ct.border == 8) &&
+    int ct_init_ok = (def_ct.bg_main == 4 && def_ct.fg_text == 14 && def_ct.border == 11) &&
                      (preset_ct.border_active == 19 && preset_ct.title == 9);
 
     st_save.theme = THEME_CUSTOM;
@@ -1603,9 +1610,14 @@ static void run_theme_tests(void) {
                             (st_load.custom_theme.title == 14) &&
                             (st_load.custom_theme.bg_main == def_ct.bg_main);
 
+    /* Validera att utebliven THEME i station.conf ger default (UEI-tema = 0) */
+    StationSettings st_def;
+    load_station_settings("/tmp/nonexistent_conf.conf", &st_def);
+    int def_theme_ok = (st_def.theme == THEME_DEFAULT);
+
     unlink(test_conf);
-    record_result(p1 && p2 && p3 && ct_init_ok && custom_persist_ok,
-                  "CustomTheme: presets, init_defaults och fullständig persistens i station.conf (THEME=14)", NULL);
+    record_result(p0 && p1 && p2 && p3 && ct_init_ok && custom_persist_ok && def_theme_ok,
+                  "CustomTheme: presets, init_defaults och fullständig persistens i station.conf (THEME=15)", NULL);
 }
 
 /* ========================================================================= */

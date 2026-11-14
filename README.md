@@ -34,7 +34,7 @@
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
 - **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
 - **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
-- **15 Färgscheman och egen färgprofilseditor**: Välj mellan 14 färdiga teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en helt egen anpassad färgprofil via den inbyggda färgprofilseditorn (F7 i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med F12.
+- **16 Färgscheman och egen färgprofilseditor**: Standardtemat är det eleganta **UEI-tema** (marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus). Välj mellan 16 färdiga teman (inkl. Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en helt egen anpassad färgprofil via den inbyggda färgprofilseditorn (F7 i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med F12.
 
 ---
 

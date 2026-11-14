@@ -113,26 +113,26 @@ static void set_slot_val(CustomTheme *ct, int slot, int val) {
 
 void custom_theme_init_defaults(CustomTheme *ct) {
     if (ct == NULL) return;
-    ct->bg_main       = 3;  /* Mörkgrå (236) */
-    ct->fg_text       = 1;  /* Kritvit */
-    ct->border        = 8;  /* Cyan */
-    ct->border_active = 9;  /* Elcyan */
-    ct->title         = 9;  /* Elcyan */
-    ct->label         = 7;  /* Ljusblå */
-    ct->field_act_bg  = 0;  /* Svart */
-    ct->field_act_fg  = 9;  /* Elcyan */
-    ct->sel_bg        = 5;  /* Havsblå (24) */
-    ct->sel_fg        = 1;  /* Kritvit */
-    ct->topbar_bg     = 8;  /* Cyan */
-    ct->topbar_fg     = 0;  /* Svart */
-    ct->status_ok     = 10; /* Fosforgrön */
+    ct->bg_main       = 4;  /* Marinblå (Mörk) */
+    ct->fg_text       = 14; /* Solgul (Klar) */
+    ct->border        = 11; /* Skogsgrön */
+    ct->border_active = 13; /* Bärnsten / Guld */
+    ct->title         = 1;  /* Kritvit */
+    ct->label         = 14; /* Solgul (Klar) */
+    ct->field_act_bg  = 3;  /* Mörkgrå */
+    ct->field_act_fg  = 15; /* Orange (Varm) */
+    ct->sel_bg        = 5;  /* Havsblå */
+    ct->sel_fg        = 15; /* Orange (Varm) */
+    ct->topbar_bg     = 2;  /* Ljusgrå */
+    ct->topbar_fg     = 3;  /* Mörkgrå */
+    ct->status_ok     = 11; /* Skogsgrön */
     ct->status_warn   = 17; /* Klar röd */
 }
 
 void custom_theme_init_preset(CustomTheme *ct, int preset) {
     if (ct == NULL) return;
     switch (preset) {
-        case 0: /* Standard Mörk / Cyan */
+        case 0: /* UEI-tema (Standard) */
             custom_theme_init_defaults(ct);
             break;
         case 1: /* Klassisk Blå (Borland) */
@@ -412,7 +412,7 @@ int run_color_theme_editor(StationSettings *edit) {
         } else if (ch == 'p' || ch == 'P') {
             /* Popup för att ladda förinställd mall */
             const char * const PRESETS[] = {
-                "Standard Mörk / Cyan",
+                "UEI-tema (Standard)",
                 "Klassisk Blå (Borland)",
                 "Marinblå (Solarized)",
                 "Neon Skymning (Dracula)",

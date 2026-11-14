@@ -60,10 +60,11 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio samt Egen profil) */
+/* Färgscheman (UEI-tema, Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio samt Egen profil) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 15
-#define THEME_CUSTOM 14
+#define THEME_COUNT 16
+#define THEME_DEFAULT 0
+#define THEME_CUSTOM 15
 
 /**
  * @brief Egen anpassad färgprofil (Custom Theme).

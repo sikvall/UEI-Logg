@@ -157,7 +157,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
             "  * Inloggningsuppgifter för QRZ.COM (lösenord maskeras med **********).",
             "  * På/Av för automatiskt uppslag mot SM Callbook och QRZ.COM.",
-            "  * Färgscheman: 15 teman inkl. Egen profil (tryck F7 i inställningar för editorn).",
+            "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
             "",
             "ADIF Import (F5 i inställningar):",
             "  * Interaktiv katalogbläddrare med filter för .adi och .adif-filer.",

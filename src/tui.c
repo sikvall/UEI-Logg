@@ -17,8 +17,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula, militärradio samt egen profil */
+/* Färgscheman (UEI-tema som default, Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula, militärradio samt egen profil) */
 const char * const THEME_NAMES[] = {
+    "UEI-tema",
     "Turbo Pascal (MC Default)",
     "MC Darkfar (Svart/Blå)",
     "MC Gotar (Svart/Gul)",
@@ -106,11 +107,32 @@ void apply_color_theme(int theme_idx) {
     start_color();
 
     if (theme_idx < 0 || theme_idx >= THEME_COUNT) {
-        theme_idx = 0;
+        theme_idx = THEME_DEFAULT;
     }
 
     switch (theme_idx) {
-        case 0: /* 1. Turbo Pascal / MC Default (Klassisk blå bakgrund) */
+        case 0: { /* 1. UEI-tema (Standard - Marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus) */
+            static const CustomTheme uei_theme = {
+                4,  /* bg_main:       Marinblå (Mörk) */
+                14, /* fg_text:       Solgul (Klar) */
+                11, /* border:        Skogsgrön */
+                13, /* border_active: Bärnsten / Guld */
+                1,  /* title:         Kritvit */
+                14, /* label:         Solgul (Klar) */
+                3,  /* field_act_bg:  Mörkgrå */
+                15, /* field_act_fg:  Orange (Varm) */
+                5,  /* sel_bg:        Havsblå */
+                15, /* sel_fg:        Orange (Varm) */
+                2,  /* topbar_bg:     Ljusgrå */
+                3,  /* topbar_fg:     Mörkgrå */
+                11, /* status_ok:     Skogsgrön */
+                17  /* status_warn:   Klar röd */
+            };
+            apply_custom_theme_pairs(&uei_theme);
+            break;
+        }
+
+        case 1: /* 2. Turbo Pascal / MC Default (Klassisk blå bakgrund) */
             init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLUE);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_WHITE);
@@ -144,7 +166,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLUE);
             break;
 
-        case 1: /* 2. MC Darkfar (Svart bakgrund med blå accenter och gråa ramar) */
+        case 2: /* 3. MC Darkfar (Svart bakgrund med blå accenter och gråa ramar) */
             init_pair(CP_MAIN_BG,        COLOR_WHITE,  COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
@@ -178,7 +200,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 2: /* 3. MC Gotar (Svart bakgrund med gula detaljer och gråa ramar) */
+        case 3: /* 4. MC Gotar (Svart bakgrund med gula detaljer och gråa ramar) */
             init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_YELLOW);
@@ -212,7 +234,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 3: /* 4. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
+        case 4: /* 5. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
             init_pair(CP_MAIN_BG,        COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
@@ -246,7 +268,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_WHITE);
             break;
 
-        case 4: /* 5. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
+        case 5: /* 6. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
             init_pair(CP_MAIN_BG,        COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLACK);
@@ -280,7 +302,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 5: { /* 6. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
+        case 6: { /* 7. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
             short bg_gray   = (COLORS >= 256) ? 252 : COLOR_WHITE;
             short fg_orange = (COLORS >= 256) ? 208 : COLOR_RED;
             init_pair(CP_MAIN_BG,        COLOR_BLACK,  bg_gray);
@@ -317,7 +339,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 6: { /* 7. Monokrom gråskala (Allt i harmoniska nyanser av grått och vitt på svart) */
+        case 7: { /* 8. Monokrom gråskala (Allt i harmoniska nyanser av grått och vitt på svart) */
             short col_light = (COLORS >= 256) ? 253 : COLOR_WHITE;
             short col_mid   = (COLORS >= 256) ? 246 : COLOR_WHITE;
             short col_dark  = (COLORS >= 256) ? 238 : COLOR_BLACK;
@@ -357,7 +379,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 7: { /* 8. Ambra / Retro CRT (Bärnsten / klassisk ambra monokrom skärm på svart bakgrund) */
+        case 8: { /* 9. Ambra / Retro CRT (Bärnsten / klassisk ambra monokrom skärm på svart bakgrund) */
             short amb_bright = (COLORS >= 256) ? 214 : COLOR_YELLOW;
             short amb_mid    = (COLORS >= 256) ? 208 : COLOR_YELLOW;
             short amb_dark   = (COLORS >= 256) ? 130 : COLOR_YELLOW;
@@ -397,7 +419,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 8: { /* 9. Arktisk Natt (Nord Frost - Dämpad skifferblå polarnatt med isblå frost och norrsken) */
+        case 9: { /* 10. Arktisk Natt (Nord Frost - Dämpad skifferblå polarnatt med isblå frost och norrsken) */
             short bg_nord       = (COLORS >= 256) ? 236 : COLOR_BLACK;
             short fg_snow       = (COLORS >= 256) ? 254 : COLOR_WHITE;
             short fg_frost      = (COLORS >= 256) ? 117 : COLOR_CYAN;
@@ -443,7 +465,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 9: { /* 10. Field Day (Vintage Radio / Gruvbox - Varm mörkbrun bas, bärnsten och analog stationskänsla) */
+        case 10: { /* 11. Field Day (Vintage Radio / Gruvbox - Varm mörkbrun bas, bärnsten och analog stationskänsla) */
             short bg_vintage   = (COLORS >= 256) ? 235 : COLOR_BLACK;
             short fg_cream     = (COLORS >= 256) ? 229 : COLOR_WHITE;
             short fg_amber     = (COLORS >= 256) ? 214 : COLOR_YELLOW;
@@ -488,7 +510,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 10: { /* 11. Mörkerläge (Crimson Night - Skonsamt röd-svart tema för nattpass utan att störa mörkerseendet) */
+        case 11: { /* 12. Mörkerläge (Crimson Night - Skonsamt röd-svart tema för nattpass utan att störa mörkerseendet) */
             short bg_night     = (COLORS >= 256) ? 232 : COLOR_BLACK;
             short fg_bright    = (COLORS >= 256) ? 196 : COLOR_RED;
             short fg_light_red = (COLORS >= 256) ? 203 : COLOR_RED;
@@ -529,7 +551,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 11: { /* 12. Solarized Dark (Djuphav - Ethan Schoonovers vetenskapligt balanserade mörkblå marinpalett) */
+        case 12: { /* 13. Solarized Dark (Djuphav - Ethan Schoonovers vetenskapligt balanserade mörkblå marinpalett) */
             short bg_sol     = (COLORS >= 256) ? 234 : COLOR_BLACK;
             short fg_base0   = (COLORS >= 256) ? 250 : COLOR_WHITE;
             short fg_base1   = (COLORS >= 256) ? 254 : COLOR_WHITE;
@@ -577,7 +599,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 12: { /* 13. Dracula (Neon Skymning - Modern mörk violett palett med neonlila, cyan och rosa accenter) */
+        case 13: { /* 14. Dracula (Neon Skymning - Modern mörk violett palett med neonlila, cyan och rosa accenter) */
             short bg_drac        = (COLORS >= 256) ? 236 : COLOR_BLACK;
             short fg_drac_fg     = (COLORS >= 256) ? 255 : COLOR_WHITE;
             short fg_drac_purple = (COLORS >= 256) ? 141 : COLOR_MAGENTA;
@@ -624,7 +646,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 13: { /* 14. Militärradio (Fältgrön - Taktisk olivdrab bas, khaki duktext och mässingsdetaljer) */
+        case 14: { /* 15. Militärradio (Fältgrön - Taktisk olivdrab bas, khaki duktext och mässingsdetaljer) */
             short bg_tac     = (COLORS >= 256) ? 234 : COLOR_BLACK;
             short fg_khaki   = (COLORS >= 256) ? 187 : COLOR_WHITE;
             short fg_olive   = (COLORS >= 256) ? 107 : COLOR_GREEN;
@@ -669,7 +691,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 14: { /* 15. Egen profil (Användaranpassat färgschema från editorn) */
+        case 15: { /* 16. Egen profil (Användaranpassat färgschema från editorn) */
             if (!g_custom_theme_init) {
                 custom_theme_init_defaults(&g_custom_theme);
                 g_custom_theme_init = 1;
