@@ -82,41 +82,65 @@ För att kompilera och köra UEI-Logg krävs följande:
 2. **Kompilator**: GCC eller Clang med stöd för C11 (`-std=c11`).
 3. **Byggverktyg**: GNU Make (`make`).
 4. **Externa bibliotek**:
-   - **ncursesw** (ncurses med bredteckenstöd / UTF-8): Terminalgränssnitt och fönsterhantering.
-   - **libcurl**: HTTP- och HTTPS-förfrågningar för rymdväder, QRZ.COM och DXCC-uppdateringar.
+   - **ncursesw** (ncurses med bredteckenstöd / UTF-8): Terminalgränssnitt och fönsterhantering (`libncursesw5-dev` eller `libncurses-dev`).
+   - **libcurl**: HTTP- och HTTPS-förfrågningar för rymdväder, QRZ.COM och DXCC-uppdateringar (`libcurl4-openssl-dev`).
+   - **sqlite3**: Databasmotorn för lokal lagring i `qsolog.sq3` (`libsqlite3-dev`).
    - **libm**: Standard C matematikbibliotek för QRB- och storcirkelberäkningar.
    - **pthread**: POSIX-trådar för bakgrundshämtning utan att frysa terminalgränssnittet.
+   - **pdfLaTeX (valfritt)**: TeX Live för att kompilera användarmanualen till PDF (`make manual`).
 
 ---
 
 ## Installation av nödvändiga utvecklingspaket
 
-Installera kompilator och utvecklingsbibliotek via din distributions pakethanterare:
+### Automatisk installation via hjälpskript (rekommenderas)
 
-### Debian / Ubuntu / Linux Mint / Raspberry Pi OS
+Projektet inkluderar ett installationsskript som automatiskt känner av din Linux-distribution och installerar samtliga nödvändiga utvecklingspaket:
 
 ```bash
+# Kör installationsskriptet
+./install_dependencies.sh
+
+# För att installera allt automatiskt inkl. LaTeX för PDF-manualen:
+./install_dependencies.sh --latex -y
+```
+
+### Manuell installation per distribution
+
+Installera kompilator och utvecklingsbibliotek via din distributions pakethanterare:
+
+### Ubuntu / Debian / Linux Mint / Raspberry Pi OS
+
+Kör följande exakta kommandon för att installera allt som krävs:
+
+```bash
+# 1. Uppdatera paketlistorna
 sudo apt update
-sudo apt install -y build-essential libncursesw5-dev libcurl4-openssl-dev
+
+# 2. Installera nödvändiga utvecklingspaket för att bygga ueilog, dxcc och testing
+sudo apt install -y build-essential libncursesw5-dev libcurl4-openssl-dev libsqlite3-dev
+
+# 3. (Valfritt) Installera LaTeX-paket för att kunna bygga användarmanualen (manual/manual.pdf)
+sudo apt install -y texlive-latex-base texlive-latex-extra texlive-lang-european
 ```
 
 ### Fedora / RHEL / CentOS / AlmaLinux / Rocky Linux
 
 ```bash
-sudo dnf install -y gcc make ncurses-devel libcurl-devel
+sudo dnf install -y gcc make ncurses-devel libcurl-devel sqlite-devel
 ```
 
 ### Arch Linux / Manjaro
 
 ```bash
-sudo pacman -Syu --needed base-devel ncurses curl
+sudo pacman -Syu --needed base-devel ncurses curl sqlite
 ```
 
 ### openSUSE
 
 ```bash
 sudo zypper refresh
-sudo zypper install -y gcc make ncurses-devel libcurl-devel
+sudo zypper install -y gcc make ncurses-devel libcurl-devel sqlite3-devel
 ```
 
 ---
@@ -125,7 +149,7 @@ sudo zypper install -y gcc make ncurses-devel libcurl-devel
 
 Projektet byggs med GNU Make.
 
-### Bygg alla mål (huvudprogram och hjälpverktyg)
+### Bygg alla mål (huvudprogram, dxcc, testbinär och manual)
 
 ```bash
 make
@@ -133,9 +157,11 @@ make
 make all
 ```
 
-Detta skapar två körbara binärer i projektets rotkatalog:
-- **`ueilog`**: Det huvudsakliga loggboksprogrammet.
+Detta skapar följande i projektkatalogen:
+- **`ueilog`**: Det huvudsakliga TUI-loggboksprogrammet.
 - **`dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`dxcc.txt`).
+- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester.
+- **`manual/manual.pdf`**: Komplett användarmanual i PDF-format.
 
 ### Bygg enskilda mål
 
@@ -145,11 +171,17 @@ make ueilog
 
 # Bygg endast DXCC-verktyget
 make dxcc
+
+# Bygg och kör testsviten
+make test
+
+# Bygg användarmanualen
+make manual
 ```
 
 ### Rensa byggfiler
 
-För att ta bort kompilerade objektfiler (`*.o`) och binärer:
+För att ta bort kompilerade objektfiler (`*.o`), binärer och temporära LaTeX-filer:
 
 ```bash
 make clean

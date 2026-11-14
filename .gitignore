@@ -5,6 +5,8 @@ dxcc
 testing
 qsolog.sq3
 *.sq3
+*.sq3-*
+*.db
 *.o
 *.adi
 *.bak

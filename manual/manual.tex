@@ -66,32 +66,68 @@ Programmets styrkor:
 \section{Installation och Bygge}
 \label{sec:install}
 
-UEI-Logg är skrivet i standard C (C11) och kompileras enkelt med GCC eller Clang på Linux.
+UEI-Logg är skrivet i standard C (C11) och kompileras med GCC eller Clang på Linux.
 
-\subsection{Förutsättningar}
-Följande utvecklingspaket behövs:
+\subsection{Systemkrav och Nödvändiga Paket}
+För att kompilera och köra programmet krävs följande verktyg och utvecklingsbibliotek:
 \begin{itemize}
-    \item \textbf{Kompilator:} GCC eller Clang med C11-stöd.
-    \item \textbf{ncursesw:} GNU ncurses med wide-character-stöd (\texttt{libncursesw5-dev} eller motsvarande).
+    \item \textbf{Kompilator och Make:} GCC (eller Clang) med C11-stöd samt GNU Make.
+    \item \textbf{ncursesw:} Terminalgränssnitt med bredtecken-/UTF-8-stöd (\texttt{libncursesw5-dev} eller \texttt{libncurses-dev}).
     \item \textbf{libcurl:} cURL-klientbibliotek för HTTPS-anrop (\texttt{libcurl4-openssl-dev}).
-    \item \textbf{pthread och libm:} Standard POSIX trådar och matematikbibliotek.
-    \item \textbf{pdfLaTeX:} TeX Live för att bygga denna användarmanual.
+    \item \textbf{sqlite3:} Databasmotorn för lokal logglagring (\texttt{libsqlite3-dev}).
+    \item \textbf{pthread och libm:} Standard POSIX-trådar och matematikbibliotek (ingår i systemets C-standardbibliotek).
+    \item \textbf{pdfLaTeX (valfritt):} TeX Live för att bygga denna manual till PDF.
 \end{itemize}
+
+\subsection{Automatisk installation via hjälpskript}
+Projektet levereras med ett färdigt bash-skript, \texttt{install\_dependencies.sh}, som automatiskt känner av din Linux-distribution och installerar alla nödvändiga utvecklingspaket:
+
+\begin{verbatim}
+# Kör installationsskriptet
+./install_dependencies.sh
+
+# För att installera allt automatiskt inkl. LaTeX för PDF-manualen:
+./install_dependencies.sh --latex -y
+\end{verbatim}
+
+\subsection{Manuella installationskommandon för Ubuntu / Debian}
+Alternativt kan paketen installeras manuellt med \texttt{apt}:
+
+\begin{verbatim}
+# 1. Uppdatera paketlistorna
+sudo apt update
+
+# 2. Installera kompilator, byggverktyg och utvecklingsbibliotek
+sudo apt install -y build-essential libncursesw5-dev \
+    libcurl4-openssl-dev libsqlite3-dev
+
+# 3. (Valfritt) Installera LaTeX-paket för att bygga PDF-manualen
+sudo apt install -y texlive-latex-base texlive-latex-extra \
+    texlive-lang-european
+\end{verbatim}
 
 \subsection{Kompilering med Make}
 Projektet levereras med en färdig \texttt{Makefile}:
 
 \begin{verbatim}
-# Bygg både huvudprogrammet (ueilog) och hjälpverktyget (dxcc)
+# Bygg samtliga mål (ueilog, dxcc, testing och manual)
 make
+# eller
+make all
 
-# Bygg endast hjälpverktyget dxcc
+# Bygg endast huvudprogrammet (ueilog)
+make ueilog
+
+# Bygg endast hjälpprogrammet dxcc
 make dxcc
+
+# Bygg och kör den automatiserade testsviten
+make test
 
 # Bygg användarmanualen till PDF via pdflatex
 make manual
 
-# Rensa kompilerade filer och byggd manual
+# Rensa kompilerade filer och byggda binärer
 make clean
 \end{verbatim}
 
@@ -374,6 +410,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
 \texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
+\texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
 \texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
