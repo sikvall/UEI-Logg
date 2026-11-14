@@ -277,11 +277,17 @@ void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSettings *st) 
     normalize_time_adif(qso->time_utc, clean_time, sizeof(clean_time));
     normalize_band_adif(qso->band, clean_band, sizeof(clean_band));
 
+    char clean_freq[32];
+    copy_str(clean_freq, sizeof(clean_freq), qso->freq);
+    for (char *c = clean_freq; *c != '\0'; ++c) {
+        if (*c == ',') *c = '.';
+    }
+
     write_adif_field(fp, "CALL", qso->call);
     write_adif_field(fp, "NAME", qso->name);
     write_adif_field(fp, "QSO_DATE", clean_date);
     write_adif_field(fp, "TIME_ON", clean_time);
-    write_adif_field(fp, "FREQ", qso->freq);
+    write_adif_field(fp, "FREQ", clean_freq);
     write_adif_field(fp, "BAND", clean_band);
     write_adif_field(fp, "MODE", qso->mode);
     write_adif_field(fp, "RST_SENT", qso->rst_sent);
@@ -376,7 +382,11 @@ void assign_adif_field(QSO *qso, const char *tag, const char *val) {
     } else if (strcasecmp(tag, "TIME_OFF") == 0) {
         if (qso->time_utc[0] == '\0') format_time_hh_mm(val, qso->time_utc, sizeof(qso->time_utc));
     } else if (strcasecmp(tag, "FREQ") == 0) {
-        parse_and_normalize_freq(val, qso->freq, sizeof(qso->freq));
+        parse_and_normalize_freq_adif(val, qso->freq, sizeof(qso->freq));
+    } else if (strcasecmp(tag, "FREQ_RX") == 0) {
+        if (qso->freq[0] == '\0') {
+            parse_and_normalize_freq_adif(val, qso->freq, sizeof(qso->freq));
+        }
     } else if (strcasecmp(tag, "BAND") == 0) {
         format_band_display(val, qso->band, sizeof(qso->band));
     } else if (strcasecmp(tag, "MODE") == 0) {
@@ -511,6 +521,16 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
         tag_buf[tag_len] = '\0';
 
         if (strcasecmp(tag_buf, "EOR") == 0) {
+            if (current.freq[0] != '\0') {
+                char norm_freq[32];
+                parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
+                if (norm_freq[0] != '\0') {
+                    copy_str(current.freq, sizeof(current.freq), norm_freq);
+                }
+            }
+            if (current.band[0] == '\0' && current.freq[0] != '\0') {
+                resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
+            }
             if (current.dxcc[0] == '\0' && current.call[0] != '\0') {
                 lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
             }

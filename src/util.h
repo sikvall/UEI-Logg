@@ -138,6 +138,23 @@ int utf8_contains_ci(const char *haystack, const char *needle);
 double parse_and_normalize_freq(const char *freq_str, char *norm_out, size_t out_sz);
 
 /**
+ * @brief Tolkar och normaliserar frekvens vid ADIF-import till MHz med decimaler (t.ex. "7" -> "7.000").
+ * Vid import antas frekvensen vara i MHz enligt ADIF-standarden.
+ * @param in Inmatad frekvenssträng från ADIF.
+ * @param norm_out Buffer för normaliserad sträng ("7.000").
+ * @param out_sz Storlek på målbuffer.
+ * @return Frekvensen som flyttal i MHz, eller 0.0 vid ogiltig inmatning.
+ */
+double parse_and_normalize_freq_adif(const char *in, char *norm_out, size_t out_sz);
+
+/**
+ * @brief Gissar amatörband utifrån ett flyttal i MHz.
+ * @param f Frekvens i MHz.
+ * @return Namn på bandet (t.ex. "20 m"), eller NULL om utanför amatörbanden.
+ */
+const char *guess_band_from_mhz(double f);
+
+/**
  * @brief Gissar amatörband utifrån en frekvenssträng i MHz eller kHz.
  * @param freq_str Frekvenssträngen.
  * @return Namn på bandet (t.ex. "20 m"), eller NULL om utanför amatörbanden.

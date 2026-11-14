@@ -369,13 +369,153 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
 
         if (kj > 0) {
             unsigned long khz = strtoul(khz_digits, NULL, 10);
-            mhz = (double)khz / 1000.0;
+            if (khz < 1000) {
+                mhz = (double)khz;
+            } else if (khz >= 1240 && khz <= 1300) {
+                mhz = (double)khz; /* 23 cm bandet (1240-1300 MHz) */
+            } else {
+                mhz = (double)khz / 1000.0;
+            }
         }
     }
 
     if (norm_out && out_sz > 0) {
         if (mhz > 0.0) {
-            snprintf(norm_out, out_sz, "%.3f", mhz);
+            unsigned long whole = (unsigned long)mhz;
+            unsigned long frac = (unsigned long)((mhz - (double)whole) * 1000.0 + 0.5);
+            if (frac >= 1000) {
+                whole += frac / 1000;
+                frac %= 1000;
+            }
+            snprintf(norm_out, out_sz, "%lu.%03lu", whole, frac);
+        } else {
+            norm_out[0] = '\0';
+        }
+    }
+
+    return mhz;
+}
+
+/**
+ * @brief Gissar amatörband utifrån ett numeriskt frekvensvärde i MHz.
+ * @param f Frekvens i MHz.
+ * @return Pekare till konstant bandnamn, eller NULL om utanför standardbanden.
+ */
+const char *guess_band_from_mhz(double f) {
+    if (f <= 0.0) return NULL;
+
+    if (f >= 1.810   && f <= 2.000)   return "160 m";
+    if (f >= 3.500   && f <= 3.800)   return "80 m";
+    if (f >= 5.3515  && f <= 5.3665)  return "60 m";
+    if (f >= 7.000   && f <= 7.200)   return "40 m";
+    if (f >= 10.100  && f <= 10.150)  return "30 m";
+    if (f >= 14.000  && f <= 14.350)  return "20 m";
+    if (f >= 18.068  && f <= 18.168)  return "17 m";
+    if (f >= 21.000  && f <= 21.450)  return "15 m";
+    if (f >= 24.890  && f <= 24.990)  return "12 m";
+    if (f >= 28.000  && f <= 29.700)  return "10 m";
+    if (f >= 50.000  && f <= 52.000)  return "6 m";
+    if (f >= 70.000  && f <= 70.500)  return "4 m";
+    if (f >= 144.000 && f <= 146.000) return "2 m";
+    if (f >= 430.000 && f <= 440.000) return "70 cm";
+    if (f >= 1240.0  && f <= 1300.0)  return "23 cm";
+
+    return NULL;
+}
+
+/**
+ * @brief Tolkar och normaliserar frekvens vid ADIF-import till MHz med decimaler (t.ex. "7" -> "7.000").
+ * Vid import antas frekvensen vara i MHz enligt ADIF-standarden.
+ * @param in Inmatad frekvenssträng från ADIF.
+ * @param norm_out Buffer för normaliserad sträng ("7.000").
+ * @param out_sz Storlek på målbuffer.
+ * @return Frekvensen som flyttal i MHz, eller 0.0 vid ogiltig inmatning.
+ */
+double parse_and_normalize_freq_adif(const char *in, char *norm_out, size_t out_sz) {
+    if (norm_out && out_sz > 0) norm_out[0] = '\0';
+    if (in == NULL) return 0.0;
+
+    while (*in == ' ' || *in == '\t' || *in == '\r' || *in == '\n') in++;
+    if (*in == '\0') return 0.0;
+
+    const char *sep = NULL;
+    for (const char *p = in; *p != '\0'; ++p) {
+        if (*p == '.' || *p == ',') {
+            sep = p;
+            break;
+        }
+    }
+
+    double mhz = 0.0;
+
+    if (sep != NULL) {
+        char int_digits[16];
+        size_t ij = 0;
+        for (const char *p = in; p < sep && ij < sizeof(int_digits) - 1; ++p) {
+            if (isdigit((unsigned char)*p)) {
+                int_digits[ij++] = *p;
+            }
+        }
+        int_digits[ij] = '\0';
+        unsigned long int_part = (ij > 0) ? strtoul(int_digits, NULL, 10) : 0;
+
+        char frac_digits[16];
+        size_t fj = 0;
+        for (const char *p = sep + 1; *p != '\0' && fj < sizeof(frac_digits) - 1; ++p) {
+            if (isdigit((unsigned char)*p)) {
+                frac_digits[fj++] = *p;
+            }
+        }
+        frac_digits[fj] = '\0';
+
+        double frac_val = 0.0;
+        double scale = 0.1;
+        for (size_t i = 0; i < fj; ++i) {
+            frac_val += (frac_digits[i] - '0') * scale;
+            scale *= 0.1;
+        }
+        mhz = (double)int_part + frac_val;
+
+        /* Återställning om frekvensen tidigare felaktigt delats med 1000 (t.ex. 0.021 -> 21.000) */
+        if (mhz > 0.0 && mhz < 1.0) {
+            double test_mhz = mhz * 1000.0;
+            if (guess_band_from_mhz(test_mhz) != NULL) {
+                mhz = test_mhz;
+            }
+        }
+    } else {
+        /* Inget decimaltecken: Vid import ska antas att frekvensen är i MHz med decimaler (t.ex. 7 -> 7.000) */
+        char digits[24];
+        size_t dj = 0;
+        for (const char *p = in; *p != '\0' && dj < sizeof(digits) - 1; ++p) {
+            if (isdigit((unsigned char)*p)) {
+                digits[dj++] = *p;
+            }
+        }
+        digits[dj] = '\0';
+
+        if (dj > 0) {
+            double val_num = atof(digits);
+            if (val_num >= 10000.0 ||
+                (val_num >= 1800.0 && val_num <= 2000.0) ||
+                (val_num >= 3500.0 && val_num <= 3800.0) ||
+                (val_num >= 7000.0 && val_num <= 7300.0)) {
+                mhz = val_num / 1000.0;
+            } else {
+                mhz = val_num;
+            }
+        }
+    }
+
+    if (norm_out && out_sz > 0) {
+        if (mhz > 0.0) {
+            unsigned long whole = (unsigned long)mhz;
+            unsigned long frac = (unsigned long)((mhz - (double)whole) * 1000.0 + 0.5);
+            if (frac >= 1000) {
+                whole += frac / 1000;
+                frac %= 1000;
+            }
+            snprintf(norm_out, out_sz, "%lu.%03lu", whole, frac);
         } else {
             norm_out[0] = '\0';
         }
@@ -391,24 +531,7 @@ double parse_and_normalize_freq(const char *in, char *norm_out, size_t out_sz) {
  */
 const char *guess_band_from_freq(const char *freq_str) {
     double f = parse_and_normalize_freq(freq_str, NULL, 0);
-    if (f <= 0.0) return NULL;
-
-    if (f >= 1.810   && f <= 2.000)   return "160 m";
-    if (f >= 3.500   && f <= 3.800)   return "80 m";
-    if (f >= 5.3515  && f <= 5.3665)  return "60 m";
-    if (f >= 7.000   && f <= 7.200)   return "40 m";
-    if (f >= 10.100  && f <= 10.150)  return "30 m";
-    if (f >= 14.000  && f <= 14.350)  return "20 m";
-    if (f >= 18.068  && f <= 18.168)  return "17 m";
-    if (f >= 21.000  && f <= 21.450)  return "15 m";
-    if (f >= 24.890  && f <= 24.990)  return "12 m";
-    if (f >= 28.000  && f <= 29.700)  return "10 m";
-    if (f >= 50.000  && f <= 52.000)  return "6 m";
-    if (f >= 144.000 && f <= 146.000) return "2 m";
-    if (f >= 430.000 && f <= 440.000) return "70 cm";
-    if (f >= 1240.0  && f <= 1300.0)  return "23 cm";
-
-    return NULL;
+    return guess_band_from_mhz(f);
 }
 
 /**

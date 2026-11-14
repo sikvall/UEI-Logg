@@ -166,7 +166,7 @@ void finalize_imported_qso(QSO *current, const StationSettings *st) {
     /* Frekvens och band */
     if (current->freq[0] != '\0') {
         char norm_freq[32];
-        parse_and_normalize_freq(current->freq, norm_freq, sizeof(norm_freq));
+        parse_and_normalize_freq_adif(current->freq, norm_freq, sizeof(norm_freq));
         if (norm_freq[0] != '\0') {
             copy_str(current->freq, sizeof(current->freq), norm_freq);
         }
