@@ -53,4 +53,4 @@ clean:
 	rm -f $(TARGET) $(TOOL_TARGET) $(TEST_TARGET) src/*.o tests/*.o *.o
 	rm -f manual/*.aux manual/*.log manual/*.out manual/*.toc manual/*.pdf
 
-.PHONY: all clean manual dxcc test
+.PHONY: all clean manual test
