@@ -144,12 +144,38 @@ static int lookup_qth_cache(const char *qth, double *lat, double *lon) {
  * @param valid 1 om giltiga koordinater, 0 om ingen träff.
  */
 static void store_qth_cache(const char *qth, double lat, double lon, int valid) {
+    for (size_t i = 0; i < g_qth_cache_count; ++i) {
+        if (strcasecmp(g_qth_cache[i].qth, qth) == 0) {
+            g_qth_cache[i].lat = lat;
+            g_qth_cache[i].lon = lon;
+            g_qth_cache[i].valid = valid;
+            return;
+        }
+    }
     if (g_qth_cache_count < sizeof(g_qth_cache) / sizeof(g_qth_cache[0])) {
         copy_str(g_qth_cache[g_qth_cache_count].qth, sizeof(g_qth_cache[0].qth), qth);
         g_qth_cache[g_qth_cache_count].lat = lat;
         g_qth_cache[g_qth_cache_count].lon = lon;
         g_qth_cache[g_qth_cache_count].valid = valid;
         g_qth_cache_count++;
+    }
+}
+
+void invalidate_qth_cache(const char *qth) {
+    if (qth == NULL || qth[0] == '\0') {
+        g_qth_cache_count = 0;
+        return;
+    }
+    while (*qth == ' ' || *qth == '\t') qth++;
+    for (size_t i = 0; i < g_qth_cache_count; ) {
+        if (strcasecmp(g_qth_cache[i].qth, qth) == 0) {
+            for (size_t j = i; j + 1 < g_qth_cache_count; ++j) {
+                g_qth_cache[j] = g_qth_cache[j + 1];
+            }
+            g_qth_cache_count--;
+        } else {
+            ++i;
+        }
     }
 }
 
@@ -251,7 +277,7 @@ void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *
 
     if (locator_to_latlon(target_qso->gridsquare, &tg_lat, &tg_lon)) {
         have_tg_pos = 1;
-    } else if (target_qso->gridsquare[0] == '\0' && target_qso->qth[0] != '\0') {
+    } else if (target_qso->qth[0] != '\0') {
         if (geocode_qth_osm(target_qso->qth, &tg_lat, &tg_lon)) {
             have_tg_pos = 1;
         }

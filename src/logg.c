@@ -513,6 +513,7 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
 
     QSO current;
     memset(&current, 0, sizeof(current));
+    int has_fields = 0;
 
     int lines_processed = 0;
     const char *line_scan = content;
@@ -557,21 +558,24 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
         tag_buf[tag_len] = '\0';
 
         if (strcasecmp(tag_buf, "EOR") == 0) {
-            if (current.freq[0] != '\0') {
-                char norm_freq[32];
-                parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
-                if (norm_freq[0] != '\0') {
-                    copy_str(current.freq, sizeof(current.freq), norm_freq);
+            if (current.call[0] != '\0') {
+                if (current.freq[0] != '\0') {
+                    char norm_freq[32];
+                    parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
+                    if (norm_freq[0] != '\0') {
+                        copy_str(current.freq, sizeof(current.freq), norm_freq);
+                    }
                 }
+                if (current.band[0] == '\0' && current.freq[0] != '\0') {
+                    resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
+                }
+                if (current.dxcc[0] == '\0') {
+                    lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
+                }
+                qso_list_push(list, &current);
             }
-            if (current.band[0] == '\0' && current.freq[0] != '\0') {
-                resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
-            }
-            if (current.dxcc[0] == '\0' && current.call[0] != '\0') {
-                lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
-            }
-            qso_list_push(list, &current);
             memset(&current, 0, sizeof(current));
+            has_fields = 0;
             p = end_tag + 1;
             continue;
         }
@@ -591,10 +595,32 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
             val_buf[copy_len] = '\0';
 
             assign_adif_field(&current, tag_buf, val_buf);
+            has_fields = 1;
             p = val_start + val_len;
         } else {
             p = end_tag + 1;
         }
+    }
+
+    if (has_fields && current.call[0] != '\0') {
+        if (current.freq[0] != '\0') {
+            char norm_freq[32];
+            parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
+            if (norm_freq[0] != '\0') {
+                copy_str(current.freq, sizeof(current.freq), norm_freq);
+            }
+        }
+        if (current.band[0] == '\0' && current.freq[0] != '\0') {
+            resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
+        }
+        if (current.dxcc[0] == '\0') {
+            lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
+        }
+        qso_list_push(list, &current);
+    }
+
+    if (list->count > 1) {
+        qsort(list->items, list->count, sizeof(QSO), cmp_qso_chronological);
     }
 
     while (line_scan < content + read_bytes) {
@@ -1021,6 +1047,8 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
     }
     if (d_val >= 0) {
         snprintf(qso->distance, sizeof(qso->distance), "%d", d_val);
+    } else {
+        qso->distance[0] = '\0';
     }
 
     persist_qso_radio_settings(qso, st);
@@ -1028,6 +1056,7 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
     if (*editing_index >= 0 && (size_t)(*editing_index) < log_list->count) {
         int idx = *editing_index;
         qso->id = log_list->items[idx].id;
+        qso->handled = 0;
         log_list->items[idx] = *qso;
         invalidate_log_stats_cache();
         int ok = 0;

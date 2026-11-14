@@ -42,6 +42,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
             "F5           - Manuellt uppslag (SM Callbook vid svensk signal, annars QRZ.COM)",
             "F6           - Växla visning av noteringar i loggraderna (på/av)",
+            "F7           - Beräkna QRB på nytt i formuläret (lokator föredras, annars QTH)",
             "F9           - Denna hjälpdialog (tillgänglig i logg- och inställningsskärm)",
             "F10 el. ^Q   - Avsluta UEI-Logg på ett säkert sätt",
             "F12          - Stationsinställningar, ADIF-filhantering & färgscheman",
@@ -54,7 +55,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        16
+        17
     },
     {
         "[2] Inmatning",
@@ -137,7 +138,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Redigering och radering:",
             "  * Enter på en rad: Laddar upp QSO:t i formuläret för direkt korrigering.",
-            "    När du trycker Enter i formuläret sparas ändringen på samma plats.",
+            "    När du trycker Enter i formuläret sparas ändringen och märks som nytt (✗).",
             "  * F8: Raderar markerade rader (eller vald rad) efter bekräftelse.",
             "",
             "Sök och filtrering (F3 / Ctrl+F):",

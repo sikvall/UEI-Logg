@@ -1,6 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -O2 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE_EXTENDED -Isrc -pthread
-LDFLAGS = -lncursesw -lcurl -lsqlite3 -lm -pthread
+CURL_LIBS = -Llib -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group
+LDFLAGS = -static -lncursesw -ltinfo $(CURL_LIBS) -lsqlite3 -lm -pthread -ldl
+TOOL_LDFLAGS = -static $(CURL_LIBS) -lm -pthread -ldl
 TARGET = ueilog
 TOOL_TARGET = dxcc
 TEST_TARGET = testing
@@ -24,7 +26,7 @@ $(TARGET): $(OBJS)
 
 # Hjälpprogrammet dxcc (uppdatering och statistik för dxcc.txt)
 $(TOOL_TARGET): src/dxcc_tool.o src/util.o
-	$(CC) $(CFLAGS) -o $(TOOL_TARGET) src/dxcc_tool.o src/util.o -lcurl -lm
+	$(CC) $(CFLAGS) -o $(TOOL_TARGET) src/dxcc_tool.o src/util.o $(TOOL_LDFLAGS)
 
 # Testbinären testing (automatiserad testsvit)
 $(TEST_TARGET): $(TEST_OBJS) $(TEST_DEPS)

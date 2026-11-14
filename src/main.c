@@ -284,9 +284,18 @@ int main(int argc, char *argv[]) {
         } else if (ch == KEY_F(12)) {
             /* F12: Inställningar, import och export */
             band_selecting = 0;
-            run_settings_modal(&station, &current_qso, editing_index, &log_list,
+            int was_editing = (editing_index >= 0);
+            run_settings_modal(&station, &current_qso, &editing_index, &log_list,
                                &selected_log_pos, &log_scroll_offset,
                                status_msg, sizeof(status_msg));
+            if (was_editing && editing_index < 0) {
+                reset_qso_form(&current_qso, &station, &time_frozen, &active_field,
+                               &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                field_fresh = 1;
+            }
+            if (focus_mode == FOCUS_LOG && log_list.count == 0) {
+                focus_mode = FOCUS_INPUT;
+            }
             compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
             update_all_missing_qrbs(&station, &log_list);
             continue;
@@ -435,6 +444,14 @@ int main(int argc, char *argv[]) {
                     if (log_list.items[mi].marked) m_cnt++;
                 }
                 if (m_cnt > 0) {
+                    int edit_was_marked = 0;
+                    int marked_before_edit = 0;
+                    if (editing_index >= 0 && (size_t)editing_index < log_list.count) {
+                        edit_was_marked = log_list.items[editing_index].marked;
+                        for (size_t mi = 0; mi < (size_t)editing_index; ++mi) {
+                            if (log_list.items[mi].marked) marked_before_edit++;
+                        }
+                    }
                     if (db_is_open()) {
                         db_delete_marked(&log_list);
                     }
@@ -443,7 +460,11 @@ int main(int argc, char *argv[]) {
                         save_all_qsos_adif(LOG_FILE, &log_list, &station);
                     }
                     if (editing_index >= 0) {
-                        reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                        if (edit_was_marked) {
+                            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb);
+                        } else {
+                            editing_index -= marked_before_edit;
+                        }
                     }
                     snprintf(status_msg, sizeof(status_msg), "Raderade %d markerade QSO:n.", del_cnt);
                 } else if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
@@ -477,6 +498,7 @@ int main(int argc, char *argv[]) {
                     if (new_fcnt == 0) {
                         selected_log_pos = 0;
                         log_scroll_offset = 0;
+                        focus_mode = FOCUS_INPUT;
                     } else if (selected_log_pos >= new_fcnt) {
                         selected_log_pos = new_fcnt - 1;
                     }
@@ -486,6 +508,7 @@ int main(int argc, char *argv[]) {
                 if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
                     current_qso = log_list.items[orig_idx];
+                    current_qso.handled = 0;
                     editing_index = orig_idx;
                     time_frozen = 1;
                     active_field = FLD_CALL;
@@ -648,6 +671,53 @@ int main(int argc, char *argv[]) {
                 }
             }
             continue;
+        } else if (ch == KEY_F(7)) {
+            /* F7 i inmatningsfältet: Ny beräkning av QRB för angiven lokator (föredras) och om den saknas i stället QTH */
+            band_selecting = 0;
+            trim_str(current_qso.gridsquare);
+            to_upper_str(current_qso.gridsquare);
+            trim_str(current_qso.qth);
+
+            if (is_valid_locator(current_qso.gridsquare)) {
+                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                if (current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
+                    snprintf(current_qso.distance, sizeof(current_qso.distance), "%ld", atol(current_qrb));
+                    snprintf(status_msg, sizeof(status_msg), "QRB beräknat från lokator (%s): %s",
+                             current_qso.gridsquare, current_qrb);
+                } else {
+                    current_qso.distance[0] = '\0';
+                    copy_str(status_msg, sizeof(status_msg), "Fel: Kan ej beräkna QRB (kontrollera egen lokator/QTH i F12).");
+                }
+            } else if (current_qso.qth[0] != '\0') {
+                invalidate_qth_cache(current_qso.qth);
+                copy_str(status_msg, sizeof(status_msg), "Beräknar QRB från QTH...");
+                draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
+                                 field_cursor_pos, time_frozen, editing_index,
+                                 &log_list, selected_log_pos, &log_scroll_offset,
+                                 active_filter, status_msg, current_qrb, &cur_y, &cur_x);
+                refresh();
+
+                compute_qrb_str(&station, &current_qso, current_qrb, sizeof(current_qrb));
+                if (current_qrb[0] != '\0' && strcmp(current_qrb, "-") != 0) {
+                    snprintf(current_qso.distance, sizeof(current_qso.distance), "%ld", atol(current_qrb));
+                    snprintf(status_msg, sizeof(status_msg), "QRB beräknat från QTH (%s): %s",
+                             current_qso.qth, current_qrb);
+                } else {
+                    current_qso.distance[0] = '\0';
+                    snprintf(status_msg, sizeof(status_msg), "Fel: Kunde inte beräkna QRB för QTH '%s'.",
+                             current_qso.qth);
+                }
+            } else if (current_qso.gridsquare[0] != '\0') {
+                copy_str(current_qrb, sizeof(current_qrb), "-");
+                current_qso.distance[0] = '\0';
+                snprintf(status_msg, sizeof(status_msg), "Fel: Ogiltig lokator '%s' (och QTH saknas).",
+                         current_qso.gridsquare);
+            } else {
+                copy_str(current_qrb, sizeof(current_qrb), "-");
+                current_qso.distance[0] = '\0';
+                copy_str(status_msg, sizeof(status_msg), "Ange lokator eller QTH först för att beräkna QRB.");
+            }
+            continue;
         } else if (active_field == FLD_BAND && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || (ch >= '0' && ch <= '9'))) {
             if (ch >= '0' && ch <= '9') {
                 for (int b = 0; b < BAND_OPTION_COUNT; ++b) {
@@ -770,7 +840,13 @@ int main(int argc, char *argv[]) {
             if (selected_log_pos < 0) selected_log_pos = 0;
         } else if (ch == KEY_NPAGE) {
             /* PgDown: bläddra loggraderna nedåt */
-            int max_f = (int)log_list.count;
+            const char *cur_filter = (search_filter[0] != '\0') ? search_filter :
+                                     (station.filter_log && current_qso.call[0] != '\0') ? current_qso.call : NULL;
+            int max_entries = (int)log_list.count > 0 ? (int)log_list.count : 1;
+            int *tmp_f = malloc((size_t)max_entries * sizeof(int));
+            int max_f = tmp_f ? build_filtered_indices(&log_list, cur_filter, tmp_f, max_entries) : 0;
+            if (tmp_f) free(tmp_f);
+
             int avail = get_avail_log_rows(&station);
             log_scroll_offset += avail;
             if (log_scroll_offset + avail > max_f) {

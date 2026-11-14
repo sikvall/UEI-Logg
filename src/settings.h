@@ -83,7 +83,7 @@ void build_default_export_filename(char *out, size_t out_sz, const StationSettin
  * @param status_msg Buffer för statusmeddelande.
  * @param status_sz Storlek på statusbufferten.
  */
-void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
+void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                         QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
                         char *status_msg, size_t status_sz);
 

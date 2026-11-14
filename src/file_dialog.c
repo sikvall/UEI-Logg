@@ -408,7 +408,9 @@ int run_file_dialog(const char *title, const char *start_dir, const char *ext_fi
         }
         refresh();
 
-        int ch = getch();
+        wint_t wch = 0;
+        int input_res = get_wch(&wch);
+        int ch = (input_res == ERR) ? ERR : (int)wch;
         if (ch == ERR) continue;
 
         if (ch == 27) {
@@ -453,8 +455,19 @@ int run_file_dialog(const char *title, const char *start_dir, const char *ext_fi
             } else if (ch == KEY_DC) {
                 fname_buf[0] = '\0';
                 fname_cursor_pos = 0;
-            } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
-                utf8_insert_byte_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, (char)ch);
+            } else if (input_res == OK && wch >= 32 && wch != 127) {
+                char u8[8] = {0};
+                mbstate_t ps;
+                memset(&ps, 0, sizeof(ps));
+                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
+                if (u8_len == (size_t)-1 || u8_len == 0) {
+                    u8[0] = (char)wch;
+                    u8[1] = '\0';
+                    u8_len = 1;
+                } else {
+                    u8[u8_len] = '\0';
+                }
+                utf8_insert_char_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, u8, u8_len);
             }
         } else {
             if (ch == KEY_UP) {

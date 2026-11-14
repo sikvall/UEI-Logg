@@ -220,9 +220,9 @@ static int parse_space_weather_html(const char *html, SpaceWeatherData *out) {
     }
 
     time_t now = time(NULL);
-    struct tm *l = localtime(&now);
-    if (l) {
-        strftime(temp.updated_time, sizeof(temp.updated_time), "%H:%M", l);
+    struct tm l_tm;
+    if (localtime_r(&now, &l_tm) != NULL) {
+        strftime(temp.updated_time, sizeof(temp.updated_time), "%H:%M", &l_tm);
     }
     temp.has_data = 1;
 

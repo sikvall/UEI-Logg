@@ -570,7 +570,8 @@ void draw_top_bar(const StationSettings *st) {
     const char *my_qth = (st != NULL && st->qth[0] != '\0') ? st->qth : "SM";
     snprintf(station_info, sizeof(station_info), "%s (%s)", clean_call[0] ? clean_call : "SM5UEI", my_qth);
 
-    int info_col = (COLS - utf8_display_width(station_info)) / 2;
+    int info_w = utf8_display_width(station_info);
+    int info_col = (COLS - info_w) / 2;
     if (info_col > 14) {
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
         mvprintw(0, info_col, "%s", station_info);
@@ -579,8 +580,8 @@ void draw_top_bar(const StationSettings *st) {
 
     char time_str[64];
     get_utc_strings(NULL, 0, NULL, 0, time_str, sizeof(time_str));
-    int time_col = COLS - (int)strlen(time_str) - 2;
-    if (time_col > info_col + (int)strlen(station_info)) {
+    int time_col = COLS - utf8_display_width(time_str) - 2;
+    if (time_col > info_col + info_w) {
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
         mvprintw(0, time_col, "%s", time_str);
         attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
@@ -821,9 +822,10 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F4", "Logg"};
             items[count++] = (FKeyItem){"F5", "Uppslag"};
             items[count++] = (FKeyItem){"F6", "Noter"};
+            items[count++] = (FKeyItem){"F7", "QRB"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
-            items[count++] = (FKeyItem){"F10", "Avsluta"};
-            items[count++] = (FKeyItem){"F12", "Inställn."};
+            items[count++] = (FKeyItem){"F10", (COLS >= 88) ? "Avsluta" : "Avsl"};
+            items[count++] = (FKeyItem){"F12", (COLS >= 88) ? "Inställn." : "Inst"};
         }
     }
 
@@ -1443,15 +1445,22 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         int field_w = COLS - prompt_len - 4;
         if (field_w > 30) field_w = 30;
+        if (field_w < 5) field_w = 5;
         for (int i = 0; i < field_w; ++i) mvaddch(y, prompt_len + i, ' ');
-        mvprintw(y, prompt_len, "%-.*s", field_w, buf);
+        int sc = 0;
+        if (cursor_pos >= field_w) sc = cursor_pos - field_w + 1;
+        size_t sb = utf8_char_to_byte(buf, sc);
+        size_t eb = utf8_char_to_byte(buf, sc + field_w);
+        mvprintw(y, prompt_len, "%.*s", (int)(eb - sb), buf + sb);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
-        move(y, prompt_len + cursor_pos);
+        move(y, prompt_len + (cursor_pos - sc));
         refresh();
 
-        int ch = getch();
+        wint_t wch = 0;
+        int input_res = get_wch(&wch);
+        int ch = (input_res == ERR) ? ERR : (int)wch;
         if (ch == ERR) continue;
 
         if (ch == 27 || ch == KEY_F(3)) {
@@ -1460,13 +1469,33 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
             trim_str(buf);
             copy_str(search_filter, filter_sz, buf);
             return 1;
+        } else if (ch == KEY_LEFT) {
+            if (cursor_pos > 0) cursor_pos--;
+        } else if (ch == KEY_RIGHT) {
+            int total_c = utf8_display_width(buf);
+            if (cursor_pos < total_c) cursor_pos++;
+        } else if (ch == KEY_HOME) {
+            cursor_pos = 0;
+        } else if (ch == KEY_END) {
+            cursor_pos = utf8_display_width(buf);
         } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
             utf8_backspace_at(buf, &cursor_pos);
         } else if (ch == KEY_DC) {
             buf[0] = '\0';
             cursor_pos = 0;
-        } else if (ch >= 32 && ch != 127 && ch < KEY_MIN) {
-            utf8_insert_byte_at(buf, sizeof(buf), &cursor_pos, (char)ch);
+        } else if (input_res == OK && wch >= 32 && wch != 127) {
+            char u8[8] = {0};
+            mbstate_t ps;
+            memset(&ps, 0, sizeof(ps));
+            size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
+            if (u8_len == (size_t)-1 || u8_len == 0) {
+                u8[0] = (char)wch;
+                u8[1] = '\0';
+                u8_len = 1;
+            } else {
+                u8[u8_len] = '\0';
+            }
+            utf8_insert_char_at(buf, sizeof(buf), &cursor_pos, u8, u8_len);
         }
     }
 }

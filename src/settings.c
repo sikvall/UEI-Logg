@@ -483,16 +483,17 @@ void build_default_export_filename(char *out, size_t out_sz, const StationSettin
 
     time_t now = time(NULL);
     struct tm exp_tm;
+    memset(&exp_tm, 0, sizeof(exp_tm));
     long offset_sec = 0;
     if (st != NULL && parse_tz_offset_seconds(st->timezone, &offset_sec)) {
         time_t adj = now + offset_sec;
-        struct tm *l = gmtime(&adj);
-        if (l != NULL) exp_tm = *l;
-        else exp_tm = *gmtime(&now);
+        if (!gmtime_r(&adj, &exp_tm)) {
+            gmtime_r(&now, &exp_tm);
+        }
     } else {
-        struct tm *l = localtime(&now);
-        if (l != NULL) exp_tm = *l;
-        else exp_tm = *gmtime(&now);
+        if (!localtime_r(&now, &exp_tm)) {
+            gmtime_r(&now, &exp_tm);
+        }
     }
 
     char dt_buf[32];
@@ -960,7 +961,7 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
  * @param status_msg Buffer för statusmeddelande.
  * @param status_sz Storlek på statusbuffert.
  */
-void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
+void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                         QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
                         char *status_msg, size_t status_sz) {
     StationSettings edit = *st;
@@ -997,6 +998,12 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             char chosen_path[PATH_MAX] = {0};
             int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
             if (chosen && chosen_path[0] != '\0') {
+                QSO orig_edited;
+                int had_edit = 0;
+                if (editing_index && *editing_index >= 0 && log_list && (size_t)*editing_index < log_list->count) {
+                    orig_edited = log_list->items[*editing_index];
+                    had_edit = 1;
+                }
                 int added = import_qsos_from_adif(chosen_path, log_list, &edit);
                 if (added < 0) {
                     snprintf(status_msg, status_sz, "Kunde inte läsa filen: %s", get_path_basename(chosen_path));
@@ -1004,6 +1011,23 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                     snprintf(status_msg, status_sz, "Import klar: Inga nya QSO hittades i %s.", get_path_basename(chosen_path));
                 } else {
                     snprintf(status_msg, status_sz, "Importerade %d QSO från %s!", added, get_path_basename(chosen_path));
+                    if (had_edit && editing_index && log_list) {
+                        int found_new_idx = -1;
+                        for (size_t k = 0; k < log_list->count; ++k) {
+                            const QSO *item = &log_list->items[k];
+                            if (strcasecmp(item->call, orig_edited.call) == 0 &&
+                                strcmp(item->date, orig_edited.date) == 0 &&
+                                strcmp(item->time_utc, orig_edited.time_utc) == 0 &&
+                                strcasecmp(item->band, orig_edited.band) == 0) {
+                                found_new_idx = (int)k;
+                                break;
+                            }
+                        }
+                        *editing_index = found_new_idx;
+                        if (found_new_idx >= 0 && qso) {
+                            qso->id = log_list->items[found_new_idx].id;
+                        }
+                    }
                     if (selected_log_pos && log_list && log_list->count > 0) {
                         *selected_log_pos = (int)log_list->count - 1;
                     }
@@ -1105,8 +1129,8 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
                 if (exported < 0) {
                     snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
                 } else {
-                    if (editing_index >= 0 && (size_t)editing_index < log_list->count) {
-                        qso->handled = log_list->items[editing_index].handled;
+                    if (editing_index && *editing_index >= 0 && (size_t)*editing_index < log_list->count) {
+                        qso->handled = log_list->items[*editing_index].handled;
                     }
                     if (exp_mode == EXPORT_MODE_ONLY_NEW) {
                         snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(chosen_path));
@@ -1151,6 +1175,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int editing_index,
             }
             if (confirm) {
                 clear_log_book(log_list, st);
+                if (editing_index) *editing_index = -1;
                 if (selected_log_pos) *selected_log_pos = 0;
                 if (log_scroll_offset) *log_scroll_offset = 0;
                 apply_color_theme(st->theme);

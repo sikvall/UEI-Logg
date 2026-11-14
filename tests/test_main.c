@@ -1376,6 +1376,95 @@ static void run_swedish_chars_tests(void) {
                       "Kolumn med QSO-nummer visas vid >= 90 kolumner och tas bort vid < 90 kolumner", NULL);
     }
 
+    /* 16. load_qsos_from_adif: ignorerar tomma <EOR>, läser sista post utan <EOR> och sorterar kronologiskt */
+    {
+        const char *tmp_raw_adi = "/tmp/test_load_adif_edge.adi";
+        FILE *afp = fopen(tmp_raw_adi, "w");
+        if (afp) {
+            fprintf(afp, "ADIF test header<EOH>\n");
+            fprintf(afp, "<EOR>\n"); /* Tom post som ska ignoreras */
+            fprintf(afp, "<CALL:7>SM5LATE<QSO_DATE:8>20261114<TIME_ON:4>1500<BAND:3>20m<MODE:3>SSB<EOR>\n");
+            fprintf(afp, "<CALL:7>SM5EARL<QSO_DATE:8>20261114<TIME_ON:4>0900<BAND:3>40m<MODE:2>CW\n"); /* Saknar avslutande <EOR> */
+            fclose(afp);
+        }
+        QSOList edge_list;
+        memset(&edge_list, 0, sizeof(edge_list));
+        load_qsos_from_adif(tmp_raw_adi, &edge_list);
+        unlink(tmp_raw_adi);
+
+        int adif_edge_ok = (edge_list.count == 2) &&
+                           (strcmp(edge_list.items[0].call, "SM5EARL") == 0) &&
+                           (strcmp(edge_list.items[1].call, "SM5LATE") == 0);
+        free(edge_list.items);
+        record_result(adif_edge_ok,
+                      "load_qsos_from_adif ignorerar tomma <EOR>, hanterar sista post utan <EOR> och sorterar kronologiskt", NULL);
+    }
+
+    /* 17. Redigering av ett hanterat QSO märker det som nytt (handled = 0) och QRB föredrar lokator */
+    {
+        StationSettings cur_st;
+        load_station_settings(CONFIG_FILE, &cur_st);
+        StationSettings test_st = cur_st;
+        copy_str(test_st.gridsquare, sizeof(test_st.gridsquare), "JO89VJ");
+
+        QSO edit_q;
+        memset(&edit_q, 0, sizeof(edit_q));
+        copy_str(edit_q.call, sizeof(edit_q.call), "SM5EDIT");
+        copy_str(edit_q.date, sizeof(edit_q.date), "2026-11-14");
+        copy_str(edit_q.time_utc, sizeof(edit_q.time_utc), "12:00");
+        copy_str(edit_q.band, sizeof(edit_q.band), "20 m");
+        copy_str(edit_q.mode, sizeof(edit_q.mode), "SSB");
+        copy_str(edit_q.gridsquare, sizeof(edit_q.gridsquare), "JO67");
+        copy_str(edit_q.qth, sizeof(edit_q.qth), "Göteborg");
+        edit_q.handled = 1; /* Redan hanterat innan redigering */
+        db_insert_qso(&edit_q);
+
+        QSOList edit_list = {NULL, 0, 0};
+        db_load_all_qsos(&edit_list);
+
+        int idx_to_edit = -1;
+        for (size_t i = 0; i < edit_list.count; ++i) {
+            if (strcmp(edit_list.items[i].call, "SM5EDIT") == 0) {
+                idx_to_edit = (int)i;
+                break;
+            }
+        }
+
+        int edit_marked_new_ok = 0;
+        if (idx_to_edit >= 0 && edit_list.items[idx_to_edit].handled == 1) {
+            QSO form_qso = edit_list.items[idx_to_edit];
+            copy_str(form_qso.comment, sizeof(form_qso.comment), "Redigerad rad");
+            char qrb_buf[32] = "-";
+            compute_qrb_str(&test_st, &form_qso, qrb_buf, sizeof(qrb_buf));
+
+            int tf = 1, af = FLD_CALL, fcp = 0;
+            char last_call[32] = "";
+            char status_buf[128] = "";
+            try_save_current_qso(&form_qso, &tf, &af, &fcp, &idx_to_edit,
+                                 &test_st, &edit_list, last_call,
+                                 status_buf, sizeof(status_buf), qrb_buf);
+
+            QSOList reloaded = {NULL, 0, 0};
+            db_load_all_qsos(&reloaded);
+            for (size_t i = 0; i < reloaded.count; ++i) {
+                if (strcmp(reloaded.items[i].call, "SM5EDIT") == 0) {
+                    if (edit_list.items[i].handled == 0 &&
+                        reloaded.items[i].handled == 0 &&
+                        strcmp(reloaded.items[i].comment, "Redigerad rad") == 0 &&
+                        atol(reloaded.items[i].distance) > 0) {
+                        edit_marked_new_ok = 1;
+                    }
+                    break;
+                }
+            }
+            free(reloaded.items);
+        }
+        save_station_settings(CONFIG_FILE, &cur_st);
+        free(edit_list.items);
+        record_result(edit_marked_new_ok,
+                      "Redigering av ett QSO märker det som nytt (handled = 0) och beräknar QRB från lokator", NULL);
+    }
+
     db_close();
     unlink(test_db_path);
 }

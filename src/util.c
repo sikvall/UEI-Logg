@@ -919,11 +919,11 @@ void get_utc_strings(char *date_buf, size_t date_sz,
                      char *time_buf, size_t time_sz,
                      char *top_buf, size_t top_sz) {
     time_t now = time(NULL);
-    struct tm *utc = gmtime(&now);
-    if (utc != NULL) {
-        if (date_buf) strftime(date_buf, date_sz, "%Y-%m-%d", utc);
-        if (time_buf) strftime(time_buf, time_sz, "%H:%M", utc);
-        if (top_buf)  strftime(top_buf, top_sz, "%Y-%m-%d %H:%M UTC", utc);
+    struct tm utc_tm;
+    if (gmtime_r(&now, &utc_tm) != NULL) {
+        if (date_buf) strftime(date_buf, date_sz, "%Y-%m-%d", &utc_tm);
+        if (time_buf) strftime(time_buf, time_sz, "%H:%M", &utc_tm);
+        if (top_buf)  strftime(top_buf, top_sz, "%Y-%m-%d %H:%M UTC", &utc_tm);
     }
 }
 

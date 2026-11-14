@@ -306,6 +306,7 @@ static char *fetch_content(const char *source, size_t *out_size) {
         }
         CurlBuf mem = {NULL, 0};
         curl_easy_setopt(curl, CURLOPT_URL, source);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&mem);

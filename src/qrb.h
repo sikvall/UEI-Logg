@@ -49,6 +49,12 @@ double calculate_distance_km(double lat1, double lon1, double lat2, double lon2)
 int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out);
 
 /**
+ * @brief Rensar cachen för en specifik ort (eller hela QTH-cachen om qth är NULL).
+ * @param qth Ortnamn att ta bort ur cachen, eller NULL för att tömma hela cachen.
+ */
+void invalidate_qth_cache(const char *qth);
+
+/**
  * @brief Beräknar QRB (avstånd i kilometer) mellan min station och motstationen.
  * Kontrollerar först motstationens lokator, och därefter motstationens QTH via geokodning.
  * @param my_st Min stations inställningar (innehåller egen lokator).

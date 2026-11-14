@@ -384,6 +384,7 @@ static int qrz_login_locked(const char *username, const char *password, char *er
     if (resp.data) resp.data[0] = '\0';
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&resp);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, QRZ_AGENT);
@@ -449,6 +450,7 @@ static int qrz_query_call(const char *session_key, const char *call,
     if (resp.data) resp.data[0] = '\0';
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&resp);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, QRZ_AGENT);
@@ -663,6 +665,11 @@ void start_qrz_background_lookup(const char *username, const char *password, con
     if (call_in == NULL || call_in[0] == '\0') return;
 
     pthread_mutex_lock(&g_qrz_mutex);
+    if (g_qrz_async.active && strcasecmp(g_qrz_async.req_call, call_in) == 0) {
+        pthread_mutex_unlock(&g_qrz_mutex);
+        return;
+    }
+
     g_qrz_async.req_id++;
     copy_str(g_qrz_async.req_user, sizeof(g_qrz_async.req_user), username);
     copy_str(g_qrz_async.req_pass, sizeof(g_qrz_async.req_pass), password);
