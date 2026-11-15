@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     /* HUVUDLOOP */
     while (1) {
         /* Uppdatera kontinuerligt UTC-tid och datum om formuläret inte är fryst */
-        if (!time_frozen && editing_index < 0) {
+        if (time_frozen <= 0 && (editing_index < 0 || time_frozen == -1)) {
             get_utc_strings(current_qso.date, sizeof(current_qso.date),
                             current_qso.time_utc, sizeof(current_qso.time_utc),
                             NULL, 0);
@@ -570,8 +570,8 @@ int main(int argc, char *argv[]) {
                         selected_log_pos = new_fcnt - 1;
                     }
                 }
-            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2)) {
-                /* Enter / F2: Ladda valt QSO till formuläret för redigering */
+            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+                /* Enter: Ladda valt QSO till formuläret för redigering */
                 if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
                     int orig_idx = f_idx[selected_log_pos];
                     current_qso = log_list.items[orig_idx];
@@ -669,7 +669,20 @@ int main(int argc, char *argv[]) {
         }
 
         /* FOKUS I INMATNINGSFÄLTEN (FOCUS_INPUT) */
-        if (ch == KEY_F(5)) {
+        if (ch == KEY_F(2)) {
+            /* F2: Starta UTC-klockan igen så att den kör live även om inmatning börjat */
+            band_selecting = 0;
+            time_frozen = -1;
+            get_utc_strings(current_qso.date, sizeof(current_qso.date),
+                            current_qso.time_utc, sizeof(current_qso.time_utc),
+                            NULL, 0);
+            if (active_field == FLD_DATE || active_field == FLD_TIME) {
+                field_cursor_pos = 0;
+                field_fresh = 1;
+            }
+            copy_str(status_msg, sizeof(status_msg), "UTC-klockan startad – tickar live.");
+            continue;
+        } else if (ch == KEY_F(5)) {
             /* F5: Manuellt uppslag (SMCB vid svensk signal & påslaget, annars QRZ.COM om på & inloggning ifylld) */
             band_selecting = 0;
             if (current_qso.call[0] == '\0') {
@@ -869,8 +882,8 @@ int main(int argc, char *argv[]) {
                 field_fresh = 1;
             }
             continue;
-        } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2) || ch == 19 || ch == 12) {
-            /* Enter/F2 loggar lokalt (och mot QRZ vid Automatisk); Ctrl+L (ch == 12) loggar lokalt + mot QRZ */
+        } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == 12) {
+            /* Enter loggar lokalt (och mot QRZ vid Automatisk); Ctrl+L (ch == 12) loggar lokalt + mot QRZ */
             band_selecting = 0;
             if (ch == 12 && station.qrz_log_enabled == QRZ_LOG_OFF) {
                 copy_str(status_msg, sizeof(status_msg), "Direktlogg mot QRZ.COM är avslagen i inställningarna (F12).");
@@ -1082,13 +1095,15 @@ int main(int argc, char *argv[]) {
                 }
             }
         } else if (active_field != FLD_BAND && input_res == OK && wch >= 32 && wch != 127) {
-            /* Frys datum och tid när användaren börjar mata in i ett fält */
-            if (!time_frozen) {
-                get_utc_strings(current_qso.date, sizeof(current_qso.date),
-                                current_qso.time_utc, sizeof(current_qso.time_utc),
-                                NULL, 0);
-                time_frozen = 1;
-                copy_str(status_msg, sizeof(status_msg), "Tid & datum låsta för QSO.");
+            /* Frys datum och tid när användaren börjar mata in i ett fält (eller redigerar datum/tid manuellt) */
+            if (time_frozen == 0 || active_field == FLD_DATE || active_field == FLD_TIME) {
+                if (time_frozen <= 0) {
+                    get_utc_strings(current_qso.date, sizeof(current_qso.date),
+                                    current_qso.time_utc, sizeof(current_qso.time_utc),
+                                    NULL, 0);
+                    time_frozen = 1;
+                    copy_str(status_msg, sizeof(status_msg), "Tid & datum låsta för QSO.");
+                }
             }
 
             size_t max_len = 0;

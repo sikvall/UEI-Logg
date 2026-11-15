@@ -118,7 +118,7 @@ enum {
  */
 enum {
     QRZ_LOG_OFF    = 0, /**< Av: Ingen direktloggning mot QRZ.COM */
-    QRZ_LOG_AUTO   = 1, /**< Automatisk: Loggning sker direkt på Enter/F2 även till QRZ.COM */
+    QRZ_LOG_AUTO   = 1, /**< Automatisk: Loggning sker direkt på Enter även till QRZ.COM */
     QRZ_LOG_MANUAL = 2  /**< Manuell: Loggning till QRZ.COM sker med Ctrl+L på loggrad eller i inmatningsrutan */
 };
 

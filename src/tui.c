@@ -1043,7 +1043,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             if (search_filter && search_filter[0]) {
                 items[count++] = (FKeyItem){"Esc", "Återställ"};
             }
-            items[count++] = (FKeyItem){"F2", "Logga"};
+            items[count++] = (FKeyItem){"F2", (COLS >= 92) ? "Klocka" : "UTC"};
             items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
@@ -1341,7 +1341,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         attron(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
         mvprintw(input_top, COLS - badge_w, "%s", edit_tag);
         attroff(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-    } else if (time_frozen) {
+    } else if (time_frozen > 0) {
         attron(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
         mvprintw(input_top, COLS - 13, "[TID FRYST]");
         attroff(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
@@ -1866,7 +1866,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
             return 0;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ') {
             /* Bekräfta val */
-            if (!*time_frozen) {
+            if (*time_frozen == 0) {
                 get_utc_strings(qso->date, sizeof(qso->date),
                                 qso->time_utc, sizeof(qso->time_utc), NULL, 0);
                 *time_frozen = 1;
@@ -1877,7 +1877,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
             return 1;
         } else if (ch == '\t') {
             /* Bekräfta och gå framåt */
-            if (!*time_frozen) {
+            if (*time_frozen == 0) {
                 get_utc_strings(qso->date, sizeof(qso->date),
                                 qso->time_utc, sizeof(qso->time_utc), NULL, 0);
                 *time_frozen = 1;
@@ -1888,7 +1888,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
             return 2;
         } else if (ch == KEY_BTAB) {
             /* Bekräfta och gå bakåt */
-            if (!*time_frozen) {
+            if (*time_frozen == 0) {
                 get_utc_strings(qso->date, sizeof(qso->date),
                                 qso->time_utc, sizeof(qso->time_utc), NULL, 0);
                 *time_frozen = 1;

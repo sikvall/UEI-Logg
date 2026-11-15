@@ -37,7 +37,8 @@ static const HelpTopic HELP_TOPICS[] = {
         "Globala tangentbordskommandon",
         {
             "F1           - Rensa inmatningsformulär & återstarta UTC-klockan",
-            "F2 el. Enter - Logga och spara pågående QSO (även till QRZ vid Automatisk)",
+            "F2           - Starta UTC-klockan igen i formuläret (även om inmatning börjat)",
+            "Enter        - Logga och spara pågående QSO (även till QRZ vid Automatisk)",
             "Ctrl+L (^L)  - Logga direkt mot QRZ.COM (i formulär eller på loggrad)",
             "F3 el. ^F    - Sök och filtrera rader i logglistan i realtid",
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
@@ -56,7 +57,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        18
+        19
     },
     {
         "[2] Inmatning",
@@ -84,7 +85,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Rad 4: Datum (YYYY-MM-DD), UTC (HH:MM el. HHMM), Notering (resten av raden)",
             "",
             "Smarta funktioner:",
-            "  * Klockan uppdateras live varje sekund tills inmatning påbörjas i ett fält.",
+            "  * Klockan uppdateras live tills inmatning påbörjas (F2 startar klockan igen).",
             "  * Frekvens i MHz (t.ex. 14.074 eller 14074) identifierar automatiskt amatörbandet.",
             "  * I Band-fältet: tryck Enter för interaktiv drop-down, eller 0-9 för snabbval.",
             "  * QRB (avstånd) och QUJ (bäring) beräknas kontinuerligt mot egen lokator.",
@@ -161,7 +162,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
             "  * Inloggningsuppgifter för QRZ.COM samt QRZ Logbook API-nyckel.",
             "  * Auto QRZ.COM: Av, Auto eller Manuell (vid Manuell sker uppslag enbart via F5).",
-            "  * Direktlogg QRZ.COM: Av, Automatisk (vid Enter/F2) eller Manuell (via Ctrl+L).",
+            "  * Direktlogg QRZ.COM: Av, Automatisk (vid Enter) eller Manuell (via Ctrl+L).",
             "    Default är Manuell om användarnamn och lösenord för QRZ.COM är ifyllda.",
             "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
             "",
