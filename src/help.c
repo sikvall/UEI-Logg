@@ -5,7 +5,7 @@
  * Visar omfattande hjälp indelad i sex informativa flikar:
  * 1. Globala snabbkommandon
  * 2. QSO-inmatning & fältrensning/redigeringsregler
- * 3. Uppslagsfunktioner (Logg -> SM Callbook -> QRZ.COM)
+ * 3. Uppslagsfunktioner (Logg -> QRZ.COM -> DXCC)
  * 4. Loggrader, redigering och statusmarkering
  * 5. Inställningar, fildialog och ADIF import/export
  * 6. Rymdväder, K-index och HF-konditioner
@@ -98,7 +98,7 @@ static const HelpTopic HELP_TOPICS[] = {
         {
             "Prioritetsordning vid uppslag av anropssignal:",
             "  1. Den lokala loggboken (qsolog.sq3) kontrolleras alltid först.",
-            "  2. Om ej i loggen: QRZ.COM (om aktiverat; SM Callbook hålls dolt och avslaget).",
+            "  2. Om ej i loggen: QRZ.COM (om aktiverat i inställningarna).",
             "  3. DXCC-land slås alltid automatiskt upp direkt ur dxcc.txt.",
             "",
             "Automatiskt uppslag:",

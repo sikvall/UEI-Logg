@@ -18,7 +18,7 @@ extern "C" {
  * Innehåller flikuppdelad och detaljerad hjälp för:
  * 1. Globala tangenter & kortkommandon
  * 2. QSO-inmatning & navigering
- * 3. Uppslag (Lokal logg, SM Callbook, QRZ.COM)
+ * 3. Uppslag (Lokal logg, QRZ.COM, DXCC)
  * 4. Loggrader & redigering / hantering
  * 5. Inställningar, ADIF-import/export & färgscheman
  * 6. Rymdväder & HF-konditioner

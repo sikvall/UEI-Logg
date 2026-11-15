@@ -56,7 +56,7 @@ Programmets styrkor:
     \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar.
     \item \textbf{Smart fälthantering:} Skrivning i förifyllt fält rensar automatiskt gammal text; \texttt{Delete} tömmer hela fältet direkt.
     \item \textbf{Automatisk DXCC och QRB:} Identifierar direkt land, zon och räknar ut avstånd (km) och kompassbäring utifrån motstationens lokator.
-    \item \textbf{Callbook- och DXCC-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen samt bakgrundsuppslag mot QRZ.com XML Logbook Service.
+    \item \textbf{QRZ.com- och DXCC-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen samt bakgrundsuppslag mot QRZ.com XML Logbook Service.
     \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata samt HF-konditioner från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
     \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
@@ -166,7 +166,7 @@ Inmatningsfältet är ordnat på fyra rader:
         \item \texttt{Signal}: Motstationens signal (omvandlas automatiskt till versaler).
         \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
         \item \texttt{RST R}: Mottagen rapport.
-        \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i Callbook eller QRZ).
+        \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i loggen eller QRZ.com).
     \end{itemize}
     \item \textbf{Rad 2:}
     \begin{itemize}
@@ -307,7 +307,6 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
-\noindent\textit{Obs: SM Callbook är tills vidare dolt från inställningsmenyn och hålls avslaget.}
 
 \subsection{Egen Färgprofilseditor (F7 i inställningar)}
 \label{sec:theme_editor}
@@ -436,7 +435,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
 \texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
 \texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Data Service. \\
-\texttt{src/callbook.c} & Snabb sökning i SSA/SM Callbook. \\
+\texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
 \texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
@@ -445,7 +444,6 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
 \texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
 \texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
-\texttt{smcallbook.txt} & Databas över svenska radioamatörer. \\
 \bottomrule
 \end{tabularx}
 \caption{Projektets filstruktur.}
