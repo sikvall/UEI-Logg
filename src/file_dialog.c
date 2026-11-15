@@ -404,6 +404,7 @@ int run_file_dialog(const char *title, const char *start_dir, const char *ext_fi
         attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
         if (cur_input_y >= 0 && cur_input_x >= 0) {
+            curs_set(1);
             move(cur_input_y, cur_input_x);
         }
         refresh();

@@ -82,6 +82,7 @@ void tui_init(void) {
     define_key("\033[4~",   KEY_END);
     define_key("\033[5~",   KEY_PPAGE);
     define_key("\033[6~",   KEY_NPAGE);
+    curs_set(1);
     timeout(250);
 
     /* Sätt terminalens fönstertitel om terminalemulatorn stöder OSC */
@@ -243,7 +244,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          COLOR_BLUE,   COLOR_WHITE);
             init_pair(CP_LABEL,          COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   COLOR_WHITE);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_GREEN);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -277,7 +278,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_LABEL,          COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_FIELD_INACTIVE, COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLACK);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -313,7 +314,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          fg_orange,    bg_gray);
             init_pair(CP_LABEL,          COLOR_BLACK,  bg_gray);
             init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  bg_gray);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   bg_gray);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_FROZEN_BADGE,   COLOR_WHITE,  fg_orange);
             init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -912,10 +913,11 @@ int build_filtered_indices(const QSOList *log_list, const char *search_filter,
 void draw_field_aligned(int row, int colon_col, const char *label, const char *val,
                         int width, int is_active, int cursor_pos,
                         int *cur_y, int *cur_x) {
-    attron(COLOR_PAIR(CP_LABEL));
+    int lbl_attr = is_active ? (COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD) : COLOR_PAIR(CP_LABEL);
+    attron(lbl_attr);
     int llen = utf8_display_width(label);
     mvprintw(row, colon_col - llen, "%s:", label);
-    attroff(COLOR_PAIR(CP_LABEL));
+    attroff(lbl_attr);
 
     int val_col = colon_col + 2;
     int color = is_active ? CP_FIELD_ACTIVE : CP_FIELD_INACTIVE;
@@ -927,6 +929,9 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
     }
 
     int val_w = utf8_display_width(val);
+    if (cursor_pos < 0) cursor_pos = 0;
+    if (cursor_pos > val_w) cursor_pos = val_w;
+
     int scroll_chars = 0;
     if (is_active && cursor_pos >= width) {
         scroll_chars = cursor_pos - width + 1;
@@ -940,8 +945,22 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
     attroff(COLOR_PAIR(color) | attr);
 
     if (is_active) {
-        *cur_y = row;
-        *cur_x = val_col + (cursor_pos - scroll_chars);
+        int c_offset = cursor_pos - scroll_chars;
+        if (c_offset < 0) c_offset = 0;
+        if (c_offset >= width) c_offset = width - 1;
+
+        attron(COLOR_PAIR(color) | A_BOLD | A_UNDERLINE);
+        if (cursor_pos < val_w) {
+            size_t cb_start = utf8_char_to_byte(val, cursor_pos);
+            size_t cb_end   = utf8_char_to_byte(val, cursor_pos + 1);
+            mvprintw(row, val_col + c_offset, "%.*s", (int)(cb_end - cb_start), val + cb_start);
+        } else {
+            mvaddch(row, val_col + c_offset, ' ');
+        }
+        attroff(COLOR_PAIR(color) | A_BOLD | A_UNDERLINE);
+
+        if (cur_y) *cur_y = row;
+        if (cur_x) *cur_x = val_col + c_offset;
     }
 }
 
@@ -951,10 +970,11 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
 void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int is_active, int band_selecting,
                                 int *cur_y, int *cur_x) {
-    attron(COLOR_PAIR(CP_LABEL));
+    int lbl_attr = is_active ? (COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD) : COLOR_PAIR(CP_LABEL);
+    attron(lbl_attr);
     int llen = utf8_display_width("Band");
     mvprintw(row, colon_col - llen, "Band:");
-    attroff(COLOR_PAIR(CP_LABEL));
+    attroff(lbl_attr);
 
     int val_col = colon_col + 2;
     int width = 8;
@@ -1656,6 +1676,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* RITA F-TANGENTRAD ALLRA LÄNGST NED */
     draw_bottom_fkey_bar(0, focus_mode, search_filter);
 
+    curs_set(band_selecting ? 0 : 1);
     move(*cur_y, *cur_x);
     refresh();
 }
@@ -1673,6 +1694,7 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
     char buf[64];
     copy_str(buf, sizeof(buf), search_filter);
     int cursor_pos = utf8_display_width(buf);
+    curs_set(1);
 
     while (1) {
         int y = LINES - 2;

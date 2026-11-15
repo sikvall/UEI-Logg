@@ -222,6 +222,7 @@ void run_help_modal(const StationSettings *st) {
     (void)st;
     int current_topic = 0;
     int scroll_offset = 0;
+    curs_set(0);
 
     while (1) {
         erase();
@@ -337,6 +338,7 @@ void run_help_modal(const StationSettings *st) {
         if (ch == ERR) continue;
 
         if (ch == 27 || ch == KEY_F(9) || ch == 'q' || ch == 'Q' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            curs_set(1);
             break;
         } else if (ch >= '1' && ch <= '0' + NUM_HELP_TOPICS) {
             current_topic = ch - '1';

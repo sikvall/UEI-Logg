@@ -319,6 +319,20 @@ static void run_navigation_tests(void) {
     int filter_ok = (f_cnt_40 == 10);
     record_result(filter_ok, "build_filtered_indices filtrerar korrekt på delsträng ('40 m')", NULL);
 
+    /* Testa markörsynkronisering och fältpekare för samtliga inmatningsfält */
+    QSO nav_qso;
+    memset(&nav_qso, 0, sizeof(nav_qso));
+    copy_str(nav_qso.call, sizeof(nav_qso.call), "SM5UEI");
+    copy_str(nav_qso.qth, sizeof(nav_qso.qth), "Västerås");
+    int cpos = -1;
+    sync_cursor_to_field_end(&nav_qso, FLD_CALL, &cpos);
+    int cpos_call_ok = (cpos == 6);
+    sync_cursor_to_field_end(&nav_qso, FLD_QTH, &cpos);
+    int cpos_qth_ok = (cpos == 8); /* "Västerås" har 8 visningstecken i UTF-8 */
+    int f_cnt_empty = build_filtered_indices(&list, "INGENTRAFF999", indices, (int)list.count);
+    record_result(cpos_call_ok && cpos_qth_ok && f_cnt_empty == 0,
+                  "Markörposition (UTF-8) och tom sökfiltrering (återgång till inmatningsfokus) fungerar korrekt", NULL);
+
     free(indices);
     free(list.items);
 }

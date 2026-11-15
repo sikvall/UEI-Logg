@@ -834,6 +834,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     }
 
     draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
+    curs_set(1);
     move(*cur_y, *cur_x);
 }
 
@@ -897,6 +898,7 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
         }
 
         draw_settings_dialog_view(edit, 8, 0, log_list, status_msg, NULL, NULL);
+        curs_set(0);
 
         /* Rita popup-ram */
         draw_box_with_title(pop_y, pop_x, list_h, list_w, "Färgscheman", 1);
@@ -938,6 +940,7 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
         if (ch == 27) {
             edit->theme = orig_theme;
             apply_color_theme(orig_theme);
+            curs_set(1);
             return 0;
         } else if (ch == KEY_F(7) || ch == 'e' || ch == 'E') {
             int changed = run_color_theme_editor(edit);
@@ -945,25 +948,31 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
                 edit->theme = THEME_CUSTOM;
                 set_custom_theme(&edit->custom_theme);
                 apply_color_theme(THEME_CUSTOM);
+                curs_set(1);
                 return 1;
             } else {
                 apply_color_theme(sel_idx);
+                curs_set(0);
             }
         } else if (ch == KEY_F(12)) {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 4;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ') {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 1;
         } else if (ch == '\t') {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 2;
         } else if (ch == KEY_BTAB) {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 3;
         } else if (ch == KEY_UP || ch == 'k' || ch == 'K') {
             if (sel_idx > 0) sel_idx--;

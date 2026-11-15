@@ -384,6 +384,7 @@ int run_color_theme_editor(StationSettings *edit) {
 
         if (ch == 27) { /* Esc - avbryt */
             apply_color_theme(orig_theme);
+            curs_set(1);
             return 0;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == KEY_F(2) || ch == KEY_F(12)) {
             /* Spara profil och aktivera den */
@@ -391,6 +392,7 @@ int run_color_theme_editor(StationSettings *edit) {
             edit->theme = THEME_CUSTOM;
             set_custom_theme(&edit->custom_theme);
             apply_color_theme(THEME_CUSTOM);
+            curs_set(1);
             return 1;
         } else if (ch == KEY_UP || ch == 'k' || ch == 'K') {
             sel_slot = (sel_slot + 13) % 14;

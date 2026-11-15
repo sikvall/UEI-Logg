@@ -157,6 +157,15 @@ int main(int argc, char *argv[]) {
         int cur_y = 2, cur_x = 16;
         const char *active_filter = (search_filter[0] != '\0') ? search_filter :
                                     (station.filter_log && current_qso.call[0] != '\0') ? current_qso.call : NULL;
+        if (focus_mode == FOCUS_LOG) {
+            int max_f = (int)log_list.count > 0 ? (int)log_list.count : 1;
+            int *tmp_f = malloc((size_t)max_f * sizeof(int));
+            int f_cnt = tmp_f ? build_filtered_indices(&log_list, active_filter, tmp_f, max_f) : 0;
+            free(tmp_f);
+            if (f_cnt == 0) {
+                focus_mode = FOCUS_INPUT;
+            }
+        }
         draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                          field_cursor_pos, time_frozen, editing_index,
                          &log_list, selected_log_pos, &log_scroll_offset,
