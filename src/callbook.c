@@ -544,14 +544,14 @@ void poll_smcb_background_result(QSO *qso, const StationSettings *st,
             snprintf(status_msg, status_sz, "SMCB: %s, %s", res_name, res_qth);
         }
     } else if (res_found == -1) {
-        if (st && st->qrz_enabled && st->qrz_username[0] != '\0') {
+        if (st && st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
             start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
             snprintf(status_msg, status_sz, "SMCB blockerat -> QRZ: Slår upp %s...", qso->call);
         } else if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {
             snprintf(status_msg, status_sz, "SMCB: Blockerat av SSA webbläsarkontroll (använd QRZ.COM)");
         }
     } else {
-        if (st && st->qrz_enabled && st->qrz_username[0] != '\0') {
+        if (st && st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
             start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
             snprintf(status_msg, status_sz, "SMCB: Ingen träff -> QRZ: Slår upp %s...", qso->call);
         } else if (status_msg[0] == '\0' || strstr(status_msg, "SMCB: Slår upp")) {

@@ -12,6 +12,7 @@
 #include "util.h"
 #include "file_dialog.h"
 #include "help.h"
+#include "theme_editor.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <ncurses.h>
@@ -33,19 +34,27 @@
 void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
-    st->qrz_enabled = 0;
+    st->qrz_enabled = QRZ_MODE_OFF;
+    st->qrz_log_enabled = QRZ_LOG_OFF;
     st->show_stats = 1;
     st->show_space_weather = 1;
     st->show_notes = 1;
+    st->theme = THEME_DEFAULT;
     st->qrz_username[0] = '\0';
     st->qrz_password[0] = '\0';
+    st->qrz_api_key[0] = '\0';
+    custom_theme_init_defaults(&st->custom_theme);
     copy_str(st->last_band, sizeof(st->last_band), "20 m");
     copy_str(st->last_freq, sizeof(st->last_freq), "14.200");
     copy_str(st->last_mode, sizeof(st->last_mode), "SSB");
 
     FILE *fp = fopen(filename, "r");
-    if (fp == NULL) return;
+    if (fp == NULL) {
+        set_custom_theme(&st->custom_theme);
+        return;
+    }
 
+    int has_qrz_log_setting = 0;
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -70,14 +79,48 @@ void load_station_settings(const char *filename, StationSettings *st) {
             if (t >= 0 && t < THEME_COUNT) {
                 st->theme = t;
             }
+        } else if (strcasecmp(key, "CUSTOM_THEME") == 0) {
+            sscanf(val, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                   &st->custom_theme.bg_main,
+                   &st->custom_theme.fg_text,
+                   &st->custom_theme.border,
+                   &st->custom_theme.border_active,
+                   &st->custom_theme.title,
+                   &st->custom_theme.label,
+                   &st->custom_theme.field_act_bg,
+                   &st->custom_theme.field_act_fg,
+                   &st->custom_theme.sel_bg,
+                   &st->custom_theme.sel_fg,
+                   &st->custom_theme.topbar_bg,
+                   &st->custom_theme.topbar_fg,
+                   &st->custom_theme.status_ok,
+                   &st->custom_theme.status_warn);
         } else if (strcasecmp(key, "SMCB") == 0) {
-            st->smcb_enabled = (atoi(val) != 0) ? 1 : 0;
+            /* SM Callbook hålls avslaget tills vidare */
+            st->smcb_enabled = 0;
         } else if (strcasecmp(key, "QRZ_USER") == 0) {
             copy_str(st->qrz_username, sizeof(st->qrz_username), val);
         } else if (strcasecmp(key, "QRZ_PASS") == 0) {
             copy_str(st->qrz_password, sizeof(st->qrz_password), val);
+        } else if (strcasecmp(key, "QRZ_API_KEY") == 0) {
+            copy_str(st->qrz_api_key, sizeof(st->qrz_api_key), val);
         } else if (strcasecmp(key, "QRZ_ENABLED") == 0) {
-            st->qrz_enabled = (atoi(val) != 0) ? 1 : 0;
+            if (strcasecmp(val, "auto") == 0 || strcmp(val, "1") == 0) {
+                st->qrz_enabled = QRZ_MODE_AUTO;
+            } else if (strcasecmp(val, "manual") == 0 || strcasecmp(val, "manuell") == 0 || strcmp(val, "2") == 0) {
+                st->qrz_enabled = QRZ_MODE_MANUAL;
+            } else {
+                st->qrz_enabled = QRZ_MODE_OFF;
+            }
+        } else if (strcasecmp(key, "QRZ_LOG_ENABLED") == 0) {
+            has_qrz_log_setting = 1;
+            if (strcasecmp(val, "auto") == 0 || strcasecmp(val, "automatisk") == 0 || strcmp(val, "1") == 0) {
+                st->qrz_log_enabled = QRZ_LOG_AUTO;
+            } else if (strcasecmp(val, "manual") == 0 || strcasecmp(val, "manuell") == 0 || strcmp(val, "2") == 0) {
+                st->qrz_log_enabled = QRZ_LOG_MANUAL;
+            } else {
+                st->qrz_log_enabled = QRZ_LOG_OFF;
+            }
         } else if (strcasecmp(key, "AUTO_RST") == 0) {
             st->auto_rst_59 = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "FILTER_LOG") == 0) {
@@ -100,6 +143,14 @@ void load_station_settings(const char *filename, StationSettings *st) {
         }
     }
     fclose(fp);
+    if (!has_qrz_log_setting) {
+        if (st->qrz_username[0] != '\0' && st->qrz_password[0] != '\0') {
+            st->qrz_log_enabled = QRZ_LOG_MANUAL;
+        } else {
+            st->qrz_log_enabled = QRZ_LOG_OFF;
+        }
+    }
+    set_custom_theme(&st->custom_theme);
 }
 
 /**
@@ -117,10 +168,27 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "GRIDSQUARE=%s\n", st->gridsquare);
     fprintf(fp, "TIMEZONE=%s\n", st->timezone);
     fprintf(fp, "THEME=%d\n", st->theme);
+    fprintf(fp, "CUSTOM_THEME=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            st->custom_theme.bg_main,
+            st->custom_theme.fg_text,
+            st->custom_theme.border,
+            st->custom_theme.border_active,
+            st->custom_theme.title,
+            st->custom_theme.label,
+            st->custom_theme.field_act_bg,
+            st->custom_theme.field_act_fg,
+            st->custom_theme.sel_bg,
+            st->custom_theme.sel_fg,
+            st->custom_theme.topbar_bg,
+            st->custom_theme.topbar_fg,
+            st->custom_theme.status_ok,
+            st->custom_theme.status_warn);
     fprintf(fp, "SMCB=%d\n", st->smcb_enabled ? 1 : 0);
     fprintf(fp, "QRZ_USER=%s\n", st->qrz_username);
     fprintf(fp, "QRZ_PASS=%s\n", st->qrz_password);
-    fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled ? 1 : 0);
+    fprintf(fp, "QRZ_API_KEY=%s\n", st->qrz_api_key);
+    fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled);
+    fprintf(fp, "QRZ_LOG_ENABLED=%d\n", st->qrz_log_enabled);
     fprintf(fp, "AUTO_RST=%d\n", st->auto_rst_59 ? 1 : 0);
     fprintf(fp, "FILTER_LOG=%d\n", st->filter_log ? 1 : 0);
     fprintf(fp, "SHOW_STATS=%d\n", st->show_stats ? 1 : 0);
@@ -528,7 +596,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     draw_top_bar(edit);
     draw_box_with_title(1, 0, LINES - 2, COLS, "Inställningar – Min Station (F12)", 1);
 
-    int start_y = (LINES >= 24) ? 3 : 2;
+    int start_y = (LINES >= 26) ? 3 : 2;
     int colon_col = 22;
     int fw = COLS - colon_col - 5;
     if (fw > 32) fw = 32;
@@ -552,27 +620,31 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     }
     draw_field_aligned(start_y + 6, colon_col, "QRZ.COM Lösenord", pass_display, fw, active == 6, cursor_pos, cur_y, cur_x);
 
-    int r_qrz_auto = start_y + 7;
-    int r_theme    = start_y + 8;
-    int r_smcb     = start_y + 9;
-    int r_rst      = start_y + 10;
-    int r_flt      = start_y + 11;
-    int r_stats    = start_y + 12;
-    int r_sw       = start_y + 13;
-    int r_import   = start_y + 14;
-    int r_export   = start_y + 15;
-    int r_clear    = start_y + 16;
+    /* Fält 7: QRZ Logbook API-nyckel */
+    draw_field_aligned(start_y + 7, colon_col, "QRZ API-nyckel", edit->qrz_api_key, fw, active == 7, cursor_pos, cur_y, cur_x);
+
+    int r_qrz_auto = start_y + 8;
+    int r_qrz_log  = start_y + 9;
+    int r_theme    = start_y + 10;
+    int r_rst      = start_y + 11;
+    int r_flt      = start_y + 12;
+    int r_stats    = start_y + 13;
+    int r_sw       = start_y + 14;
+    int r_import   = start_y + 15;
+    int r_export   = start_y + 16;
+    int r_clear    = start_y + 17;
 
     int fcol = colon_col + 2;
 
-    /* Fält 7: Auto QRZ.COM toggle */
+    /* Fält 8: Auto QRZ.COM toggle (Av / Auto / Manuell) */
     const char *lbl_qrz = "Auto QRZ.COM";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_qrz_auto, colon_col - utf8_display_width(lbl_qrz), "%s:", lbl_qrz);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    const char *qrz_txt = edit->qrz_enabled ? "På (Slå upp via qrz.com)" : "Av";
-    if (active == 7) {
+    const char *qrz_txt = (edit->qrz_enabled == QRZ_MODE_AUTO)   ? "Auto" :
+                          (edit->qrz_enabled == QRZ_MODE_MANUAL) ? "Manuell" : "Av";
+    if (active == 8) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_qrz_auto, fcol, "< %-28s >", qrz_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -584,17 +656,37 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 8: Färgschema (Drop-down lista) */
+    /* Fält 9: Direktlogg QRZ.COM toggle (Av / Automatisk / Manuell) */
+    const char *lbl_qrz_log = "Direktlogg QRZ.COM";
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    mvprintw(r_qrz_log, colon_col - utf8_display_width(lbl_qrz_log), "%s:", lbl_qrz_log);
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+    const char *qrz_log_txt = (edit->qrz_log_enabled == QRZ_LOG_AUTO)   ? "Automatisk" :
+                              (edit->qrz_log_enabled == QRZ_LOG_MANUAL) ? "Manuell" : "Av";
+    if (active == 9) {
+        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        mvprintw(r_qrz_log, fcol, "< %-28s >", qrz_log_txt);
+        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        *cur_y = r_qrz_log;
+        *cur_x = fcol + 2;
+    } else {
+        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+        mvprintw(r_qrz_log, fcol, "< %-28s >", qrz_log_txt);
+        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    }
+
+    /* Fält 10: Färgschema (Drop-down lista) */
     const char *lbl_theme = "Färgschema";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_theme, colon_col - utf8_display_width(lbl_theme), "%s:", lbl_theme);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    int t_idx = (edit->theme >= 0 && edit->theme < THEME_COUNT) ? edit->theme : 0;
+    int t_idx = (edit->theme >= 0 && edit->theme < THEME_COUNT) ? edit->theme : THEME_DEFAULT;
     char theme_disp[64];
     utf8_pad_or_clip(theme_disp, sizeof(theme_disp), THEME_NAMES[t_idx], 26, 0);
 
-    if (active == 8) {
+    if (active == 10) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_theme, fcol, "[ %s v ]", theme_disp);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -606,33 +698,26 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 9: SM Callbook toggle */
-    const char *lbl_smcb = "SM Callbook (ssa.se)";
-    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-    mvprintw(r_smcb, colon_col - utf8_display_width(lbl_smcb), "%s:", lbl_smcb);
-    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-
-    const char *smcb_txt = edit->smcb_enabled ? "På (Slå upp SA-SM, 7S, 8S)" : "Av";
-    if (active == 9) {
-        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
-        *cur_y = r_smcb;
-        *cur_x = fcol + 2;
-    } else {
-        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
-        mvprintw(r_smcb, fcol, "< %-28s >", smcb_txt);
-        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    if (COLS >= 78) {
+        if (active == 10) {
+            attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+            mvprintw(r_theme, fcol + 32, "[ F7: Egen färgprofil... ]");
+            attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+        } else {
+            attron(COLOR_PAIR(CP_BORDER));
+            mvprintw(r_theme, fcol + 32, "[ F7: Egen färgprofil... ]");
+            attroff(COLOR_PAIR(CP_BORDER));
+        }
     }
 
-    /* Fält 10: Automatisk RST 59/59 vid nytt QSO */
+    /* Fält 11: Automatisk RST 59/59 vid nytt QSO */
     const char *lbl_rst = "Auto RST 59/59";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_rst, colon_col - utf8_display_width(lbl_rst), "%s:", lbl_rst);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *rst_txt = edit->auto_rst_59 ? "På (Fyll i 59 / 59 vid nytt QSO)" : "Av";
-    if (active == 10) {
+    if (active == 11) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_rst, fcol, "< %-28s >", rst_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -644,14 +729,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 11: Filtrera loggrader efter anropssignal */
+    /* Fält 12: Filtrera loggrader efter anropssignal */
     const char *lbl_flt = "Filtrera loggrader";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_flt, colon_col - utf8_display_width(lbl_flt), "%s:", lbl_flt);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *flt_txt = edit->filter_log ? "På" : "Av";
-    if (active == 11) {
+    if (active == 12) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_flt, fcol, "< %-28s >", flt_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -663,14 +748,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 12: Statistikruta toggle */
+    /* Fält 13: Statistikruta toggle */
     const char *lbl_stats = "Statistikruta";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_stats, colon_col - utf8_display_width(lbl_stats), "%s:", lbl_stats);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *stats_txt = edit->show_stats ? "På (Visa ovanför QSO)" : "Av";
-    if (active == 12) {
+    if (active == 13) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_stats, fcol, "< %-28s >", stats_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -682,14 +767,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 13: Rymdväderruta toggle */
+    /* Fält 14: Rymdväderruta toggle */
     const char *lbl_sw = "Rymdväderruta";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_sw, colon_col - utf8_display_width(lbl_sw), "%s:", lbl_sw);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *sw_txt = edit->show_space_weather ? "På (hf.avitec.se)" : "Av";
-    if (active == 13) {
+    if (active == 14) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_sw, fcol, "< %-28s >", sw_txt);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -701,13 +786,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 14: Importera ADIF från fil (F5) */
+    /* Fält 15: Importera ADIF från fil (F5) */
     const char *lbl_import = "Importera ADIF (F5)";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_import, colon_col - utf8_display_width(lbl_import), "%s:", lbl_import);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 14) {
+    if (active == 15) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_import, fcol, "[ Tryck F5 eller Enter för att bläddra... ]");
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -719,7 +804,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 15: Exportera ADIF till fil (F6) */
+    /* Fält 16: Exportera ADIF till fil (F6) */
     int marked_count = 0;
     if (log_list != NULL) {
         for (size_t i = 0; i < log_list->count; ++i) {
@@ -751,7 +836,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         snprintf(export_hint, sizeof(export_hint), "[ F6 / Enter: Exportera alla (0 QSO) ]");
     }
 
-    if (active == 15) {
+    if (active == 16) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_export, fcol, "%-s", export_hint);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -763,13 +848,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 16: Töm loggbok och börja på nytt */
+    /* Fält 17: Töm loggbok och börja på nytt */
     const char *lbl_clear = "Töm loggbok";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 16) {
+    if (active == 17) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -788,14 +873,15 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     }
 
     if (LINES >= 17) {
-        if (active == 8) {
-            mvprintw(LINES - 2, 3, "Enter/Mellanslag: Öppna temalista. Pilar: Byt fält. F2/F12: Spara.");
+        if (active == 10) {
+            mvprintw(LINES - 2, 3, "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara.");
         } else {
-            mvprintw(LINES - 2, 3, "Tab/Pilar byter fält. F5=Importera, F6=Exportera. Enter/F2/F12=Spara. Esc=Avbryt.");
+            mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F7: Egen färgprofil. F5=Import, F6=Export. Esc=Avbryt.");
         }
     }
 
     draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
+    curs_set(1);
     move(*cur_y, *cur_x);
 }
 
@@ -810,14 +896,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, const char *status_msg) {
     int orig_theme = edit->theme;
     if (orig_theme < 0 || orig_theme >= THEME_COUNT) {
-        orig_theme = 0;
+        orig_theme = THEME_DEFAULT;
     }
     int sel_idx = orig_theme;
 
-    int start_y = (LINES >= 24) ? 3 : 2;
+    int start_y = (LINES >= 26) ? 3 : 2;
     int colon_col = 22;
     int fcol = colon_col + 2;
-    int r_theme = start_y + 8;
+    int r_theme = start_y + 10;
 
     int list_w = 35;
     int pop_x = fcol;
@@ -858,7 +944,8 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
             if (scroll_offset < 0) scroll_offset = 0;
         }
 
-        draw_settings_dialog_view(edit, 8, 0, log_list, status_msg, NULL, NULL);
+        draw_settings_dialog_view(edit, 10, 0, log_list, status_msg, NULL, NULL);
+        curs_set(0);
 
         /* Rita popup-ram */
         draw_box_with_title(pop_y, pop_x, list_h, list_w, "Färgscheman", 1);
@@ -900,22 +987,39 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
         if (ch == 27) {
             edit->theme = orig_theme;
             apply_color_theme(orig_theme);
+            curs_set(1);
             return 0;
+        } else if (ch == KEY_F(7) || ch == 'e' || ch == 'E') {
+            int changed = run_color_theme_editor(edit);
+            if (changed) {
+                edit->theme = THEME_CUSTOM;
+                set_custom_theme(&edit->custom_theme);
+                apply_color_theme(THEME_CUSTOM);
+                curs_set(1);
+                return 1;
+            } else {
+                apply_color_theme(sel_idx);
+                curs_set(0);
+            }
         } else if (ch == KEY_F(12)) {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 4;
         } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ') {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 1;
         } else if (ch == '\t') {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 2;
         } else if (ch == KEY_BTAB) {
             edit->theme = sel_idx;
             apply_color_theme(sel_idx);
+            curs_set(1);
             return 3;
         } else if (ch == KEY_UP || ch == 'k' || ch == 'K') {
             if (sel_idx > 0) sel_idx--;
@@ -965,6 +1069,8 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                         QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
                         char *status_msg, size_t status_sz) {
     StationSettings edit = *st;
+    int had_qrz_creds = (st->qrz_username[0] != '\0' && st->qrz_password[0] != '\0');
+    int user_changed_qrz_log = 0;
     int active = 0;
     int cursor_pos = utf8_display_width(edit.call);
 
@@ -994,7 +1100,18 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             run_help_modal(&edit);
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(5) || (active == 14 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(7) || (active == 10 && (ch == 'e' || ch == 'E'))) {
+            int changed = run_color_theme_editor(&edit);
+            if (changed) {
+                edit.theme = THEME_CUSTOM;
+                set_custom_theme(&edit.custom_theme);
+                apply_color_theme(THEME_CUSTOM);
+                copy_str(status_msg, status_sz, "Egen färgprofil sparad och aktiverad!");
+            } else {
+                apply_color_theme(edit.theme);
+            }
+            continue;
+        } else if (ch == KEY_F(5) || (active == 15 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             char chosen_path[PATH_MAX] = {0};
             int chosen = run_file_dialog("Välj ADIF-fil att importera", ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 0, NULL);
             if (chosen && chosen_path[0] != '\0') {
@@ -1037,7 +1154,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(6) || (active == 15 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(6) || (active == 16 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             if (log_list == NULL || log_list->count == 0) {
                 copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
                 apply_color_theme(edit.theme);
@@ -1145,7 +1262,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 16 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;
@@ -1184,7 +1301,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             } else {
                 apply_color_theme(st->theme);
             }
-        } else if (ch == KEY_F(2) || ch == 19 || (active < 14 && active != 8 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
+        } else if (ch == KEY_F(2) || ch == 19 || (active < 15 && active != 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
             to_upper_str(edit.call);
             to_upper_str(edit.gridsquare);
             *st = edit;
@@ -1200,7 +1317,8 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                          (active == 3) ? utf8_display_width(edit.gridsquare) :
                          (active == 4) ? utf8_display_width(edit.timezone) :
                          (active == 5) ? utf8_display_width(edit.qrz_username) :
-                         (active == 6) ? utf8_display_width(edit.qrz_password) : 0;
+                         (active == 6) ? utf8_display_width(edit.qrz_password) :
+                         (active == 7) ? utf8_display_width(edit.qrz_api_key) : 0;
         } else if (ch == KEY_BTAB || ch == KEY_UP) {
             active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
             cursor_pos = (active == 0) ? utf8_display_width(edit.call) :
@@ -1209,10 +1327,22 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                          (active == 3) ? utf8_display_width(edit.gridsquare) :
                          (active == 4) ? utf8_display_width(edit.timezone) :
                          (active == 5) ? utf8_display_width(edit.qrz_username) :
-                         (active == 6) ? utf8_display_width(edit.qrz_password) : 0;
-        } else if (active == 7 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.qrz_enabled = !edit.qrz_enabled;
-        } else if (active == 8 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || ch == KEY_LEFT || ch == KEY_RIGHT)) {
+                         (active == 6) ? utf8_display_width(edit.qrz_password) :
+                         (active == 7) ? utf8_display_width(edit.qrz_api_key) : 0;
+        } else if (active == 8 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+            if (ch == KEY_LEFT) {
+                edit.qrz_enabled = (edit.qrz_enabled + 2) % 3;
+            } else {
+                edit.qrz_enabled = (edit.qrz_enabled + 1) % 3;
+            }
+        } else if (active == 9 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+            user_changed_qrz_log = 1;
+            if (ch == KEY_LEFT) {
+                edit.qrz_log_enabled = (edit.qrz_log_enabled + 2) % 3;
+            } else {
+                edit.qrz_log_enabled = (edit.qrz_log_enabled + 1) % 3;
+            }
+        } else if (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || ch == KEY_LEFT || ch == KEY_RIGHT)) {
             int ret = run_theme_dropdown(&edit, log_list, status_msg);
             if (ret == 4) {
                 to_upper_str(edit.call);
@@ -1227,28 +1357,28 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             } else if (ret == 3) {
                 active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
             }
-        } else if (active == 9 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.smcb_enabled = !edit.smcb_enabled;
-        } else if (active == 10 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.auto_rst_59 = !edit.auto_rst_59;
         } else if (active == 11 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.filter_log = !edit.filter_log;
+            edit.auto_rst_59 = !edit.auto_rst_59;
         } else if (active == 12 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
-            edit.show_stats = !edit.show_stats;
+            edit.filter_log = !edit.filter_log;
         } else if (active == 13 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
+            edit.show_stats = !edit.show_stats;
+        } else if (active == 14 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             edit.show_space_weather = !edit.show_space_weather;
-        } else if (active < 7) {
+        } else if (active < 8) {
             char *buf = (active == 0) ? edit.call :
                         (active == 1) ? edit.name :
                         (active == 2) ? edit.qth :
                         (active == 3) ? edit.gridsquare :
                         (active == 4) ? edit.timezone :
-                        (active == 5) ? edit.qrz_username : edit.qrz_password;
+                        (active == 5) ? edit.qrz_username :
+                        (active == 6) ? edit.qrz_password : edit.qrz_api_key;
             size_t max_len = (active == 0) ? sizeof(edit.call) :
                              (active == 1) ? sizeof(edit.name) :
                              (active == 2) ? sizeof(edit.qth) :
                              (active == 3) ? sizeof(edit.gridsquare) :
-                             (active == 4) ? sizeof(edit.timezone) : 33;
+                             (active == 4) ? sizeof(edit.timezone) :
+                             (active == 7) ? sizeof(edit.qrz_api_key) : 33;
 
             if (ch == KEY_LEFT) {
                 if (cursor_pos > 0) cursor_pos--;
@@ -1283,6 +1413,11 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                     u8[u8_len] = '\0';
                 }
                 utf8_insert_char_at(buf, max_len, &cursor_pos, u8, u8_len);
+                if ((active == 5 || active == 6) && !had_qrz_creds && !user_changed_qrz_log &&
+                    edit.qrz_username[0] != '\0' && edit.qrz_password[0] != '\0' &&
+                    edit.qrz_log_enabled == QRZ_LOG_OFF) {
+                    edit.qrz_log_enabled = QRZ_LOG_MANUAL;
+                }
             }
         }
     }

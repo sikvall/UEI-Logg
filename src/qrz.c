@@ -779,3 +779,217 @@ void poll_qrz_background_result(QSO *qso, const StationSettings *st,
         }
     }
 }
+
+#define QRZ_LOGBOOK_URL "https://logbook.qrz.com/api"
+
+/**
+ * @brief Hjälpfunktion för att lägga till en ADIF-tagg i en strängbuffert.
+ */
+static void append_adif_tag_buf(char *buf, size_t buf_sz, size_t *offset, const char *tag, const char *val) {
+    if (!buf || !offset || *offset >= buf_sz - 1 || !tag || !val || val[0] == '\0') return;
+    int written = snprintf(buf + *offset, buf_sz - *offset, "<%s:%zu>%s ", tag, strlen(val), val);
+    if (written > 0) {
+        if (*offset + (size_t)written < buf_sz) {
+            *offset += (size_t)written;
+        } else {
+            *offset = buf_sz - 1;
+        }
+    }
+}
+
+/**
+ * @brief Bygger en ADIF-post för ett enskilt QSO anpassad för QRZ.COM Logbook API.
+ */
+void qrz_build_adif_record(const QSO *qso, const StationSettings *st, char *out, size_t out_sz) {
+    if (!out || out_sz == 0) return;
+    out[0] = '\0';
+    if (!qso) return;
+
+    char clean_date[16] = "", clean_time[16] = "", clean_band[16] = "";
+    normalize_date_adif(qso->date, clean_date, sizeof(clean_date));
+    normalize_time_adif(qso->time_utc, clean_time, sizeof(clean_time));
+
+    char raw_band[16] = "";
+    if (qso->band[0] != '\0' && strcmp(qso->band, "?") != 0 && strcmp(qso->band, "-") != 0) {
+        copy_str(raw_band, sizeof(raw_band), qso->band);
+    } else if (qso->freq[0] != '\0') {
+        resolve_band_from_freq(qso->freq, raw_band, sizeof(raw_band));
+    }
+    if (raw_band[0] != '\0' && strcmp(raw_band, "?") != 0 && strcmp(raw_band, "-") != 0) {
+        normalize_band_adif(raw_band, clean_band, sizeof(clean_band));
+        for (char *c = clean_band; *c != '\0'; ++c) {
+            *c = (char)tolower((unsigned char)*c);
+        }
+    }
+
+    char clean_freq[32] = "";
+    copy_str(clean_freq, sizeof(clean_freq), qso->freq);
+    for (char *c = clean_freq; *c != '\0'; ++c) {
+        if (*c == ',') *c = '.';
+    }
+
+    size_t off = 0;
+    append_adif_tag_buf(out, out_sz, &off, "CALL", qso->call);
+    append_adif_tag_buf(out, out_sz, &off, "NAME", qso->name);
+    append_adif_tag_buf(out, out_sz, &off, "QSO_DATE", clean_date);
+    append_adif_tag_buf(out, out_sz, &off, "TIME_ON", clean_time);
+    append_adif_tag_buf(out, out_sz, &off, "FREQ", clean_freq);
+    append_adif_tag_buf(out, out_sz, &off, "BAND", clean_band);
+    append_adif_tag_buf(out, out_sz, &off, "MODE", qso->mode);
+    append_adif_tag_buf(out, out_sz, &off, "RST_SENT", qso->rst_sent);
+    append_adif_tag_buf(out, out_sz, &off, "RST_RCVD", qso->rst_rcvd);
+    append_adif_tag_buf(out, out_sz, &off, "GRIDSQUARE", qso->gridsquare);
+    append_adif_tag_buf(out, out_sz, &off, "QTH", qso->qth);
+    append_adif_tag_buf(out, out_sz, &off, "COMMENT", qso->comment);
+    if (st != NULL) {
+        append_adif_tag_buf(out, out_sz, &off, "STATION_CALLSIGN", st->call);
+        append_adif_tag_buf(out, out_sz, &off, "OPERATOR", st->call);
+        append_adif_tag_buf(out, out_sz, &off, "MY_NAME", st->name);
+        append_adif_tag_buf(out, out_sz, &off, "MY_CITY", st->qth);
+        append_adif_tag_buf(out, out_sz, &off, "MY_GRIDSQUARE", st->gridsquare);
+    }
+    if (off + 5 < out_sz) {
+        memcpy(out + off, "<EOR>", 6);
+    }
+}
+
+/**
+ * @brief Extraherar värdet för en nyckel i QRZ Logbook API-svaret (t.ex. RESULT=... eller REASON=...).
+ */
+static int extract_kv_param(const char *resp, const char *key, char *out, size_t out_sz) {
+    if (!resp || !key || !out || out_sz == 0) return 0;
+    out[0] = '\0';
+
+    size_t klen = strlen(key);
+    const char *p = resp;
+    while (*p) {
+        if ((p == resp || *(p - 1) == '&' || *(p - 1) == '\n' || *(p - 1) == '\r') &&
+            strncasecmp(p, key, klen) == 0 && p[klen] == '=') {
+            const char *val_start = p + klen + 1;
+            const char *val_end = val_start;
+            while (*val_end && *val_end != '&' && *val_end != '\r' && *val_end != '\n') {
+                val_end++;
+            }
+            size_t len = (size_t)(val_end - val_start);
+            if (len >= out_sz) len = out_sz - 1;
+            memcpy(out, val_start, len);
+            out[len] = '\0';
+            xml_unescape(out);
+            trim_str(out);
+            return 1;
+        }
+        p++;
+    }
+    return 0;
+}
+
+/**
+ * @brief Tolkar svaret från QRZ.COM Logbook API.
+ */
+int qrz_parse_logbook_response(const char *resp, char *err_out, size_t err_sz) {
+    if (err_out && err_sz > 0) err_out[0] = '\0';
+    if (!resp || resp[0] == '\0') {
+        if (err_out && err_sz > 0) copy_str(err_out, err_sz, "Tomt svar från QRZ.COM");
+        return 0;
+    }
+
+    char result[64] = "";
+    char status[64] = "";
+    char reason[256] = "";
+    extract_kv_param(resp, "RESULT", result, sizeof(result));
+    extract_kv_param(resp, "STATUS", status, sizeof(status));
+    extract_kv_param(resp, "REASON", reason, sizeof(reason));
+
+    if (strcasecmp(result, "OK") == 0 || strcasecmp(result, "REPLACE") == 0) {
+        return 1;
+    }
+    if (result[0] == '\0' && strcasecmp(status, "OK") == 0) {
+        return 1;
+    }
+
+    if (err_out && err_sz > 0) {
+        if (reason[0] != '\0') {
+            copy_str(err_out, err_sz, reason);
+        } else if (strcasecmp(result, "AUTH") == 0 || strcasecmp(status, "AUTH") == 0) {
+            copy_str(err_out, err_sz, "Ogiltig API-nyckel eller behörighet saknas");
+        } else {
+            copy_str(err_out, err_sz, "Misslyckades hos QRZ.COM");
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief Skickar ett QSO direkt till QRZ.COM Logbook via dess HTTPS API (ACTION=INSERT).
+ */
+int qrz_logbook_insert(const char *api_key, const QSO *qso, const StationSettings *st,
+                       char *err_out, size_t err_sz) {
+    if (err_out && err_sz > 0) err_out[0] = '\0';
+
+    if (!api_key || api_key[0] == '\0') {
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "QRZ Logbook API-nyckel saknas i inställningar (F12)");
+        }
+        return 0;
+    }
+    if (!qso || qso->call[0] == '\0') {
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "Anropssignal saknas");
+        }
+        return 0;
+    }
+
+    char adif_buf[1024];
+    qrz_build_adif_record(qso, st, adif_buf, sizeof(adif_buf));
+
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        if (err_out && err_sz > 0) copy_str(err_out, err_sz, "Kunde inte initiera cURL");
+        return 0;
+    }
+
+    char clean_key[64];
+    copy_str(clean_key, sizeof(clean_key), api_key);
+    trim_str(clean_key);
+
+    char *enc_key = curl_easy_escape(curl, clean_key, 0);
+    char *enc_adif = curl_easy_escape(curl, adif_buf, 0);
+
+    char post_fields[2560];
+    snprintf(post_fields, sizeof(post_fields),
+             "KEY=%s&ACTION=INSERT&OPTION=REPLACE&ADIF=%s",
+             enc_key ? enc_key : clean_key,
+             enc_adif ? enc_adif : adif_buf);
+
+    if (enc_key) curl_free(enc_key);
+    if (enc_adif) curl_free(enc_adif);
+
+    CurlBuf resp = {malloc(1), 0};
+    if (resp.data) resp.data[0] = '\0';
+
+    curl_easy_setopt(curl, CURLOPT_URL, QRZ_LOGBOOK_URL);
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&resp);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, QRZ_AGENT);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 8L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || resp.data == NULL) {
+        if (resp.data) free(resp.data);
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "Nätverksfel vid kontakt med QRZ.COM");
+        }
+        return 0;
+    }
+
+    int ok = qrz_parse_logbook_response(resp.data, err_out, err_sz);
+    free(resp.data);
+    return ok;
+}

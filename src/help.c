@@ -5,7 +5,7 @@
  * Visar omfattande hjälp indelad i sex informativa flikar:
  * 1. Globala snabbkommandon
  * 2. QSO-inmatning & fältrensning/redigeringsregler
- * 3. Uppslagsfunktioner (Logg -> SM Callbook -> QRZ.COM)
+ * 3. Uppslagsfunktioner (Logg -> QRZ.COM -> DXCC)
  * 4. Loggrader, redigering och statusmarkering
  * 5. Inställningar, fildialog och ADIF import/export
  * 6. Rymdväder, K-index och HF-konditioner
@@ -37,10 +37,11 @@ static const HelpTopic HELP_TOPICS[] = {
         "Globala tangentbordskommandon",
         {
             "F1           - Rensa inmatningsformulär & återstarta UTC-klockan",
-            "F2 el. Enter - Logga och spara pågående QSO till loggboken",
+            "F2 el. Enter - Logga och spara pågående QSO (även till QRZ vid Automatisk)",
+            "Ctrl+L (^L)  - Logga direkt mot QRZ.COM (i formulär eller på loggrad)",
             "F3 el. ^F    - Sök och filtrera rader i logglistan i realtid",
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
-            "F5           - Manuellt uppslag (SM Callbook vid svensk signal, annars QRZ.COM)",
+            "F5           - Manuellt uppslag mot QRZ.COM (eller lokala källor)",
             "F6           - Växla visning av noteringar i loggraderna (på/av)",
             "F7           - Beräkna QRB på nytt i formuläret (lokator föredras, annars QTH)",
             "F9           - Denna hjälpdialog (tillgänglig i logg- och inställningsskärm)",
@@ -55,7 +56,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        17
+        18
     },
     {
         "[2] Inmatning",
@@ -78,15 +79,15 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Fältordning och format (4 rader):",
             "  * Rad 1: Signal (10), RST T (6), RST R (6), Namn (14)",
-            "  * Rad 2: QTH (14), Lokator (6), QRB (avstånd), DXCC (land)",
-            "  * Rad 3: Frekvens (MHz), Band (dropdown), Mode (t.ex. SSB/CW/FT8)",
+            "  * Rad 2: DXCC (land), Lokator (6), QRB (avstånd), QTH (14)",
+            "  * Rad 3: Frekvens (MHz), Band (dropdown), Mode, QUJ (bäring)",
             "  * Rad 4: Datum (YYYY-MM-DD), UTC (HH:MM), Notering (resten av raden)",
             "",
             "Smarta funktioner:",
             "  * Klockan uppdateras live varje sekund tills inmatning påbörjas i ett fält.",
             "  * Frekvens i MHz (t.ex. 14.074 eller 14074) identifierar automatiskt amatörbandet.",
             "  * I Band-fältet: tryck Enter för interaktiv drop-down, eller 0-9 för snabbval.",
-            "  * QRB (avstånd) beräknas kontinuerligt mot egen lokator i inställningarna.",
+            "  * QRB (avstånd) och QUJ (bäring) beräknas kontinuerligt mot egen lokator.",
             "  * Auto-RST: sätter automatiskt 59 (telefoni/digi) eller 599 (CW) om aktiverat.",
             NULL
         },
@@ -98,22 +99,24 @@ static const HelpTopic HELP_TOPICS[] = {
         {
             "Prioritetsordning vid uppslag av anropssignal:",
             "  1. Den lokala loggboken (qsolog.sq3) kontrolleras alltid först.",
-            "  2. Om ej i loggen och anropssignalen är svensk: SM Callbook (om aktiverat).",
-            "  3. Om SMCB saknar träff eller om signalen är utländsk: QRZ.COM (om aktiverat).",
+            "  2. Om ej i loggen: QRZ.COM (om aktiverat i inställningarna).",
+            "  3. DXCC-land slås alltid automatiskt upp direkt ur dxcc.txt.",
             "",
             "Automatiskt uppslag:",
             "  * Utförs i bakgrunden utan att blockera programmet när markören lämnar Signal,",
             "    eller automatiskt efter ca 1 sekunds inaktivitet på Signal-fältet.",
             "  * Information om Namn, QTH och Lokator fylls automatiskt i vid träff.",
+            "  * DXCC uppdateras automatiskt i realtid så fort anropssignalen skrivs in.",
             "",
             "Manuellt uppslag:",
-            "  * F5: Slår upp mot SM Callbook om signalen är svensk och SMCB är på.",
-            "        Vid träff fylls namn och QTH i och uppslaget är klart.",
-            "  * Vid bom i SMCB, utländsk signal eller om SMCB är avslaget provas",
-            "        QRZ.COM om QRZ är aktiverat och inloggningsuppgifter är ifyllda.",
+            "  * F5: Slår upp mot QRZ.COM om det är aktiverat och inloggningsuppgifter finns.",
+            "        Vid träff fylls namn, QTH och lokator i och QRB beräknas.",
             "",
             "Konfiguration (F12):",
-            "  * Både SM Callbook och QRZ.COM kan aktiveras eller stängas av individuellt.",
+            "  * Auto QRZ.COM kan ställas i tre lägen: Av, Auto eller Manuell:",
+            "    - Av: Helt avslaget (uppslag sker ej, varken automatiskt eller med F5).",
+            "    - Auto: Slår upp automatiskt i bakgrunden vid inmatning och paus.",
+            "    - Manuell: Uppslag sker endast när du aktivt trycker F5 i formuläret.",
             "  * För QRZ.COM krävs giltigt användarnamn och lösenord.",
             NULL
         },
@@ -131,6 +134,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Multimarkering och statusändring:",
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
+            "  * Ctrl+L (^L): Loggar markerade rader eller vald rad direkt till QRZ.COM.",
             "  * F5: Växlar status mellan Hanterad (✓) och Ny (✗).",
             "  * F6: Växlar visning av noteringar i loggraderna (på/av).",
             "  * F7: Sätter ALLA loggrader som Hanterade (✓).",
@@ -146,7 +150,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck ESC för att återställa sökningen och visa hela loggboken igen.",
             NULL
         },
-        23
+        24
     },
     {
         "[5] Inställningar",
@@ -155,9 +159,11 @@ static const HelpTopic HELP_TOPICS[] = {
             "Stationsinställningar (station.conf):",
             "  * Min signal, Operatörsnamn, QTH och Lokator (6 tecken, t.ex. JO89VJ).",
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
-            "  * Inloggningsuppgifter för QRZ.COM (lösenord maskeras med **********).",
-            "  * På/Av för automatiskt uppslag mot SM Callbook och QRZ.COM.",
-            "  * Färgscheman: välj mellan Mörkblå, Amber Retro, Grön CRT, Matrix m.fl.",
+            "  * Inloggningsuppgifter för QRZ.COM samt QRZ Logbook API-nyckel.",
+            "  * Auto QRZ.COM: Av, Auto eller Manuell (vid Manuell sker uppslag enbart via F5).",
+            "  * Direktlogg QRZ.COM: Av, Automatisk (vid Enter/F2) eller Manuell (via Ctrl+L).",
+            "    Default är Manuell om användarnamn och lösenord för QRZ.COM är ifyllda.",
+            "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
             "",
             "ADIF Import (F5 i inställningar):",
             "  * Interaktiv katalogbläddrare med filter för .adi och .adif-filer.",
@@ -176,7 +182,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        24
+        26
     },
     {
         "[6] Rymdväder",
@@ -220,6 +226,7 @@ void run_help_modal(const StationSettings *st) {
     (void)st;
     int current_topic = 0;
     int scroll_offset = 0;
+    curs_set(0);
 
     while (1) {
         erase();
@@ -335,6 +342,7 @@ void run_help_modal(const StationSettings *st) {
         if (ch == ERR) continue;
 
         if (ch == 27 || ch == KEY_F(9) || ch == 'q' || ch == 'Q' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            curs_set(1);
             break;
         } else if (ch >= '1' && ch <= '0' + NUM_HELP_TOPICS) {
             current_topic = ch - '1';

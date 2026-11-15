@@ -44,9 +44,9 @@ extern char g_log_filename[256];
 #endif
 
 #define MIN_COLS 60
-#define MIN_LINES 21
+#define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 17
+#define STATION_FIELD_COUNT 18
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001
@@ -60,9 +60,32 @@ extern const char * const BAND_OPTIONS[];
 extern const char * const BAND_DEFAULT_FREQ[];
 #define BAND_OPTION_COUNT 14
 
-/* Färgscheman (Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge m.fl.) */
+/* Färgscheman (UEI-tema, Borland Turbo Pascal, Midnight Commander, Monokrom, Retro Ambra, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio samt Egen profil) */
 extern const char * const THEME_NAMES[];
-#define THEME_COUNT 11
+#define THEME_COUNT 16
+#define THEME_DEFAULT 0
+#define THEME_CUSTOM 15
+
+/**
+ * @brief Egen anpassad färgprofil (Custom Theme).
+ * Innehåller index till färger i paletten för respektive gränssnittselement.
+ */
+typedef struct {
+    int bg_main;        /**< 0: Huvudbakgrund */
+    int fg_text;        /**< 1: Normal text */
+    int border;         /**< 2: Normala fönsterramar */
+    int border_active;  /**< 3: Aktiv fönsterram (Fokus) */
+    int title;          /**< 4: Titlar & fönsterrubriker */
+    int label;          /**< 5: Fältetiketter (Signal:, QTH:) */
+    int field_act_bg;   /**< 6: Aktivt fält (Bakgrund) */
+    int field_act_fg;   /**< 7: Aktivt fält (Text) */
+    int sel_bg;         /**< 8: Vald loggrad (Bakgrund) */
+    int sel_fg;         /**< 9: Vald loggrad (Text) */
+    int topbar_bg;      /**< 10: Titelrad / Topplist (Bakgrund) */
+    int topbar_fg;      /**< 11: Titelrad / Topplist (Text) */
+    int status_ok;      /**< 12: Status OK / bock */
+    int status_warn;    /**< 13: Varning / fel / kryss */
+} CustomTheme;
 
 /**
  * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).
@@ -82,6 +105,24 @@ enum {
 };
 
 /**
+ * @brief Lägen för QRZ.COM-uppslag (inställning: Auto QRZ.COM).
+ */
+enum {
+    QRZ_MODE_OFF    = 0, /**< Av helt och hållet */
+    QRZ_MODE_AUTO   = 1, /**< Auto: Slå upp automatiskt vid inmatning */
+    QRZ_MODE_MANUAL = 2  /**< Manuell: Uppslag endast vid manuell F5-tryckning */
+};
+
+/**
+ * @brief Lägen för direktloggning mot QRZ.COM Logbook API (inställning: Direktlogg QRZ.COM).
+ */
+enum {
+    QRZ_LOG_OFF    = 0, /**< Av: Ingen direktloggning mot QRZ.COM */
+    QRZ_LOG_AUTO   = 1, /**< Automatisk: Loggning sker direkt på Enter/F2 även till QRZ.COM */
+    QRZ_LOG_MANUAL = 2  /**< Manuell: Loggning till QRZ.COM sker med Ctrl+L på loggrad eller i inmatningsrutan */
+};
+
+/**
  * @brief Index för inmatningsfälten i visnings- och tabulatorordning (4 rader).
  */
 enum {
@@ -89,9 +130,9 @@ enum {
     FLD_RSTS = 1,  /**< Rad 1: RST T / sänd rapport (6 tecken) */
     FLD_RSTR = 2,  /**< Rad 1: RST R / mottagen rapport (6 tecken) */
     FLD_NAME = 3,  /**< Rad 1: Namn (12-16 tecken) */
-    FLD_QTH  = 4,  /**< Rad 2: QTH (14-15 tecken) */
+    FLD_DXCC = 4,  /**< Rad 2: DXCC-land (14-15 tecken) */
     FLD_GRID = 5,  /**< Rad 2: Maidenhead-lokator (6 tecken) */
-    FLD_DXCC = 6,  /**< Rad 2: DXCC-land (12-16 tecken) */
+    FLD_QTH  = 6,  /**< Rad 2: QTH (12-16 tecken) */
     FLD_FREQ = 7,  /**< Rad 3: Frekvens i MHz */
     FLD_BAND = 8,  /**< Rad 3: Amatörband (dropdown) */
     FLD_MODE = 9,  /**< Rad 3: Trafiksätt (t.ex. SSB, CW, FT8) */
@@ -111,8 +152,11 @@ typedef struct {
     char timezone[32];     /**< Lokal tidszon (t.ex. UTC+1, Europe/Stockholm) */
     char qrz_username[36]; /**< QRZ.COM användarnamn */
     char qrz_password[36]; /**< QRZ.COM lösenord */
-    int  qrz_enabled;      /**< 1 om automatisk QRZ-uppslagning är aktiv */
+    char qrz_api_key[64];  /**< QRZ.COM Logbook API-nyckel (för logbook.qrz.com/api) */
+    int  qrz_enabled;      /**< QRZ-uppslagsläge: QRZ_MODE_OFF (0), QRZ_MODE_AUTO (1), QRZ_MODE_MANUAL (2) */
+    int  qrz_log_enabled;  /**< QRZ-direktloggningsläge: QRZ_LOG_OFF (0), QRZ_LOG_AUTO (1), QRZ_LOG_MANUAL (2) */
     int  theme;            /**< Index för aktivt färgschema (0..THEME_COUNT-1) */
+    CustomTheme custom_theme; /**< Egen anpassad färgprofil */
     int  smcb_enabled;     /**< 1 om automatisk SM Callbook-uppslagning är aktiv */
     int  auto_rst_59;      /**< 1 om RST förifylls automatiskt med 59/599 vid nytt QSO */
     int  filter_log;       /**< 1 om loggrader filtreras automatiskt efter inmatad signal */

@@ -12,12 +12,14 @@
 #include "space_weather.h"
 #include "util.h"
 #include <ctype.h>
+#include "theme_editor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Färgscheman inspirerade av Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day och mörkerläge */
+/* Färgscheman (UEI-tema som default, Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula, militärradio samt egen profil) */
 const char * const THEME_NAMES[] = {
+    "UEI-tema",
     "Turbo Pascal (MC Default)",
     "MC Darkfar (Svart/Blå)",
     "MC Gotar (Svart/Gul)",
@@ -28,8 +30,32 @@ const char * const THEME_NAMES[] = {
     "Ambra (Retro CRT)",
     "Arktisk Natt (Nord Frost)",
     "Field Day (Vintage Radio)",
-    "Mörkerläge (Crimson Night)"
+    "Mörkerläge (Crimson Night)",
+    "Solarized Dark (Djuphav)",
+    "Dracula (Neon Skymning)",
+    "Militärradio (Fältgrön)",
+    "Egen profil (Anpassad)"
 };
+
+static CustomTheme g_custom_theme;
+static int g_custom_theme_init = 0;
+
+void set_custom_theme(const CustomTheme *ct) {
+    if (ct != NULL) {
+        g_custom_theme = *ct;
+        g_custom_theme_init = 1;
+    }
+}
+
+void get_custom_theme(CustomTheme *ct) {
+    if (ct != NULL) {
+        if (!g_custom_theme_init) {
+            custom_theme_init_defaults(&g_custom_theme);
+            g_custom_theme_init = 1;
+        }
+        *ct = g_custom_theme;
+    }
+}
 
 /**
  * @brief Initierar curses-läget, konfigurerar tangentbord och definierar specialtangenter.
@@ -56,6 +82,7 @@ void tui_init(void) {
     define_key("\033[4~",   KEY_END);
     define_key("\033[5~",   KEY_PPAGE);
     define_key("\033[6~",   KEY_NPAGE);
+    curs_set(1);
     timeout(250);
 
     /* Sätt terminalens fönstertitel om terminalemulatorn stöder OSC */
@@ -71,8 +98,9 @@ void tui_cleanup(void) {
 }
 
 /**
- * @brief Aktiverar och konfigurerar ett av de 11 tillgängliga färgschemana i ncurses.
- * Inkluderar modern gråskala, retro ambra, arktisk natt, field day och crimson mörkerläge.
+ * @brief Aktiverar och konfigurerar ett av de 14 tillgängliga färgschemana i ncurses.
+ * Inkluderar modern gråskala, retro ambra, arktisk natt, field day, crimson mörkerläge,
+ * solarized dark, dracula och militärradio.
  * @param theme_idx Index på schemat (0..THEME_COUNT-1).
  */
 void apply_color_theme(int theme_idx) {
@@ -80,11 +108,32 @@ void apply_color_theme(int theme_idx) {
     start_color();
 
     if (theme_idx < 0 || theme_idx >= THEME_COUNT) {
-        theme_idx = 0;
+        theme_idx = THEME_DEFAULT;
     }
 
     switch (theme_idx) {
-        case 0: /* 1. Turbo Pascal / MC Default (Klassisk blå bakgrund) */
+        case 0: { /* 1. UEI-tema (Standard - Marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus) */
+            static const CustomTheme uei_theme = {
+                4,  /* bg_main:       Marinblå (Mörk) */
+                14, /* fg_text:       Solgul (Klar) */
+                11, /* border:        Skogsgrön */
+                13, /* border_active: Bärnsten / Guld */
+                1,  /* title:         Kritvit */
+                14, /* label:         Solgul (Klar) */
+                3,  /* field_act_bg:  Mörkgrå */
+                15, /* field_act_fg:  Orange (Varm) */
+                5,  /* sel_bg:        Havsblå */
+                15, /* sel_fg:        Orange (Varm) */
+                2,  /* topbar_bg:     Ljusgrå */
+                3,  /* topbar_fg:     Mörkgrå */
+                11, /* status_ok:     Skogsgrön */
+                17  /* status_warn:   Klar röd */
+            };
+            apply_custom_theme_pairs(&uei_theme);
+            break;
+        }
+
+        case 1: /* 2. Turbo Pascal / MC Default (Klassisk blå bakgrund) */
             init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLUE);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_WHITE);
@@ -118,7 +167,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLUE);
             break;
 
-        case 1: /* 2. MC Darkfar (Svart bakgrund med blå accenter och gråa ramar) */
+        case 2: /* 3. MC Darkfar (Svart bakgrund med blå accenter och gråa ramar) */
             init_pair(CP_MAIN_BG,        COLOR_WHITE,  COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
@@ -152,7 +201,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 2: /* 3. MC Gotar (Svart bakgrund med gula detaljer och gråa ramar) */
+        case 3: /* 4. MC Gotar (Svart bakgrund med gula detaljer och gråa ramar) */
             init_pair(CP_MAIN_BG,        COLOR_YELLOW, COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_RED,    COLOR_YELLOW);
@@ -186,7 +235,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 3: /* 4. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
+        case 4: /* 5. MC Sand / Gray (Ljusgrå/vit bakgrund med blå och svarta accenter) */
             init_pair(CP_MAIN_BG,        COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_TOPBAR,         COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLUE);
@@ -195,7 +244,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          COLOR_BLUE,   COLOR_WHITE);
             init_pair(CP_LABEL,          COLOR_BLACK,  COLOR_WHITE);
             init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  COLOR_WHITE);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   COLOR_WHITE);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_GREEN);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -220,7 +269,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_WHITE);
             break;
 
-        case 4: /* 5. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
+        case 5: /* 6. MC Matrix (Klassisk fosforgrön terminalskärm på svart bakgrund) */
             init_pair(CP_MAIN_BG,        COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_TOPBAR,         COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_TOPBAR_ACCENT,  COLOR_YELLOW, COLOR_BLACK);
@@ -229,7 +278,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_LABEL,          COLOR_GREEN,  COLOR_BLACK);
             init_pair(CP_FIELD_INACTIVE, COLOR_GREEN,  COLOR_BLACK);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLACK);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_FROZEN_BADGE,   COLOR_BLACK,  COLOR_YELLOW);
             init_pair(CP_LIVE_BADGE,     COLOR_BLACK,  COLOR_GREEN);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -254,7 +303,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_SEVERE,        COLOR_MAGENTA,COLOR_BLACK);
             break;
 
-        case 5: { /* 6. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
+        case 6: { /* 7. Ljust färgschema (Ljusgrå bakgrund, svart text, orange ramar, blå highlights) */
             short bg_gray   = (COLORS >= 256) ? 252 : COLOR_WHITE;
             short fg_orange = (COLORS >= 256) ? 208 : COLOR_RED;
             init_pair(CP_MAIN_BG,        COLOR_BLACK,  bg_gray);
@@ -265,7 +314,7 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_TITLE,          fg_orange,    bg_gray);
             init_pair(CP_LABEL,          COLOR_BLACK,  bg_gray);
             init_pair(CP_FIELD_INACTIVE, COLOR_BLACK,  bg_gray);
-            init_pair(CP_FIELD_ACTIVE,   COLOR_BLUE,   bg_gray);
+            init_pair(CP_FIELD_ACTIVE,   COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_FROZEN_BADGE,   COLOR_WHITE,  fg_orange);
             init_pair(CP_LIVE_BADGE,     COLOR_WHITE,  COLOR_BLUE);
             init_pair(CP_EDIT_BADGE,     COLOR_WHITE,  COLOR_MAGENTA);
@@ -291,7 +340,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 6: { /* 7. Monokrom gråskala (Allt i harmoniska nyanser av grått och vitt på svart) */
+        case 7: { /* 8. Monokrom gråskala (Allt i harmoniska nyanser av grått och vitt på svart) */
             short col_light = (COLORS >= 256) ? 253 : COLOR_WHITE;
             short col_mid   = (COLORS >= 256) ? 246 : COLOR_WHITE;
             short col_dark  = (COLORS >= 256) ? 238 : COLOR_BLACK;
@@ -331,26 +380,26 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 7: { /* 8. Ambra / Retro CRT (Bärnsten / klassisk ambra monokrom skärm på svart bakgrund) */
-            short amb_bright = (COLORS >= 256) ? 214 : COLOR_YELLOW;
-            short amb_mid    = (COLORS >= 256) ? 208 : COLOR_YELLOW;
-            short amb_dark   = (COLORS >= 256) ? 130 : COLOR_YELLOW;
+        case 8: { /* 9. Ambra / Retro CRT (Varm orange monokrom skärm på svart bakgrund) */
+            short amb_bright = (COLORS >= 256) ? 208 : COLOR_YELLOW; /* Klar varm orange (#ff8700) */
+            short amb_mid    = (COLORS >= 256) ? 166 : COLOR_YELLOW; /* Djup bärnstens-orange (#d75f00) */
+            short amb_dark   = (COLORS >= 256) ? 130 : COLOR_RED;    /* Mörk bärnsten (#af5f00) */
             short amb_bg     = COLOR_BLACK;
 
-            init_pair(CP_MAIN_BG,        amb_mid,      amb_bg);
+            init_pair(CP_MAIN_BG,        amb_bright,   amb_bg);
             init_pair(CP_TOPBAR,         amb_bg,       amb_bright);
             init_pair(CP_TOPBAR_ACCENT,  amb_dark,     amb_bright);
-            init_pair(CP_BORDER,         amb_dark,     amb_bg);
+            init_pair(CP_BORDER,         amb_mid,      amb_bg);
             init_pair(CP_BORDER_ACTIVE,  amb_bright,   amb_bg);
             init_pair(CP_TITLE,          amb_bright,   amb_bg);
-            init_pair(CP_LABEL,          amb_mid,      amb_bg);
-            init_pair(CP_FIELD_INACTIVE, amb_mid,      amb_bg);
+            init_pair(CP_LABEL,          amb_bright,   amb_bg);
+            init_pair(CP_FIELD_INACTIVE, amb_bright,   amb_bg);
             init_pair(CP_FIELD_ACTIVE,   amb_bg,       amb_bright);
             init_pair(CP_FROZEN_BADGE,   amb_bg,       amb_mid);
             init_pair(CP_LIVE_BADGE,     amb_bg,       amb_bright);
             init_pair(CP_EDIT_BADGE,     amb_bright,   amb_dark);
             init_pair(CP_TABLE_HEADER,   amb_bright,   amb_bg);
-            init_pair(CP_LOG_ROW,        amb_mid,      amb_bg);
+            init_pair(CP_LOG_ROW,        amb_bright,   amb_bg);
             init_pair(CP_LOG_SELECTED,   amb_bg,       amb_bright);
             init_pair(CP_LOG_MARKED,     amb_bg,       amb_mid);
             init_pair(CP_FKEY_NUM,       amb_bg,       amb_dark);
@@ -358,20 +407,20 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_STATUS_OK,      amb_bright,   amb_bg);
             init_pair(CP_STATUS_WARN,    amb_bg,       amb_bright);
             init_pair(CP_FLAG_NEW,         amb_bright,   amb_bg);
-            init_pair(CP_FLAG_HANDLED,     amb_dark,     amb_bg);
+            init_pair(CP_FLAG_HANDLED,     amb_mid,      amb_bg);
             init_pair(CP_FLAG_NEW_SEL,     amb_bg,       amb_bright);
-            init_pair(CP_FLAG_HANDLED_SEL, amb_dark,     amb_bright);
-            init_pair(CP_FLAG_NEW_MRK,     amb_bright,   amb_dark);
-            init_pair(CP_FLAG_HANDLED_MRK, amb_bg,       amb_dark);
-            init_pair(CP_SW_NORMAL,        amb_mid,      amb_bg);
-            init_pair(CP_SW_OK,            amb_mid,      amb_bg);
-            init_pair(CP_SW_WARN,          amb_bright,   amb_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, amb_mid,      amb_bright);
+            init_pair(CP_FLAG_NEW_MRK,     amb_bright,   amb_mid);
+            init_pair(CP_FLAG_HANDLED_MRK, amb_bg,       amb_mid);
+            init_pair(CP_SW_NORMAL,        amb_bright,   amb_bg);
+            init_pair(CP_SW_OK,            amb_bright,   amb_bg);
+            init_pair(CP_SW_WARN,          amb_mid,      amb_bg);
             init_pair(CP_SW_BAD,           amb_bright,   amb_bg);
             init_pair(CP_SW_SEVERE,        amb_bg,       amb_bright);
             break;
         }
 
-        case 8: { /* 9. Arktisk Natt (Nord Frost - Dämpad skifferblå polarnatt med isblå frost och norrsken) */
+        case 9: { /* 10. Arktisk Natt (Nord Frost - Dämpad skifferblå polarnatt med isblå frost och norrsken) */
             short bg_nord       = (COLORS >= 256) ? 236 : COLOR_BLACK;
             short fg_snow       = (COLORS >= 256) ? 254 : COLOR_WHITE;
             short fg_frost      = (COLORS >= 256) ? 117 : COLOR_CYAN;
@@ -417,7 +466,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 9: { /* 10. Field Day (Vintage Radio / Gruvbox - Varm mörkbrun bas, bärnsten och analog stationskänsla) */
+        case 10: { /* 11. Field Day (Vintage Radio / Gruvbox - Varm mörkbrun bas, bärnsten och analog stationskänsla) */
             short bg_vintage   = (COLORS >= 256) ? 235 : COLOR_BLACK;
             short fg_cream     = (COLORS >= 256) ? 229 : COLOR_WHITE;
             short fg_amber     = (COLORS >= 256) ? 214 : COLOR_YELLOW;
@@ -462,7 +511,7 @@ void apply_color_theme(int theme_idx) {
             break;
         }
 
-        case 10: { /* 11. Mörkerläge (Crimson Night - Skonsamt röd-svart tema för nattpass utan att störa mörkerseendet) */
+        case 11: { /* 12. Mörkerläge (Crimson Night - Skonsamt röd-svart tema för nattpass utan att störa mörkerseendet) */
             short bg_night     = (COLORS >= 256) ? 232 : COLOR_BLACK;
             short fg_bright    = (COLORS >= 256) ? 196 : COLOR_RED;
             short fg_light_red = (COLORS >= 256) ? 203 : COLOR_RED;
@@ -500,6 +549,155 @@ void apply_color_theme(int theme_idx) {
             init_pair(CP_SW_WARN,          fg_light_red, bg_night);
             init_pair(CP_SW_BAD,           fg_bright,    bg_night);
             init_pair(CP_SW_SEVERE,        bg_night,     fg_bright);
+            break;
+        }
+
+        case 12: { /* 13. Solarized Dark (Djuphav - Ethan Schoonovers vetenskapligt balanserade mörkblå marinpalett) */
+            short bg_sol     = (COLORS >= 256) ? 234 : COLOR_BLACK;
+            short fg_base0   = (COLORS >= 256) ? 250 : COLOR_WHITE;
+            short fg_base1   = (COLORS >= 256) ? 254 : COLOR_WHITE;
+            short fg_base01  = (COLORS >= 256) ? 241 : COLOR_CYAN;
+            short fg_cyan    = (COLORS >= 256) ? 37  : COLOR_CYAN;
+            short fg_blue    = (COLORS >= 256) ? 33  : COLOR_BLUE;
+            short fg_yellow  = (COLORS >= 256) ? 178 : COLOR_YELLOW;
+            short fg_orange  = (COLORS >= 256) ? 166 : COLOR_YELLOW;
+            short fg_red     = (COLORS >= 256) ? 160 : COLOR_RED;
+            short fg_magenta = (COLORS >= 256) ? 134 : COLOR_MAGENTA;
+            short fg_green   = (COLORS >= 256) ? 106 : COLOR_GREEN;
+            short sel_bg     = (COLORS >= 256) ? 24  : COLOR_BLUE;
+
+            init_pair(CP_MAIN_BG,        fg_base0,     bg_sol);
+            init_pair(CP_TOPBAR,         bg_sol,       fg_cyan);
+            init_pair(CP_TOPBAR_ACCENT,  fg_yellow,    fg_cyan);
+            init_pair(CP_BORDER,         fg_base01,    bg_sol);
+            init_pair(CP_BORDER_ACTIVE,  fg_cyan,      bg_sol);
+            init_pair(CP_TITLE,          fg_cyan,      bg_sol);
+            init_pair(CP_LABEL,          fg_blue,      bg_sol);
+            init_pair(CP_FIELD_INACTIVE, fg_base0,     bg_sol);
+            init_pair(CP_FIELD_ACTIVE,   bg_sol,       fg_cyan);
+            init_pair(CP_FROZEN_BADGE,   bg_sol,       fg_yellow);
+            init_pair(CP_LIVE_BADGE,     bg_sol,       fg_green);
+            init_pair(CP_EDIT_BADGE,     fg_base1,     fg_magenta);
+            init_pair(CP_TABLE_HEADER,   fg_cyan,      bg_sol);
+            init_pair(CP_LOG_ROW,        fg_base0,     bg_sol);
+            init_pair(CP_LOG_SELECTED,   fg_base1,     sel_bg);
+            init_pair(CP_LOG_MARKED,     fg_base1,     fg_magenta);
+            init_pair(CP_FKEY_NUM,       bg_sol,       fg_base01);
+            init_pair(CP_FKEY_LABEL,     fg_base0,     bg_sol);
+            init_pair(CP_STATUS_OK,      fg_cyan,      bg_sol);
+            init_pair(CP_STATUS_WARN,    fg_base1,     fg_red);
+            init_pair(CP_FLAG_NEW,         fg_red,       bg_sol);
+            init_pair(CP_FLAG_HANDLED,     fg_green,     bg_sol);
+            init_pair(CP_FLAG_NEW_SEL,     fg_red,       sel_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_green,     sel_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_red,       fg_magenta);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_green,     fg_magenta);
+            init_pair(CP_SW_NORMAL,        fg_base0,     bg_sol);
+            init_pair(CP_SW_OK,            fg_green,     bg_sol);
+            init_pair(CP_SW_WARN,          fg_yellow,    bg_sol);
+            init_pair(CP_SW_BAD,           fg_orange,    bg_sol);
+            init_pair(CP_SW_SEVERE,        fg_magenta,   bg_sol);
+            break;
+        }
+
+        case 13: { /* 14. Dracula (Neon Skymning - Modern mörk violett palett med neonlila, cyan och rosa accenter) */
+            short bg_drac        = (COLORS >= 256) ? 236 : COLOR_BLACK;
+            short fg_drac_fg     = (COLORS >= 256) ? 255 : COLOR_WHITE;
+            short fg_drac_purple = (COLORS >= 256) ? 141 : COLOR_MAGENTA;
+            short fg_drac_cyan   = (COLORS >= 256) ? 117 : COLOR_CYAN;
+            short fg_drac_green  = (COLORS >= 256) ? 84  : COLOR_GREEN;
+            short fg_drac_yellow = (COLORS >= 256) ? 228 : COLOR_YELLOW;
+            short fg_drac_orange = (COLORS >= 256) ? 215 : COLOR_YELLOW;
+            short fg_drac_pink   = (COLORS >= 256) ? 212 : COLOR_MAGENTA;
+            short fg_drac_red    = (COLORS >= 256) ? 203 : COLOR_RED;
+            short fg_drac_slate  = (COLORS >= 256) ? 61  : COLOR_BLUE;
+            short sel_drac_bg    = (COLORS >= 256) ? 60  : COLOR_MAGENTA;
+
+            init_pair(CP_MAIN_BG,        fg_drac_fg,     bg_drac);
+            init_pair(CP_TOPBAR,         bg_drac,        fg_drac_purple);
+            init_pair(CP_TOPBAR_ACCENT,  fg_drac_pink,   fg_drac_purple);
+            init_pair(CP_BORDER,         fg_drac_slate,  bg_drac);
+            init_pair(CP_BORDER_ACTIVE,  fg_drac_purple, bg_drac);
+            init_pair(CP_TITLE,          fg_drac_cyan,   bg_drac);
+            init_pair(CP_LABEL,          fg_drac_pink,   bg_drac);
+            init_pair(CP_FIELD_INACTIVE, fg_drac_fg,     bg_drac);
+            init_pair(CP_FIELD_ACTIVE,   bg_drac,        fg_drac_cyan);
+            init_pair(CP_FROZEN_BADGE,   bg_drac,        fg_drac_orange);
+            init_pair(CP_LIVE_BADGE,     bg_drac,        fg_drac_green);
+            init_pair(CP_EDIT_BADGE,     fg_drac_fg,     fg_drac_pink);
+            init_pair(CP_TABLE_HEADER,   fg_drac_purple, bg_drac);
+            init_pair(CP_LOG_ROW,        fg_drac_fg,     bg_drac);
+            init_pair(CP_LOG_SELECTED,   fg_drac_fg,     sel_drac_bg);
+            init_pair(CP_LOG_MARKED,     fg_drac_fg,     fg_drac_pink);
+            init_pair(CP_FKEY_NUM,       bg_drac,        fg_drac_purple);
+            init_pair(CP_FKEY_LABEL,     fg_drac_fg,     bg_drac);
+            init_pair(CP_STATUS_OK,      fg_drac_cyan,   bg_drac);
+            init_pair(CP_STATUS_WARN,    fg_drac_fg,     fg_drac_red);
+            init_pair(CP_FLAG_NEW,         fg_drac_red,    bg_drac);
+            init_pair(CP_FLAG_HANDLED,     fg_drac_green,  bg_drac);
+            init_pair(CP_FLAG_NEW_SEL,     fg_drac_red,    sel_drac_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_drac_green,  sel_drac_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_drac_red,    fg_drac_pink);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_drac_green,  fg_drac_pink);
+            init_pair(CP_SW_NORMAL,        fg_drac_cyan,   bg_drac);
+            init_pair(CP_SW_OK,            fg_drac_green,  bg_drac);
+            init_pair(CP_SW_WARN,          fg_drac_yellow, bg_drac);
+            init_pair(CP_SW_BAD,           fg_drac_red,    bg_drac);
+            init_pair(CP_SW_SEVERE,        fg_drac_pink,   bg_drac);
+            break;
+        }
+
+        case 14: { /* 15. Militärradio (Fältgrön - Taktisk olivdrab bas, khaki duktext och mässingsdetaljer) */
+            short bg_tac     = (COLORS >= 256) ? 234 : COLOR_BLACK;
+            short fg_khaki   = (COLORS >= 256) ? 187 : COLOR_WHITE;
+            short fg_olive   = (COLORS >= 256) ? 107 : COLOR_GREEN;
+            short fg_camo    = (COLORS >= 256) ? 65  : COLOR_GREEN;
+            short fg_brass   = (COLORS >= 256) ? 178 : COLOR_YELLOW;
+            short fg_sig_yel = (COLORS >= 256) ? 221 : COLOR_YELLOW;
+            short fg_haz_red = (COLORS >= 256) ? 167 : COLOR_RED;
+            short fg_sig_orn = (COLORS >= 256) ? 172 : COLOR_YELLOW;
+            short sel_tac_bg = (COLORS >= 256) ? 58  : COLOR_GREEN;
+
+            init_pair(CP_MAIN_BG,        fg_khaki,     bg_tac);
+            init_pair(CP_TOPBAR,         bg_tac,       fg_brass);
+            init_pair(CP_TOPBAR_ACCENT,  fg_haz_red,   fg_brass);
+            init_pair(CP_BORDER,         fg_camo,      bg_tac);
+            init_pair(CP_BORDER_ACTIVE,  fg_brass,     bg_tac);
+            init_pair(CP_TITLE,          fg_brass,     bg_tac);
+            init_pair(CP_LABEL,          fg_olive,     bg_tac);
+            init_pair(CP_FIELD_INACTIVE, fg_khaki,     bg_tac);
+            init_pair(CP_FIELD_ACTIVE,   bg_tac,       fg_brass);
+            init_pair(CP_FROZEN_BADGE,   bg_tac,       fg_sig_orn);
+            init_pair(CP_LIVE_BADGE,     bg_tac,       fg_olive);
+            init_pair(CP_EDIT_BADGE,     fg_khaki,     fg_sig_orn);
+            init_pair(CP_TABLE_HEADER,   fg_brass,     bg_tac);
+            init_pair(CP_LOG_ROW,        fg_khaki,     bg_tac);
+            init_pair(CP_LOG_SELECTED,   fg_brass,     sel_tac_bg);
+            init_pair(CP_LOG_MARKED,     fg_khaki,     fg_sig_orn);
+            init_pair(CP_FKEY_NUM,       bg_tac,       fg_olive);
+            init_pair(CP_FKEY_LABEL,     fg_khaki,     bg_tac);
+            init_pair(CP_STATUS_OK,      fg_brass,     bg_tac);
+            init_pair(CP_STATUS_WARN,    fg_khaki,     fg_haz_red);
+            init_pair(CP_FLAG_NEW,         fg_haz_red,   bg_tac);
+            init_pair(CP_FLAG_HANDLED,     fg_olive,     bg_tac);
+            init_pair(CP_FLAG_NEW_SEL,     fg_haz_red,   sel_tac_bg);
+            init_pair(CP_FLAG_HANDLED_SEL, fg_khaki,     sel_tac_bg);
+            init_pair(CP_FLAG_NEW_MRK,     fg_haz_red,   fg_sig_orn);
+            init_pair(CP_FLAG_HANDLED_MRK, fg_olive,     fg_sig_orn);
+            init_pair(CP_SW_NORMAL,        fg_khaki,     bg_tac);
+            init_pair(CP_SW_OK,            fg_olive,     bg_tac);
+            init_pair(CP_SW_WARN,          fg_sig_yel,   bg_tac);
+            init_pair(CP_SW_BAD,           fg_haz_red,   bg_tac);
+            init_pair(CP_SW_SEVERE,        fg_sig_orn,   bg_tac);
+            break;
+        }
+
+        case 15: { /* 16. Egen profil (Användaranpassat färgschema från editorn) */
+            if (!g_custom_theme_init) {
+                custom_theme_init_defaults(&g_custom_theme);
+                g_custom_theme_init = 1;
+            }
+            apply_custom_theme_pairs(&g_custom_theme);
             break;
         }
     }
@@ -567,24 +765,32 @@ void draw_top_bar(const StationSettings *st) {
     if (st != NULL && st->call[0] != '\0') {
         copy_str(clean_call, sizeof(clean_call), st->call);
     }
-    const char *my_qth = (st != NULL && st->qth[0] != '\0') ? st->qth : "SM";
-    snprintf(station_info, sizeof(station_info), "%s (%s)", clean_call[0] ? clean_call : "SM5UEI", my_qth);
+    const char *my_call = clean_call[0] ? clean_call : "SM5UEI";
+    const char *my_qth  = (st != NULL && st->qth[0] != '\0') ? st->qth : "";
+    const char *my_grid = (st != NULL && st->gridsquare[0] != '\0') ? st->gridsquare : "";
+
+    if (my_qth[0] != '\0' && my_grid[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s %s", my_call, my_qth, my_grid);
+    } else if (my_qth[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s", my_call, my_qth);
+    } else if (my_grid[0] != '\0') {
+        snprintf(station_info, sizeof(station_info), "%s %s", my_call, my_grid);
+    } else {
+        snprintf(station_info, sizeof(station_info), "%s", my_call);
+    }
 
     int info_w = utf8_display_width(station_info);
     int info_col = (COLS - info_w) / 2;
-    if (info_col > 14) {
-        attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(0, info_col, "%s", station_info);
-        attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-    }
+    if (info_col < 14) info_col = 14;
 
     char time_str[64];
     get_utc_strings(NULL, 0, NULL, 0, time_str, sizeof(time_str));
     int time_col = COLS - utf8_display_width(time_str) - 2;
     if (time_col > info_col + info_w) {
         attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(0, time_col, "%s", time_str);
+        mvprintw(0, info_col, "%s", station_info);
         attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+        mvprintw(0, time_col, "%s", time_str);
     }
 }
 
@@ -707,10 +913,11 @@ int build_filtered_indices(const QSOList *log_list, const char *search_filter,
 void draw_field_aligned(int row, int colon_col, const char *label, const char *val,
                         int width, int is_active, int cursor_pos,
                         int *cur_y, int *cur_x) {
-    attron(COLOR_PAIR(CP_LABEL));
+    int lbl_attr = is_active ? (COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD) : COLOR_PAIR(CP_LABEL);
+    attron(lbl_attr);
     int llen = utf8_display_width(label);
     mvprintw(row, colon_col - llen, "%s:", label);
-    attroff(COLOR_PAIR(CP_LABEL));
+    attroff(lbl_attr);
 
     int val_col = colon_col + 2;
     int color = is_active ? CP_FIELD_ACTIVE : CP_FIELD_INACTIVE;
@@ -722,6 +929,9 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
     }
 
     int val_w = utf8_display_width(val);
+    if (cursor_pos < 0) cursor_pos = 0;
+    if (cursor_pos > val_w) cursor_pos = val_w;
+
     int scroll_chars = 0;
     if (is_active && cursor_pos >= width) {
         scroll_chars = cursor_pos - width + 1;
@@ -735,8 +945,22 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
     attroff(COLOR_PAIR(color) | attr);
 
     if (is_active) {
-        *cur_y = row;
-        *cur_x = val_col + (cursor_pos - scroll_chars);
+        int c_offset = cursor_pos - scroll_chars;
+        if (c_offset < 0) c_offset = 0;
+        if (c_offset >= width) c_offset = width - 1;
+
+        attron(COLOR_PAIR(color) | A_BOLD | A_UNDERLINE);
+        if (cursor_pos < val_w) {
+            size_t cb_start = utf8_char_to_byte(val, cursor_pos);
+            size_t cb_end   = utf8_char_to_byte(val, cursor_pos + 1);
+            mvprintw(row, val_col + c_offset, "%.*s", (int)(cb_end - cb_start), val + cb_start);
+        } else {
+            mvaddch(row, val_col + c_offset, ' ');
+        }
+        attroff(COLOR_PAIR(color) | A_BOLD | A_UNDERLINE);
+
+        if (cur_y) *cur_y = row;
+        if (cur_x) *cur_x = val_col + c_offset;
     }
 }
 
@@ -746,10 +970,11 @@ void draw_field_aligned(int row, int colon_col, const char *label, const char *v
 void draw_band_selector_aligned(int row, int colon_col, const char *val,
                                 int is_active, int band_selecting,
                                 int *cur_y, int *cur_x) {
-    attron(COLOR_PAIR(CP_LABEL));
+    int lbl_attr = is_active ? (COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD) : COLOR_PAIR(CP_LABEL);
+    attron(lbl_attr);
     int llen = utf8_display_width("Band");
     mvprintw(row, colon_col - llen, "Band:");
-    attroff(COLOR_PAIR(CP_LABEL));
+    attroff(lbl_attr);
 
     int val_col = colon_col + 2;
     int width = 8;
@@ -806,6 +1031,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
                 items[count++] = (FKeyItem){"Esc", "Återställ"};
             }
             items[count++] = (FKeyItem){"Enter", "Redigera"};
+            items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F4", "Fokus"};
             items[count++] = (FKeyItem){"F5", "Hant/Ny"};
             items[count++] = (FKeyItem){"F6", "Noter"};
@@ -818,14 +1044,15 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
                 items[count++] = (FKeyItem){"Esc", "Återställ"};
             }
             items[count++] = (FKeyItem){"F2", "Logga"};
+            items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
-            items[count++] = (FKeyItem){"F5", "Uppslag"};
+            items[count++] = (FKeyItem){"F5", (COLS >= 92) ? "Uppslag" : "Uppsl"};
             items[count++] = (FKeyItem){"F6", "Noter"};
             items[count++] = (FKeyItem){"F7", "QRB"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
-            items[count++] = (FKeyItem){"F10", (COLS >= 88) ? "Avsluta" : "Avsl"};
-            items[count++] = (FKeyItem){"F12", (COLS >= 88) ? "Inställn." : "Inst"};
+            items[count++] = (FKeyItem){"F10", (COLS >= 92) ? "Avsluta" : "Avsl"};
+            items[count++] = (FKeyItem){"F12", (COLS >= 92) ? "Inställn." : "Inst"};
         }
     }
 
@@ -833,7 +1060,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
     for (int i = 0; i < count; ++i) {
         int klen = (int)strlen(items[i].fkey);
         int llen = utf8_display_width(items[i].label);
-        if (col + klen + llen + 2 > COLS) break;
+        if (col + klen + llen > COLS) break;
 
         attron(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
         mvprintw(y, col, "%s", items[i].fkey);
@@ -845,7 +1072,9 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         attroff(COLOR_PAIR(CP_FKEY_LABEL));
         col += llen;
 
-        mvaddch(y, col++, ' ');
+        if (col < COLS) {
+            mvaddch(y, col++, ' ');
+        }
     }
 }
 
@@ -905,9 +1134,9 @@ void draw_space_weather_box(int top_y, int width) {
 
     /* Beräkna kolumnpositioner för kolon */
     int colon0 = 12;
-    int colon1 = (width >= 90) ? (width * 31 / 100) : 33;
-    int colon2 = (width >= 90) ? (width * 55 / 100) : 53;
-    int colon3 = (width >= 90) ? (width * 77 / 100) : 69;
+    int colon1 = (width >= 90) ? (width * 31 / 100) : 32;
+    int colon2 = (width >= 90) ? (width * 54 / 100) : 52;
+    int colon3 = (width >= 90) ? (width * 77 / 100) : 68;
 
     int r1 = top_y + 1;
     int r2 = top_y + 2;
@@ -918,10 +1147,11 @@ void draw_space_weather_box(int top_y, int width) {
     print_sw_field(r1, colon2, "LUF", sw.luf, sw_tone_to_color_pair(sw.luf_tone));
     print_sw_field(r1, colon3, "CME", sw.cme, sw_tone_to_color_pair(sw.cme_tone));
 
-    /* RAD 2: Solfackla, Solvind, Norrsken */
+    /* RAD 2: Solfackla, Solvind, Norrsken, DX/NVIS */
     print_sw_field(r2, colon0, "Solfackla", sw.solfackla, sw_tone_to_color_pair(sw.solfackla_tone));
     print_sw_field(r2, colon1, "Solvind", sw.solvind, sw_tone_to_color_pair(sw.solvind_tone));
     print_sw_field(r2, colon2, "Norrsken", sw.norrsken, sw_tone_to_color_pair(sw.norrsken_tone));
+    print_sw_field(r2, colon3, "DX/NVIS", sw.dx_nvis, sw_tone_to_color_pair(sw.dx_nvis_tone));
 }
 
 /**
@@ -944,6 +1174,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
     const int min_qth   = 10;
     const int max_qth   = 30;
     const int base_qrb  = 6;  /* Siffra utan 'km' */
+    const int base_quj  = 5;  /* Bäring i grader (t.ex. ' 145°') */
     const int base_loc  = 8;
     const int base_dxcc = 16;
 
@@ -970,13 +1201,14 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
     int col_name = layout->col_name;
     int avail_total = max_col - col_name + 1;
 
-    if (max_col >= col_name + 60) {
-        /* Full bredd: Alla kolumner visas (Namn, QTH, QRB, Lokator, DXCC) */
+    if (max_col >= col_name + 66) {
+        /* Full bredd: Alla kolumner visas (Namn, QTH, QRB, QUJ, Lokator, DXCC) */
         layout->w_dxcc = base_dxcc;
         layout->w_loc = base_loc;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 60);
+        int extra = max_col - (col_name + 66);
         int qth_extra = (extra > (max_qth - base_qth)) ? (max_qth - base_qth) : extra;
         layout->w_qth = base_qth + qth_extra;
         int rem = extra - qth_extra;
@@ -986,46 +1218,54 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         }
         layout->col_qth  = col_name + layout->w_name + 1;
         layout->col_qrb  = layout->col_qth + layout->w_qth + 1;
-        layout->col_loc  = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_quj  = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_loc  = layout->col_quj + layout->w_quj + 1;
         layout->col_dxcc = layout->col_loc + layout->w_loc + 1;
-    } else if (max_col >= col_name + 43) {
-        /* DXCC döljs först: Namn, QTH, QRB, Lokator visas */
+    } else if (max_col >= col_name + 49) {
+        /* DXCC döljs först: Namn, QTH, QRB, QUJ, Lokator visas */
         layout->w_dxcc = 0;
         layout->w_loc = base_loc;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 43);
+        int extra = max_col - (col_name + 49);
         layout->w_qth = base_qth + extra;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
-        layout->col_loc = layout->col_qrb + layout->w_qrb + 1;
-    } else if (max_col >= col_name + 35) {
-        /* Lokator döljs därefter: Namn, QTH (>= 13), QRB visas */
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
+        layout->col_loc = layout->col_quj + layout->w_quj + 1;
+    } else if (max_col >= col_name + 41) {
+        /* Lokator döljs därefter: Namn, QTH (>= 13), QRB, QUJ visas */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        int extra = max_col - (col_name + 35);
+        int extra = max_col - (col_name + 41);
         layout->w_qth = base_qth + extra;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
-    } else if (max_col >= col_name + 32) {
-        /* Lokator döljs, QTH minskas mot 10 tecken, QRB visas fortfarande */
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
+    } else if (max_col >= col_name + 38) {
+        /* Lokator döljs, QTH minskas mot 10 tecken, QRB och QUJ visas fortfarande */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = base_quj;
         layout->w_qrb = base_qrb;
         layout->w_name = base_name;
-        layout->w_qth = max_col - (col_name + base_name + 1 + base_qrb + 1);
+        layout->w_qth = max_col - (col_name + base_name + 1 + base_qrb + 1 + base_quj + 1);
         if (layout->w_qth < min_qth) layout->w_qth = min_qth;
         if (layout->w_qth > max_qth) layout->w_qth = max_qth;
         layout->col_qth = col_name + layout->w_name + 1;
         layout->col_qrb = layout->col_qth + layout->w_qth + 1;
+        layout->col_quj = layout->col_qrb + layout->w_qrb + 1;
     } else if (total_cols >= 80) {
-        /* QRB döljs FÖRE QTH. QTH förblir synlig så länge total_cols >= 80 */
+        /* QRB och QUJ döljs samtidigt FÖRE QTH. QTH förblir synlig så länge total_cols >= 80 */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         if (avail_total >= base_name + 1 + min_qth) {
             layout->w_name = base_name;
@@ -1044,6 +1284,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         /* Vid < 80 kolumner döljs QTH helt; endast Namn visas */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         layout->w_qth = 0;
         layout->w_name = max_col - col_name + 1;
@@ -1052,6 +1293,7 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
         /* Mycket smalt fönster */
         layout->w_dxcc = 0;
         layout->w_loc = 0;
+        layout->w_quj = 0;
         layout->w_qrb = 0;
         layout->w_qth = 0;
         layout->w_name = 0;
@@ -1067,7 +1309,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       int field_cursor_pos, int time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
-                      const char *qrb_str,
+                      const char *qrb_str, const char *quj_str,
                       int *cur_y, int *cur_x) {
     erase();
 
@@ -1136,11 +1378,11 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (form_w_name < 6) form_w_name = 6;
     if (form_w_name > 16) form_w_name = 16;
 
-    int form_w_dxcc = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
-    if (form_w_dxcc < 6) form_w_dxcc = 6;
-    if (form_w_dxcc > 16) form_w_dxcc = 16;
+    int form_w_qth = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    if (form_w_qth < 6) form_w_qth = 6;
+    if (form_w_qth > 16) form_w_qth = 16;
 
-    int form_w_qth = (COLS >= 88) ? 15 : 14;
+    int form_w_dxcc = (COLS >= 95) ? 14 : (COLS >= 85 ? 12 : 10);
 
     /* Rad 1 (y = 6): Signal, RST T, RST R, Namn */
     draw_field_aligned(input_top + 1, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
@@ -1148,11 +1390,11 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     draw_field_aligned(input_top + 1, c3, "RST R",  qso->rst_rcvd,  6,          (focus_mode == FOCUS_INPUT && active_field == FLD_RSTR), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 1, c4, "Namn",   qso->name,     form_w_name, (focus_mode == FOCUS_INPUT && active_field == FLD_NAME), field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 2 (y = 7): QTH, Lokator, QRB, DXCC */
-    draw_field_aligned(input_top + 2, c1, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
+    /* Rad 2 (y = 7): DXCC, Lokator, QRB, QTH */
+    draw_field_aligned(input_top + 2, c1, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 2, c2, "Lokator", qso->gridsquare, 6,           (focus_mode == FOCUS_INPUT && active_field == FLD_GRID), field_cursor_pos, cur_y, cur_x);
 
-    /* QRB mellan Lokator och DXCC på rad 2 */
+    /* QRB mellan Lokator och QTH på rad 2 */
     int has_qrb = (qrb_str != NULL && qrb_str[0] != '\0' && strcmp(qrb_str, "-") != 0);
     const char *qrb_val = has_qrb ? qrb_str : "-";
     int lbl_qrb_x = c3 - 3; /* "QRB" är 3 tecken */
@@ -1164,12 +1406,24 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     mvprintw(input_top + 2, c3 + 2, "%-8.8s", qrb_val);
     attroff(COLOR_PAIR(qrb_color) | (has_qrb ? A_BOLD : 0));
 
-    draw_field_aligned(input_top + 2, c4, "DXCC",    qso->dxcc,       form_w_dxcc, (focus_mode == FOCUS_INPUT && active_field == FLD_DXCC), field_cursor_pos, cur_y, cur_x);
+    draw_field_aligned(input_top + 2, c4, "QTH",     qso->qth,        form_w_qth,  (focus_mode == FOCUS_INPUT && active_field == FLD_QTH),  field_cursor_pos, cur_y, cur_x);
 
-    /* Rad 3 (y = 8): Frekvens, Band, Mode */
+    /* Rad 3 (y = 8): Frekvens, Band, Mode, QUJ */
     draw_field_aligned(input_top + 3, c1, "Frekvens", qso->freq, 10, (focus_mode == FOCUS_INPUT && active_field == FLD_FREQ), field_cursor_pos, cur_y, cur_x);
     draw_band_selector_aligned(input_top + 3, c2, qso->band, (focus_mode == FOCUS_INPUT && active_field == FLD_BAND), band_selecting, cur_y, cur_x);
     draw_field_aligned(input_top + 3, c3, "Mode",     qso->mode,  6, (focus_mode == FOCUS_INPUT && active_field == FLD_MODE), field_cursor_pos, cur_y, cur_x);
+
+    /* QUJ till höger om Mode på rad 3 */
+    int has_quj = (quj_str != NULL && quj_str[0] != '\0' && strcmp(quj_str, "-") != 0);
+    const char *quj_val = has_quj ? quj_str : "-";
+    int lbl_quj_x = c4 - 3; /* "QUJ" är 3 tecken */
+    attron(COLOR_PAIR(CP_LABEL));
+    mvprintw(input_top + 3, lbl_quj_x, "QUJ:");
+    attroff(COLOR_PAIR(CP_LABEL));
+    int quj_color = has_quj ? CP_STATUS_OK : CP_FIELD_INACTIVE;
+    attron(COLOR_PAIR(quj_color) | (has_quj ? A_BOLD : 0));
+    mvprintw(input_top + 3, c4 + 2, "%-8.8s", quj_val);
+    attroff(COLOR_PAIR(quj_color) | (has_quj ? A_BOLD : 0));
 
     /* Rad 4 (y = 9): Datum, UTC, Notering */
     int comm_w = COLS - (c3 + 2) - 1;
@@ -1226,6 +1480,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     if (layout.w_qrb > 0) {
         utf8_pad_or_clip(h_buf, sizeof(h_buf), "QRB", layout.w_qrb, 1);
         mvprintw(log_top + 1, layout.col_qrb, "%s", h_buf);
+    }
+    if (layout.w_quj > 0) {
+        utf8_pad_or_clip(h_buf, sizeof(h_buf), "QUJ", layout.w_quj, 1);
+        mvprintw(log_top + 1, layout.col_quj, "%s", h_buf);
     }
     if (layout.w_loc > 0) {
         utf8_pad_or_clip(h_buf, sizeof(h_buf), "Lokator", layout.w_loc, 0);
@@ -1335,6 +1593,12 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
             utf8_pad_or_clip(cell_buf, sizeof(cell_buf), qrb_dsp, layout.w_qrb, 1);
             mvprintw(row_y, layout.col_qrb, "%s", cell_buf);
         }
+        if (layout.w_quj > 0) {
+            char quj_dsp[16];
+            format_quj_display(st, item, quj_dsp, sizeof(quj_dsp));
+            utf8_pad_or_clip(cell_buf, sizeof(cell_buf), quj_dsp, layout.w_quj, 1);
+            mvprintw(row_y, layout.col_quj, "%s", cell_buf);
+        }
         if (layout.w_loc > 0) {
             utf8_pad_or_clip(cell_buf, sizeof(cell_buf), item->gridsquare, layout.w_loc, 0);
             mvprintw(row_y, layout.col_loc, "%s", cell_buf);
@@ -1417,6 +1681,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* RITA F-TANGENTRAD ALLRA LÄNGST NED */
     draw_bottom_fkey_bar(0, focus_mode, search_filter);
 
+    curs_set(band_selecting ? 0 : 1);
     move(*cur_y, *cur_x);
     refresh();
 }
@@ -1434,6 +1699,7 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
     char buf[64];
     copy_str(buf, sizeof(buf), search_filter);
     int cursor_pos = utf8_display_width(buf);
+    curs_set(1);
 
     while (1) {
         int y = LINES - 2;
@@ -1515,7 +1781,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
                       int field_cursor_pos, int *time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, char *status_msg, size_t status_sz,
-                      const char *qrb_str, int band_row, int colon_col) {
+                      const char *qrb_str, const char *quj_str, int band_row, int colon_col) {
     int cur_idx = find_band_index(qso->band);
     if (cur_idx < 0) cur_idx = 0;
     int sel_idx = cur_idx;
@@ -1556,7 +1822,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
         draw_main_screen(st, qso, focus_mode, active_field, 1,
                          field_cursor_pos, *time_frozen, editing_index,
                          log_list, selected_log_pos, log_scroll_offset,
-                         search_filter, status_msg, qrb_str,
+                         search_filter, status_msg, qrb_str, quj_str,
                          &cur_y, &cur_x);
 
         /* Rita popup-ram */
@@ -1693,10 +1959,10 @@ void sync_cursor_to_field_end(QSO *qso, int active_field, int *cursor_pos) {
  */
 int field_default_col(int fld) {
     switch (fld) {
-        case FLD_CALL: case FLD_QTH:  case FLD_FREQ: case FLD_DATE: return 0;
+        case FLD_CALL: case FLD_DXCC: case FLD_FREQ: case FLD_DATE: return 0;
         case FLD_RSTS: case FLD_GRID: case FLD_BAND: case FLD_TIME: return 1;
         case FLD_RSTR:                case FLD_MODE:                return 2;
-        case FLD_NAME: case FLD_DXCC:                               return 3;
+        case FLD_NAME: case FLD_QTH:                                return 3;
         case FLD_COMM:                                              return 2;
         default: return 0;
     }
@@ -1708,7 +1974,7 @@ int field_default_col(int fld) {
 int field_row_index(int fld) {
     switch (fld) {
         case FLD_CALL: case FLD_RSTS: case FLD_RSTR: case FLD_NAME: return 0;
-        case FLD_QTH:  case FLD_GRID: case FLD_DXCC:                return 1;
+        case FLD_DXCC: case FLD_GRID: case FLD_QTH:                 return 1;
         case FLD_FREQ: case FLD_BAND: case FLD_MODE:                return 2;
         case FLD_DATE: case FLD_TIME: case FLD_COMM:                return 3;
         default: return 0;
@@ -1721,7 +1987,7 @@ int field_row_index(int fld) {
 int step_field_vertical(int current_field, int dir, int pref_col) {
     static const int grid[4][4] = {
         { FLD_CALL, FLD_RSTS, FLD_RSTR, FLD_NAME },
-        { FLD_QTH,  FLD_GRID, FLD_DXCC, FLD_DXCC },
+        { FLD_DXCC, FLD_GRID, FLD_QTH,  FLD_QTH  },
         { FLD_FREQ, FLD_BAND, FLD_MODE, FLD_MODE },
         { FLD_DATE, FLD_TIME, FLD_COMM, FLD_COMM }
     };
@@ -1739,7 +2005,7 @@ int step_field_vertical(int current_field, int dir, int pref_col) {
  */
 void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *active_field,
                     int *field_cursor_pos, int *editing_index, char *last_smcb_call,
-                    char *current_qrb) {
+                    char *current_qrb, char *current_quj) {
     memset(qso, 0, sizeof(*qso));
     if (st != NULL) {
         copy_str(qso->band, sizeof(qso->band), st->last_band);
@@ -1757,6 +2023,7 @@ void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *
     *editing_index = -1;
     if (last_smcb_call) last_smcb_call[0] = '\0';
     if (current_qrb) copy_str(current_qrb, 32, "-");
+    if (current_quj) copy_str(current_quj, 32, "-");
 
     get_utc_strings(qso->date, sizeof(qso->date),
                     qso->time_utc, sizeof(qso->time_utc),

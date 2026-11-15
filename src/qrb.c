@@ -116,6 +116,27 @@ double calculate_distance_km(double lat1, double lon1, double lat2, double lon2)
 }
 
 /**
+ * @brief Beräknar storcirkelbäring (azimuth i grader, 0-359) från punkt 1 till punkt 2.
+ * @param lat1 Latitud punkt 1 (grader).
+ * @param lon1 Longitud punkt 1 (grader).
+ * @param lat2 Latitud punkt 2 (grader).
+ * @param lon2 Longitud punkt 2 (grader).
+ * @return Bäring i hela grader (0-359).
+ */
+double calculate_bearing_deg(double lat1, double lon1, double lat2, double lon2) {
+    double rad = M_PI / 180.0;
+    double rlat1 = lat1 * rad;
+    double rlat2 = lat2 * rad;
+    double dlon = (lon2 - lon1) * rad;
+
+    double y = sin(dlon) * cos(rlat2);
+    double x = cos(rlat1) * sin(rlat2) - sin(rlat1) * cos(rlat2) * cos(dlon);
+    double b = atan2(y, x) * (180.0 / M_PI);
+    double deg = fmod(b + 360.0, 360.0);
+    return deg;
+}
+
+/**
  * @brief Slår upp koordinater i minnescachen för orter (QTH).
  * @param qth Ortens namn.
  * @param lat Pekare för latitud.
@@ -248,17 +269,21 @@ int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out) {
 }
 
 /**
- * @brief Beräknar QRB (avstånd i km) mellan egen station och motstationen.
+ * @brief Beräknar både QRB (avstånd i km) och QUJ (bäring i grader) mellan egen station och motstationen.
  * 1. Använder i första hand Maidenhead-lokator om motstationen har komplett lokator (4 el. 6 tecken).
  * 2. Om lokator saknas och QTH finns, geokodas motstationens ort via OpenStreetMap.
  * @param my_st Min stations inställningar med lokator och/eller QTH.
  * @param target_qso Motstationens QSO-data med lokator och/eller QTH.
- * @param out Buffer för formaterat avstånd (t.ex. "342 km" eller "-").
- * @param out_sz Storlek på utdatabuffert.
+ * @param qrb_out Buffer för formaterat avstånd (t.ex. "342 km" eller "-"), eller NULL.
+ * @param qrb_sz Storlek på qrb_out.
+ * @param quj_out Buffer för formaterad bäring (t.ex. "145°" eller "-"), eller NULL.
+ * @param quj_sz Storlek på quj_out.
  */
-void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz) {
-    if (out == NULL || out_sz == 0) return;
-    copy_str(out, out_sz, "-");
+void compute_qrb_quj_str(const StationSettings *my_st, const QSO *target_qso,
+                         char *qrb_out, size_t qrb_sz,
+                         char *quj_out, size_t quj_sz) {
+    if (qrb_out && qrb_sz > 0) copy_str(qrb_out, qrb_sz, "-");
+    if (quj_out && quj_sz > 0) copy_str(quj_out, quj_sz, "-");
 
     if (my_st == NULL || target_qso == NULL) return;
 
@@ -284,9 +309,27 @@ void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *
     }
     if (!have_tg_pos) return;
 
-    double dist_km = calculate_distance_km(my_lat, my_lon, tg_lat, tg_lon);
-    long rounded_km = (long)(dist_km + 0.5);
-    snprintf(out, out_sz, "%ld km", rounded_km);
+    if (qrb_out && qrb_sz > 0) {
+        double dist_km = calculate_distance_km(my_lat, my_lon, tg_lat, tg_lon);
+        long rounded_km = (long)(dist_km + 0.5);
+        if (rounded_km < 0) rounded_km = 0;
+        snprintf(qrb_out, qrb_sz, "%ld km", rounded_km);
+    }
+
+    if (quj_out && quj_sz > 0) {
+        double b = calculate_bearing_deg(my_lat, my_lon, tg_lat, tg_lon);
+        long deg = ((long)(b + 0.5)) % 360;
+        if (deg < 0) deg += 360;
+        snprintf(quj_out, quj_sz, "%ld°", deg);
+    }
+}
+
+void compute_qrb_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz) {
+    compute_qrb_quj_str(my_st, target_qso, out, out_sz, NULL, 0);
+}
+
+void compute_quj_str(const StationSettings *my_st, const QSO *target_qso, char *out, size_t out_sz) {
+    compute_qrb_quj_str(my_st, target_qso, NULL, 0, out, out_sz);
 }
 
 /**
@@ -378,4 +421,40 @@ void format_qrb_display(const QSO *qso, char *out, size_t out_sz) {
             snprintf(out, out_sz, "%ld", d);
         }
     }
+}
+
+/**
+ * @brief Formaterar bäring för visning i loggtabellens QUJ-kolumn (t.ex. "145°" eller "-").
+ * @param my_st Min stations inställningar.
+ * @param qso QSO-post att formatera QUJ för.
+ * @param out Målbuffer.
+ * @param out_sz Storlek på målbuffer.
+ */
+void format_quj_display(const StationSettings *my_st, const QSO *qso, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    copy_str(out, out_sz, "-");
+    if (my_st == NULL || qso == NULL) return;
+
+    double my_lat = 0, my_lon = 0;
+    int have_my_pos = 0;
+    if (locator_to_latlon(my_st->gridsquare, &my_lat, &my_lon)) {
+        have_my_pos = 1;
+    } else if (my_st->qth[0] != '\0' && lookup_qth_cache(my_st->qth, &my_lat, &my_lon) == 1) {
+        have_my_pos = 1;
+    }
+    if (!have_my_pos) return;
+
+    double tg_lat = 0, tg_lon = 0;
+    int have_tg_pos = 0;
+    if (locator_to_latlon(qso->gridsquare, &tg_lat, &tg_lon)) {
+        have_tg_pos = 1;
+    } else if (qso->qth[0] != '\0' && lookup_qth_cache(qso->qth, &tg_lat, &tg_lon) == 1) {
+        have_tg_pos = 1;
+    }
+    if (!have_tg_pos) return;
+
+    double b = calculate_bearing_deg(my_lat, my_lon, tg_lat, tg_lon);
+    long deg = ((long)(b + 0.5)) % 360;
+    if (deg < 0) deg += 360;
+    snprintf(out, out_sz, "%ld°", deg);
 }

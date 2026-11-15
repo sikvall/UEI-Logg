@@ -39,7 +39,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: asynkrona signaluppslag via QRZ.com och SM Callbook, beräkning av avstånd och bäring (QRB), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
+\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: automatisk DXCC-identifiering i realtid, asynkrona signaluppslag via QRZ.com, beräkning av avstånd och bäring (QRB/QUJ), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
 \end{abstract}
 
 \vspace{0.5cm}
@@ -56,7 +56,7 @@ Programmets styrkor:
     \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar.
     \item \textbf{Smart fälthantering:} Skrivning i förifyllt fält rensar automatiskt gammal text; \texttt{Delete} tömmer hela fältet direkt.
     \item \textbf{Automatisk DXCC och QRB:} Identifierar direkt land, zon och räknar ut avstånd (km) och kompassbäring utifrån motstationens lokator.
-    \item \textbf{Callbook-integration:} Bakgrundsuppslag mot både lokal SSA/SM Callbook och QRZ.com XML Logbook Service.
+    \item \textbf{QRZ.com- och DXCC-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen samt bakgrundsuppslag mot QRZ.com XML Logbook Service.
     \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata samt HF-konditioner från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
     \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
@@ -145,7 +145,7 @@ Kör programmet direkt från terminalen:
 Huvudskärmen i UEI-Logg är indelad i fem tydliga komponenter uppifrån och ned:
 
 \subsection{Titelrad (Topbar)}
-Visar applikationens namn och version (\texttt{UEI-log}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator.
+Visar applikationens namn och version (\texttt{UEI-log}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator. Fälten presenteras i ordningen stationssignal, QTH och lokator (t.ex.\ \texttt{SM5UEI Linköping JO88fk}), utan parenteser kring QTH.
 
 \subsection{Statistikruta (Realtidsstatistik)}
 När terminalen har minst 30 rader och funktionen är påslagen i inställningarna visas en kompakt statuspanel:
@@ -164,21 +164,23 @@ Inmatningsfältet är ordnat på fyra rader:
     \item \textbf{Rad 1:}
     \begin{itemize}
         \item \texttt{Signal}: Motstationens signal (omvandlas automatiskt till versaler).
-        \item \texttt{Frekv (MHz)}: Frekvens i MHz (t.ex. \texttt{14.225} eller \texttt{7.074}).
-        \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen).
-        \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
+        \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
+        \item \texttt{RST R}: Mottagen rapport.
+        \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i loggen eller QRZ.com).
     \end{itemize}
     \item \textbf{Rad 2:}
     \begin{itemize}
-        \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
-        \item \texttt{RST R}: Mottagen rapport.
-        \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i Callbook eller QRZ).
+        \item \texttt{DXCC}: Identifierat land utifrån prefix eller uppslag.
+        \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex.\ \texttt{JO89we}).
+        \item \texttt{QRB}: Beräknat avstånd i kilometer (visas som grön indikator). Med tangenten \texttt{F7} i inmatningsläget beräknas QRB och bäring (QUJ) om direkt baserat på angiven lokator (i första hand) eller QTH.
+        \item \texttt{QTH}: Motstationens stad eller ort.
     \end{itemize}
     \item \textbf{Rad 3:}
     \begin{itemize}
-        \item \texttt{QTH}: Motstationens stad eller ort.
-        \item \texttt{Lokator}: 4- eller 6-teckens Maidenhead-lokator (t.ex. \texttt{JO89we}).
-        \item \texttt{DXCC}: Identifierat land samt beräknat avstånd och bäring (QRB).
+        \item \texttt{Frekvens}: Frekvens i MHz (t.ex.\ \texttt{14.225} eller \texttt{7.074}).
+        \item \texttt{Band}: Amatörradioband (beräknas automatiskt utifrån frekvensen eller väljs via interaktiv meny).
+        \item \texttt{Mode}: Trafiksätt (\texttt{SSB}, \texttt{CW}, \texttt{FT8}, \texttt{RTTY}, \texttt{FM} m.fl.).
+        \item \texttt{QUJ}: Beräknad bäring i grader (visas som grön indikator, t.ex.\ \texttt{145°}). Beräknas automatiskt samtidigt med QRB.
     \end{itemize}
     \item \textbf{Rad 4:}
     \begin{itemize}
@@ -191,8 +193,8 @@ Inmatningsfältet är ordnat på fyra rader:
 \subsection{Loggradstabell (Tidigare QSO)}
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
-    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
-    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
+    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), QUJ (bäring i grader, t.ex.\ \texttt{145°}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
+    \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och \textbf{QUJ} samtidigt och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
     \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
 \end{itemize}
@@ -231,13 +233,17 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Delete (DEL)} & Inmatning & \textbf{Rensa hela det aktiva fältet omedelbart} \\
 \texttt{F1} & Allmänt & Visa snabbhjälp och tangentbordsguide \\
 \texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
+\texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (vid redigering sparas ändringen och QSO:t märks som nytt, ✗) \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
+\texttt{F5} & Inmatning & Manuellt uppslag mot QRZ.COM (vid läge Auto eller Manuell) \\
 \texttt{F5} & Loggläge & Växla status mellan hanterad (✓) och ny (✗) \\
 \texttt{F6} & Allmänt & \textbf{Växla noteringar i loggraderna (på/av)} \\
+\texttt{F7} & Inmatning & Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH \\
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
+\texttt{F7} & Inställningar & Öppna editorn för egen färgprofil \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
-\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering \\
+\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (märks automatiskt som nytt, ✗) \\
 \texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
 \texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
 \texttt{Home / End} & Loggläge & Hoppa längst upp (senaste) / längst ned (äldsta) i logglistan \\
@@ -255,6 +261,8 @@ All interaktion i UEI-Logg styrs via tangentbordet.
     \item \textbf{DEL-tangenten:} Tryck på \texttt{Delete} för att tömma hela fältet direkt.
     \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
     \item \textbf{Automatisk frekvens-, band- och våglängdskoppling:} När du anger en frekvens (t.ex. \texttt{1936 kHz}, \texttt{14,200}, \texttt{14.074}) sätts automatiskt rätt amatörradioband (\texttt{160 m}, \texttt{20 m}). Om frekvensen ligger utanför de etablerade amatörbanden beräknas våglängden automatiskt ($\lambda = 300 / f_{\text{MHz}}$, t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
+    \item \textbf{Redigering av QSO:} När du väljer ett QSO i logglistan och trycker \texttt{Enter} laddas alla fält till inmatningsrutan och kontakten märks direkt som ny (\texttt{handled = 0}, rött kryss ✗). När du sparar ändringarna med \texttt{Enter} eller \texttt{F2} uppdateras databasen och posten behåller sin status som ny tills den exporteras.
+    \item \textbf{Manuell QRB- och QUJ-beräkning (F7):} Om du i inmatningsläget trycker på \texttt{F7} görs en omedelbar ny beräkning av QRB och bäring (QUJ). Programmet föredrar den angivna lokatorn; om lokator saknas används i stället motstationens QTH.
 \end{itemize}
 
 \section{Inställningar (F12)}
@@ -270,9 +278,10 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Min lokator:} Stationens Maidenhead-lokator (t.ex. \texttt{JO89we}), utgångspunkt för avstånd och bäring.
     \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
     \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
-    \item \textbf{QRZ-uppslag:} \texttt{< På >} / \texttt{< Av >}. Hämtar automatiskt motstationens namn, QTH och lokator över nätet.
-    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 11 färgteman finns tillgängliga:
+    \item \textbf{Auto QRZ.COM:} \texttt{< Av >} / \texttt{< Auto >} / \texttt{< Manuell >}. Vid \texttt{Auto} slås motstationens data (namn, QTH och lokator) upp i bakgrunden vid inmatning och paus; vid \texttt{Manuell} sker uppslag endast när operatören trycker \texttt{F5}; vid \texttt{Av} är QRZ-uppslag helt och hållet avslaget.
+    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 16 färgteman finns tillgängliga:
     \begin{itemize}
+        \item \emph{UEI-tema (Standard, default):} Programmets signaturschema i marinblå bas, solgula accenter, skogsgröna ramar, bärnstensfokus och havsblå markering.
         \item \emph{Turbo Pascal (MC Default):} Klassisk borlandblå/cyan/vit layout.
         \item \emph{MC Darkfar:} Mörkblå/svart bakgrund med hög kontrast.
         \item \emph{MC Gotar:} Svart/gul stil.
@@ -284,8 +293,12 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{Arktisk Natt (Nord Frost):} Svalt och vilsamt tema inspirerat av Nord-paletten med polarnattsblå bas, frostcyan och norrskensgrönt; minimerar ögontrötthet vid sena pass.
         \item \emph{Field Day (Vintage Radio):} Varm, analog transceiver-atmosfär inspirerad av Gruvbox, mörk antracitbotten, ockragul/bärnsten och läderbrunt.
         \item \emph{Mörkerläge (Crimson Night):} Djupröd och svart mörkeranpassad skärm som bevarar det skotopiska mörkerseendet vid nattliga contester i nedsläckta schack.
+        \item \emph{Solarized Dark (Djuphav):} Ethan Schoonovers legendariska, vetenskapligt balanserade mörkblå marinpalett med djup cyan och krämgul text för optimal kontrast och läsbarhet.
+        \item \emph{Dracula (Neon Skymning):} Mycket populärt och modernt mörkt tema med skifferviolett bakgrund, neonlila, elcyan och korallrosa accenter.
+        \item \emph{Militärradio (Fältgrön):} Taktisk militär känsla i stil med bärbara fältradiostationer, djup olivdrab botten med khaki canvastypografi och mässingsdetaljer.
+        \item \emph{Egen profil (Anpassad):} Användarens egna skräddarsydda färgprofil som skapas och redigeras via den inbyggda färgprofilseditorn (\texttt{F7}).
     \end{itemize}
-    \item \textbf{SM Callbook:} \texttt{< På >} / \texttt{< Av >}. Söker i den lokala databasen \texttt{smcallbook.txt}.
+    \item \textbf{Egen färgprofil (\texttt{F7}):} Direktknapp för att starta den interaktiva färgprofilseditorn (se avsnitt~\ref{sec:theme_editor}).
     \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
     \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
@@ -294,6 +307,17 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
+
+\subsection{Egen Färgprofilseditor (F7 i inställningar)}
+\label{sec:theme_editor}
+UEI-Logg erbjuder en komplett inbyggd färgprofilseditor där operatören själv kan skapa och spara ett helt personligt färgschema. Editorn öppnas direkt från inställningsmenyn med tangenten \texttt{F7} (eller \texttt{E} när markören står på fältet \emph{Färgschema}):
+\begin{itemize}
+    \item \textbf{14 anpassningsbara element:} Justera färger för huvudbakgrund, normal text, ramar, aktiv fokusram, titlar, fältetiketter, aktivt inmatningsfält (text och bakgrund), markerad loggrad (text och bakgrund), titelrad samt status- och varningsindikatorer.
+    \item \textbf{Realtidsförhandsgranskning (Live Preview):} Till höger om inställningslistan visas en interaktiv miniatyr av loggfönstret som omedelbart uppdateras vid varje ändring så att du ser exakt hur färgkombinationerna fungerar i praktiken.
+    \item \textbf{Färgpalett:} Bläddra bland 22 noggrant anpassade färger med piltangenterna \texttt{Vänster} och \texttt{Höger}.
+    \item \textbf{Ladda förinställd mall (P):} Tryck \texttt{P} för att kopiera färgerna från ett befintligt tema (t.ex.\ Borland, Solarized, Dracula, Militärradio m.fl.) som grund och finjustera sedan detaljerna.
+    \item \textbf{Spara och aktivera:} Bekräfta med \texttt{Enter} eller \texttt{F2}. Profilen sparas i \texttt{station.conf} under parametern \texttt{CUSTOM\_THEME} och aktiveras omedelbart i programmet.
+\end{itemize}
 
 \section{Lokal Databas (SQLite3) samt ADIF Import och Export}
 \label{sec:adif}
@@ -411,7 +435,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
 \texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
 \texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Data Service. \\
-\texttt{src/callbook.c} & Snabb sökning i SSA/SM Callbook. \\
+\texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
 \texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
@@ -420,16 +444,15 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
 \texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
 \texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
-\texttt{smcallbook.txt} & Databas över svenska radioamatörer. \\
 \bottomrule
 \end{tabularx}
 \caption{Projektets filstruktur.}
 \end{table}
 
-\subsection{Beräkning och Lagring av QRB}
+\subsection{Beräkning och Lagring av QRB och QUJ}
 Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$).
 
-Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält vid registrering, dels i loggradstabellens dedikerade kolumn \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) mellan \texttt{QTH} och statuskolumnen \texttt{Ny}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
+Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält \texttt{QRB} och bäring \texttt{QUJ} vid registrering, dels i loggradstabellens dedikerade kolumner \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) och \texttt{QUJ} (i grader, t.ex.\ \texttt{145°}) mellan \texttt{QTH} och \texttt{Lokator}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
 
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
@@ -440,7 +463,7 @@ Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattand
     \item \textbf{ADIF-import:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz och att felaktiga skalningar återställs.
     \item \textbf{Logghantering och F7:} Verifierar att F7 sätter alla loggrader till hanterade (\texttt{handled = 1}), att statistikcachen invalideras och att flaggan bevaras vid ADIF-sparning.
     \item \textbf{Navigering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt sök- och bandfiltrering.
-    \item \textbf{QRB och lokatorer:} Validering av Maidenhead-lokatorer och avståndsberäkning.
+    \item \textbf{QRB, QUJ och lokatorer:} Validering av Maidenhead-lokatorer, avstånds- och bäringsberäkning samt formatering.
     \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
     \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
     \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.

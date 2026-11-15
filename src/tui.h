@@ -68,6 +68,18 @@ void tui_cleanup(void);
 void apply_color_theme(int theme_idx);
 
 /**
+ * @brief Sätter den aktiva egna färgprofilen för temat THEME_CUSTOM.
+ * @param ct Pekare till CustomTheme-struktur.
+ */
+void set_custom_theme(const CustomTheme *ct);
+
+/**
+ * @brief Hämtar den aktiva egna färgprofilen.
+ * @param ct Pekare till CustomTheme-struktur som fylls i.
+ */
+void get_custom_theme(CustomTheme *ct);
+
+/**
  * @brief Beräknar hur många rader i terminalen som är tillgängliga för loggtabellen.
  * @param st Stationsinställningar (eller NULL för standard).
  * @return Antal synliga rader.
@@ -92,6 +104,8 @@ typedef struct {
     int w_qth;        /**< Bredd för QTH-kolumn (min 10, max 30; döljs vid COLS < 80) */
     int col_qrb;      /**< X-position för QRB */
     int w_qrb;        /**< Bredd för QRB-kolumn (döljs före QTH vid platsbrist) */
+    int col_quj;      /**< X-position för QUJ (bäring) */
+    int w_quj;        /**< Bredd för QUJ-kolumn (döljs samtidigt som QRB) */
     int col_loc;      /**< X-position för Lokator */
     int w_loc;        /**< Bredd för Lokator-kolumn */
     int col_dxcc;     /**< X-position för DXCC */
@@ -205,6 +219,7 @@ void draw_space_weather_box(int top_y, int width);
  * @param search_filter Aktivt sökfilter.
  * @param status_msg Meddelande att visa i statuslisten.
  * @param qrb_str Beräknat avstånd.
+ * @param quj_str Beräknad bäring.
  * @param cur_y Utdatapekare för terminalmarkörens rad.
  * @param cur_x Utdatapekare för terminalmarkörens kolumn.
  */
@@ -213,7 +228,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       int field_cursor_pos, int time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
-                      const char *qrb_str,
+                      const char *qrb_str, const char *quj_str,
                       int *cur_y, int *cur_x);
 
 /**
@@ -241,6 +256,7 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
  * @param status_msg Statusmeddelande.
  * @param status_sz Storlek på statusbuffert.
  * @param qrb_str QRB-sträng.
+ * @param quj_str QUJ-sträng.
  * @param band_row Rad där bandfältet ligger.
  * @param colon_col Kolumn för kolon.
  * @return 1 vid val, 0 vid avbryt, 2 vid Tab, 3 vid Shift-Tab.
@@ -250,7 +266,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
                       int field_cursor_pos, int *time_frozen, int editing_index,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, char *status_msg, size_t status_sz,
-                      const char *qrb_str, int band_row, int colon_col);
+                      const char *qrb_str, const char *quj_str, int band_row, int colon_col);
 
 /**
  * @brief Hämtar pekare och maxlängd för det strängfält i QSO-strukturen som motsvarar ett fältindex.
@@ -303,10 +319,11 @@ int step_field_vertical(int current_field, int dir, int pref_col);
  * @param editing_index Pekare till redigeringsindex (sätts till -1).
  * @param last_smcb_call Buffer för senast uppslagna signal.
  * @param current_qrb Buffer för QRB.
+ * @param current_quj Buffer för QUJ.
  */
 void reset_qso_form(QSO *qso, const StationSettings *st, int *time_frozen, int *active_field,
                     int *field_cursor_pos, int *editing_index, char *last_smcb_call,
-                    char *current_qrb);
+                    char *current_qrb, char *current_quj);
 
 #ifdef __cplusplus
 }

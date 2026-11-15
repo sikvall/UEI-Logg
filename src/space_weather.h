@@ -48,6 +48,9 @@ typedef struct {
     char norrsken[32];      /**< Norrskenseffekt (t.ex. "12 GW") */
     SwTone norrsken_tone;   /**< Färgstatus för norrsken */
 
+    char dx_nvis[32];       /**< Bästa band just nu för DX och NVIS (t.ex. "15m/80m") */
+    SwTone dx_nvis_tone;    /**< Färgstatus för DX/NVIS */
+
     int has_data;           /**< 1 om data framgångsrikt hämtats från nätet */
     char updated_time[32];  /**< Tidsstämpel för senaste lyckade uppdatering */
 } SpaceWeatherData;
@@ -72,6 +75,14 @@ void space_weather_get_data(SpaceWeatherData *out);
  * @brief Begär en omedelbar asynkron uppdatering från hf.avitec.se.
  */
 void space_weather_refresh_async(void);
+
+/**
+ * @brief Tolkar HTML-svar från hf.avitec.se och fyller i SpaceWeatherData.
+ * @param html HTML-dokumentet från hf.avitec.se.
+ * @param out Pekare till struktur där datat skrivs.
+ * @return 1 vid framgång, annars 0.
+ */
+int parse_space_weather_html(const char *html, SpaceWeatherData *out);
 
 #ifdef __cplusplus
 }

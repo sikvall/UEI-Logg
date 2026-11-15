@@ -21,19 +21,20 @@
 
 ## Funktioner
 
-- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, QTH, Lokator, QRB, DXCC, Frekvens, Band, Mode, Datum, UTC, Notering).
+- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). F7 i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
+- **Titelrad med stationsinfo**: Översta listen presenterar egen anropssignal, QTH och lokator centrerat (`Anropssignal QTH Lokator` utan parenteser runt QTH) tillsammans med lokal tid och UTC.
 - **SQLite3 Databas med WAL-läge**: Persistent, kraschsäker och blixtsnabb databaslagring i `qsolog.sq3`. Automatisk migrering från tidigare `qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (SFI, SSN, A-index, K-index, solflares, geomagnetiska stormar och HF-konditioner per band).
-- **Automatiska uppslag**:
-  - Svenska anropssignaler slås automatiskt upp mot **SM Callbook** (SSA).
-  - Utländska anropssignaler slås automatiskt upp mot **QRZ.COM XML API**.
+- **Automatiska och manuella uppslag**:
+  - DXCC-land slås automatiskt upp i realtid direkt ur `dxcc.txt` när anropssignalen skrivs in.
+  - **Auto QRZ.COM**: Tre valbara lägen i inställningarna (F12) – `Av`, `Auto` och `Manuell`. Vid `Auto` görs uppslag automatiskt i bakgrunden vid inmatning och paus; vid `Manuell` sker uppslag endast när operatören trycker **F5** i loggrutan; vid `Av` är QRZ-uppslag helt och hållet avslaget.
   - Automatisk detektering av Silent Keys (visas med `-SK-` och `SILENT KEY`).
-- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring via Maidenhead-lokatorer eller OpenStreetMap.
+- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring (QUJ i grader, t.ex. 145°) via Maidenhead-lokatorer eller OpenStreetMap.
 - **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
-- **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
+- **Responsiv logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
 - **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
-- **11 Färgscheman**: Välj mellan 11 teman (Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge m.fl.) med interaktiv rullgardinsmeny och live-förhandsgranskning. Spara och avsluta smidigt med F12.
+- **16 Färgscheman och egen färgprofilseditor**: Standardtemat är det eleganta **UEI-tema** (marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus). Välj mellan 16 färdiga teman (inkl. Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en helt egen anpassad färgprofil via den inbyggda färgprofilseditorn (F7 i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med F12.
 
 ---
 
@@ -247,15 +248,15 @@ När `ueilog` körs är följande tangenter tillgängliga:
 
 | Tangent | Beskrivning |
 |---|---|
-| **F2** / **Enter** | Spara och logga aktuellt QSO till SQLite-databasen och ADIF |
+| **F2** / **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF.<br>I loggläge (Enter): Ladda markerat QSO till formuläret för redigering (märks automatiskt som nytt, ✗) |
 | **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
-| **F5** | I inmatningsläge: Manuellt uppslag mot SM Callbook / QRZ.COM<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
+| **F5** | I inmatningsläge: Manuellt uppslag mot QRZ.COM (vid Auto eller Manuell)<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
 | **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
-| **F7** | I loggläge: Markera samtliga loggrader som Hanterade (✓) |
+| **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | Radera vald eller markerade rader ur loggen (med bekräftelse) |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
-| **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, ADIF import/export, reglage m.m.) |
+| **F12** | Öppna och spara inställningar (Min Station, QRZ, färgteman, egen färgprofilseditor [F7], ADIF import/export, reglage m.m.) |
 | **Ctrl+Q** / **Ctrl+C** | Avsluta programmet |
 | **Tab** / **Skift+Tab** | Stega framåt / bakåt mellan inmatningsfälten |
 | **Pilar Upp/Ned/Vänster/Höger** | Navigera i formulär, fält och menyer |

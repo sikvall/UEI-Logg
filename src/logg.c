@@ -744,11 +744,17 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
             qso->qth[0] = '\0';
             copy_str(qso->comment, sizeof(qso->comment), "SILENT KEY");
             copy_str(status_msg, status_sz, "Från logg: SILENT KEY (-SK-)");
+            if (qso->dxcc[0] == '\0') {
+                lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+            }
             return;
         }
         if (log_name[0] != '\0' && qso->name[0] == '\0') copy_str(qso->name, sizeof(qso->name), log_name);
         if (log_qth[0] != '\0' && qso->qth[0] == '\0')  copy_str(qso->qth, sizeof(qso->qth), log_qth);
         if (log_grid[0] != '\0' && qso->gridsquare[0] == '\0') copy_str(qso->gridsquare, sizeof(qso->gridsquare), log_grid);
+        if (qso->dxcc[0] == '\0') {
+            lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+        }
         snprintf(status_msg, status_sz, "Från logg: %s%s%s",
                  log_name, (log_name[0] && log_qth[0]) ? ", " : "", log_qth);
         return;
@@ -779,8 +785,8 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         }
         if (was_cached) {
             int is_blocked = is_smcb_blocked();
-            /* SMCB har ingen träff: prova QRZ.COM om det är aktiverat */
-            if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+            /* SMCB har ingen träff: prova QRZ.COM om Auto är aktiverat */
+            if (st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
                 int qrz_cached = 0;
                 char q_name[64] = "", q_qth[64] = "", q_grid[16] = "";
                 if (lookup_qrz_cache(qso->call, q_name, sizeof(q_name), q_qth, sizeof(q_qth), q_grid, sizeof(q_grid), &qrz_cached)) {
@@ -821,8 +827,8 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         return;
     }
 
-    /* 3. Icke-svensk signal (eller svensk om SMCB avstängt): slå upp i QRZ.COM om aktiverat */
-    if (st->qrz_enabled && st->qrz_username[0] != '\0') {
+    /* 3. Icke-svensk signal (eller svensk om SMCB avstängt): slå upp i QRZ.COM om Auto är aktiverat */
+    if (st->qrz_enabled == QRZ_MODE_AUTO && st->qrz_username[0] != '\0') {
         if (strcasecmp(qso->call, last_smcb_call) == 0) return;
         copy_str(last_smcb_call, last_smcb_sz, qso->call);
 
@@ -855,6 +861,10 @@ void maybe_lookup_call_details(QSO *qso, const QSOList *log_list,
         start_qrz_background_lookup(st->qrz_username, st->qrz_password, qso->call);
         snprintf(status_msg, status_sz, "QRZ: Slår upp %s...", qso->call);
     }
+
+    if (qso->dxcc[0] == '\0') {
+        lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+    }
 }
 
 /**
@@ -882,23 +892,25 @@ void persist_qso_radio_settings(const QSO *qso, StationSettings *st) {
  * @param status_sz Storlek på statusbuffert.
  * @param current_qrb Buffer för QRB-avståndet.
  * @param qrb_sz Storlek på QRB-buffert.
+ * @param current_quj Buffer för bäringen (QUJ).
+ * @param quj_sz Storlek på QUJ-buffert.
  */
 void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
                                    const QSOList *log_list,
                                    StationSettings *st,
                                    char *last_smcb_call, size_t last_smcb_sz,
                                    char *status_msg, size_t status_sz,
-                                   char *current_qrb, size_t qrb_sz) {
+                                   char *current_qrb, size_t qrb_sz,
+                                   char *current_quj, size_t quj_sz) {
     if (leaving_field == FLD_CALL) {
-        maybe_lookup_call_details(qso, log_list, st, last_smcb_call, last_smcb_sz, status_msg, status_sz);
-        if (current_qrb && qrb_sz > 0) {
-            compute_qrb_str(st, qso, current_qrb, qrb_sz);
+        if (qso->call[0] != '\0') {
+            lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
         }
+        maybe_lookup_call_details(qso, log_list, st, last_smcb_call, last_smcb_sz, status_msg, status_sz);
+        compute_qrb_quj_str(st, qso, current_qrb, qrb_sz, current_quj, quj_sz);
     }
     if (leaving_field == FLD_QTH || leaving_field == FLD_GRID) {
-        if (current_qrb && qrb_sz > 0) {
-            compute_qrb_str(st, qso, current_qrb, qrb_sz);
-        }
+        compute_qrb_quj_str(st, qso, current_qrb, qrb_sz, current_quj, quj_sz);
     }
     if (leaving_field == FLD_FREQ && qso->freq[0] != '\0') {
         char norm_freq[32];
@@ -980,13 +992,14 @@ void step_band_choice(QSO *qso, StationSettings *st, int delta) {
  * @param status_msg Buffer för statusmeddelande.
  * @param status_sz Storlek på statusbuffert.
  * @param current_qrb Buffer för QRB-avstånd.
+ * @param current_quj Buffer för QUJ-bäring (eller NULL).
  */
 void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
                           int *field_cursor_pos, int *editing_index,
                           StationSettings *st, QSOList *log_list,
                           char *last_smcb_call,
                           char *status_msg, size_t status_sz,
-                          char *current_qrb) {
+                          char *current_qrb, char *current_quj) {
     if (qso->call[0] == '\0') {
         copy_str(status_msg, status_sz, "Ange anropssignal först!");
         *active_field = FLD_CALL;
@@ -1067,7 +1080,7 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
         }
         if (ok) {
             snprintf(status_msg, status_sz, "Uppdaterade QSO #%d med %s", idx + 1, qso->call);
-            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
+            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb, current_quj);
         } else {
             copy_str(status_msg, status_sz, "Fel: Kunde inte spara ändring!");
         }
@@ -1082,7 +1095,7 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
             qso_list_push(log_list, qso);
             snprintf(status_msg, status_sz, "Loggade %s (%s %s)",
                      qso->call, qso->band, qso->mode);
-            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb);
+            reset_qso_form(qso, st, time_frozen, active_field, field_cursor_pos, editing_index, last_smcb_call, current_qrb, current_quj);
         } else {
             copy_str(status_msg, status_sz, "Fel: Kunde inte spara till loggen!");
         }

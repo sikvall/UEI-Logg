@@ -17,9 +17,11 @@
 #include "logg.h"
 #include "settings.h"
 #include "qrb.h"
+#include "qrz.h"
 #include "dxcc.h"
 #include "tui.h"
 #include "space_weather.h"
+#include "theme_editor.h"
 
 static int g_tests_run = 0;
 static int g_tests_passed = 0;
@@ -318,6 +320,20 @@ static void run_navigation_tests(void) {
     int filter_ok = (f_cnt_40 == 10);
     record_result(filter_ok, "build_filtered_indices filtrerar korrekt på delsträng ('40 m')", NULL);
 
+    /* Testa markörsynkronisering och fältpekare för samtliga inmatningsfält */
+    QSO nav_qso;
+    memset(&nav_qso, 0, sizeof(nav_qso));
+    copy_str(nav_qso.call, sizeof(nav_qso.call), "SM5UEI");
+    copy_str(nav_qso.qth, sizeof(nav_qso.qth), "Västerås");
+    int cpos = -1;
+    sync_cursor_to_field_end(&nav_qso, FLD_CALL, &cpos);
+    int cpos_call_ok = (cpos == 6);
+    sync_cursor_to_field_end(&nav_qso, FLD_QTH, &cpos);
+    int cpos_qth_ok = (cpos == 8); /* "Västerås" har 8 visningstecken i UTF-8 */
+    int f_cnt_empty = build_filtered_indices(&list, "INGENTRAFF999", indices, (int)list.count);
+    record_result(cpos_call_ok && cpos_qth_ok && f_cnt_empty == 0,
+                  "Markörposition (UTF-8) och tom sökfiltrering (återgång till inmatningsfokus) fungerar korrekt", NULL);
+
     free(indices);
     free(list.items);
 }
@@ -423,6 +439,28 @@ static void run_locator_and_qrb_tests(void) {
     record_result(batch_qrb_ok,
                   "update_all_missing_qrbs uppdaterar alla saknade QRB-värden i logglistan och databasen", NULL);
 
+    /* 6. Bäringsberäkning (calculate_bearing_deg) och format_quj_display */
+    double b_north = calculate_bearing_deg(50.0, 10.0, 60.0, 10.0);
+    double b_south = calculate_bearing_deg(60.0, 10.0, 50.0, 10.0);
+    double b_east  = calculate_bearing_deg(0.0, 10.0, 0.0, 20.0);
+    double b_west  = calculate_bearing_deg(0.0, 20.0, 0.0, 10.0);
+    int cardinal_ok = (fabs(b_north - 0.0) < 0.1 || fabs(b_north - 360.0) < 0.1) &&
+                      (fabs(b_south - 180.0) < 0.1) &&
+                      (fabs(b_east - 90.0) < 0.1) &&
+                      (fabs(b_west - 270.0) < 0.1);
+
+    double b_sm = calculate_bearing_deg(lat1, lon1, lat2, lon2); /* JO89we -> JO67iq (~230°) */
+    int bearing_sm_ok = (b_sm >= 220.0 && b_sm <= 245.0);
+
+    char quj_dsp1[32] = "", quj_dsp2[32] = "";
+    format_quj_display(&st_qrb, &q_calc, quj_dsp1, sizeof(quj_dsp1));
+    format_quj_display(&st_qrb, &q_dsp2, quj_dsp2, sizeof(quj_dsp2));
+    int quj_dsp_ok = (strstr(quj_dsp1, "°") != NULL && atoi(quj_dsp1) >= 220) &&
+                     (strcmp(quj_dsp2, "-") == 0);
+
+    record_result(cardinal_ok && bearing_sm_ok && quj_dsp_ok,
+                  "QUJ calculate_bearing_deg och format_quj_display beräknar och formaterar bäring korrekt", NULL);
+
     free(batch_qrb_list.items);
     db_close();
     unlink(test_qrb_db);
@@ -451,6 +489,15 @@ static void run_dxcc_tests(void) {
     char detail[256];
     snprintf(detail, sizeof(detail), "SM5UEI -> '%s', DL1ABC -> '%s', W1AW -> '%s'", dxcc_sm, dxcc_dl, dxcc_w);
     record_result(sm_ok && dl_ok && w_ok, "lookup_dxcc identifierar Sverige (Sweden), Tyskland (Germany) och USA", (sm_ok && dl_ok && w_ok) ? NULL : detail);
+
+    char dxcc_w1[64] = "", dxcc_g1[64] = "", dxcc_f1[64] = "";
+    lookup_dxcc("W", dxcc_w1, sizeof(dxcc_w1));
+    lookup_dxcc("G", dxcc_g1, sizeof(dxcc_g1));
+    lookup_dxcc("F", dxcc_f1, sizeof(dxcc_f1));
+    int single_ok = (strcmp(dxcc_w1, "USA") == 0 &&
+                     strcmp(dxcc_g1, "England") == 0 &&
+                     strcmp(dxcc_f1, "Frankrike") == 0);
+    record_result(single_ok, "lookup_dxcc identifierar enbokstavsprefix omedelbart vid inmatning (W->USA, G->England, F->Frankrike)", NULL);
 
     free_dxcc_db();
 }
@@ -497,8 +544,87 @@ static void run_settings_tests(void) {
     load_station_settings(tmp_conf, &loaded);
     int notes_ok = (loaded.show_notes == 1);
 
+    /* Validera att SM Callbook hålls avslaget i inställningarna */
+    st.smcb_enabled = 1;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int smcb_disabled_ok = (loaded.smcb_enabled == 0);
+
+    /* Validera Auto QRZ.COM inställningar: Av (0), Auto (1) och Manuell (2) */
+    st.qrz_enabled = QRZ_MODE_OFF;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_off_ok = (loaded.qrz_enabled == QRZ_MODE_OFF);
+
+    st.qrz_enabled = QRZ_MODE_AUTO;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_auto_ok = (loaded.qrz_enabled == QRZ_MODE_AUTO);
+
+    st.qrz_enabled = QRZ_MODE_MANUAL;
+    save_station_settings(tmp_conf, &st);
+    memset(&loaded, 0, sizeof(loaded));
+    load_station_settings(tmp_conf, &loaded);
+    int qrz_manual_ok = (loaded.qrz_enabled == QRZ_MODE_MANUAL);
+
+    /* Testa textbaserad tolkning av QRZ_ENABLED i station.conf */
+    FILE *t_fp = fopen(tmp_conf, "w");
+    if (t_fp) {
+        fprintf(t_fp, "QRZ_ENABLED=auto\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_auto_ok = (loaded.qrz_enabled == QRZ_MODE_AUTO);
+
+        t_fp = fopen(tmp_conf, "w");
+        fprintf(t_fp, "QRZ_ENABLED=manuell\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_manual_ok = (loaded.qrz_enabled == QRZ_MODE_MANUAL);
+
+        t_fp = fopen(tmp_conf, "w");
+        fprintf(t_fp, "QRZ_ENABLED=av\n");
+        fclose(t_fp);
+        load_station_settings(tmp_conf, &loaded);
+        int parse_off_ok = (loaded.qrz_enabled == QRZ_MODE_OFF);
+
+        qrz_off_ok = qrz_off_ok && parse_auto_ok && parse_manual_ok && parse_off_ok;
+    }
+
     unlink(tmp_conf);
     record_result(ok && notes_ok, "save_station_settings och load_station_settings bevarar alla stationsparametrar (inkl. show_notes för F6)", NULL);
+    record_result(smcb_disabled_ok, "SM Callbook hålls dolt och avslaget i inställningarna (smcb_enabled == 0)", NULL);
+    record_result(qrz_off_ok && qrz_auto_ok && qrz_manual_ok,
+                  "Auto QRZ.COM inställning stöder Av (0), Auto (1) och Manuell (2)", NULL);
+
+    /* Testa att maybe_lookup_call_details inte startar QRZ i QRZ_MODE_MANUAL eller QRZ_MODE_OFF */
+    {
+        QSO test_qso;
+        memset(&test_qso, 0, sizeof(test_qso));
+        copy_str(test_qso.call, sizeof(test_qso.call), "JA1ABC");
+        char last_call[32] = "";
+        char s_msg[128] = "";
+        QSOList empty_list = {NULL, 0, 0};
+        StationSettings manual_st;
+        memset(&manual_st, 0, sizeof(manual_st));
+        copy_str(manual_st.qrz_username, sizeof(manual_st.qrz_username), "user");
+        copy_str(manual_st.qrz_password, sizeof(manual_st.qrz_password), "pass");
+        manual_st.qrz_enabled = QRZ_MODE_MANUAL;
+
+        maybe_lookup_call_details(&test_qso, &empty_list, &manual_st, last_call, sizeof(last_call), s_msg, sizeof(s_msg));
+        int manual_did_not_trigger_qrz = (strstr(s_msg, "QRZ:") == NULL);
+
+        manual_st.qrz_enabled = QRZ_MODE_OFF;
+        s_msg[0] = '\0';
+        last_call[0] = '\0';
+        maybe_lookup_call_details(&test_qso, &empty_list, &manual_st, last_call, sizeof(last_call), s_msg, sizeof(s_msg));
+        int off_did_not_trigger_qrz = (strstr(s_msg, "QRZ:") == NULL);
+
+        record_result(manual_did_not_trigger_qrz && off_did_not_trigger_qrz,
+                      "Vid Manuell och Av sker inget automatiskt QRZ-uppslag vid inmatning", NULL);
+    }
 
     /* Rymdväder: K/Kp och titelradens högerställda tidsstämpel */
     {
@@ -516,8 +642,42 @@ static void run_settings_tests(void) {
         int right_aligned_ok = (tx == 67 && (tx + tlen == width - 1));
         int label_ok = (sw.k_kiruna[0] != '\0');
 
-        record_result(right_aligned_ok && label_ok,
-                      "Rymdvädersrutan: K/Kp och tidsstämpel högerställd i titelraden (t.ex. ' (kl 16:45) ')", NULL);
+        /* Testa tolkning av DX/NVIS (t.ex. "15m/80m") från hf.avitec.se HTML */
+        const char *sample_sw_html =
+            "<div class=\"whitespace-nowrap\">2/1</div><div>K-index</div>"
+            "<div class=\"whitespace-nowrap\">21,4<span class=\"text-muted\">MHz</span></div><div>MUF</div>"
+            "<h2>Bandval just nu</h2>"
+            "<div><h3>DX · 3 000 km</h3><p>Dagtid är <span class=\"font-medium text-ok\">15 m</span> bäst för DX på 3 000 km, bra läge.</p></div>"
+            "<div><h3>NVIS · 400 km</h3><p>Dagtid är <span class=\"font-medium text-ok\">80 m</span> bäst för NVIS på 400 km, bra läge.</p></div>";
+        SpaceWeatherData parsed_sw;
+        memset(&parsed_sw, 0, sizeof(parsed_sw));
+        int sw_parse_ok = parse_space_weather_html(sample_sw_html, &parsed_sw) &&
+                          (strcmp(parsed_sw.dx_nvis, "15m/80m") == 0) &&
+                          (parsed_sw.dx_nvis_tone == SW_TONE_OK);
+
+        record_result(right_aligned_ok && label_ok && sw_parse_ok,
+                      "Rymdvädersrutan: K/Kp, DX/NVIS ('15m/80m') och tidsstämpel högerställd i titelraden", NULL);
+    }
+
+    /* Titelrad (top bar): Anropssignal, QTH och Lokator utan parenteser */
+    {
+        StationSettings st_top;
+        memset(&st_top, 0, sizeof(st_top));
+        copy_str(st_top.call, sizeof(st_top.call), "SM5UEI");
+        copy_str(st_top.qth, sizeof(st_top.qth), "KARLHOLM");
+        copy_str(st_top.gridsquare, sizeof(st_top.gridsquare), "JP80TM");
+
+        char station_info[128];
+        const char *my_call = st_top.call[0] ? st_top.call : "SM5UEI";
+        const char *my_qth  = st_top.qth[0] ? st_top.qth : "";
+        const char *my_grid = st_top.gridsquare[0] ? st_top.gridsquare : "";
+        if (my_qth[0] != '\0' && my_grid[0] != '\0') {
+            snprintf(station_info, sizeof(station_info), "%s %s %s", my_call, my_qth, my_grid);
+        }
+        int top_ok = (strcmp(station_info, "SM5UEI KARLHOLM JP80TM") == 0) &&
+                     (strchr(station_info, '(') == NULL) &&
+                     (strchr(station_info, ')') == NULL);
+        record_result(top_ok, "Titelrad: format 'Anropssignal QTH Lokator' utan parenteser runt QTH", NULL);
     }
 }
 
@@ -1239,6 +1399,8 @@ static void run_swedish_chars_tests(void) {
         if (access("qsolog.sq3", F_OK) == 0) {
             db_close();
             db_open("qsolog.sq3");
+            sqlite3 *h = db_get_handle();
+            if (h) sqlite3_exec(h, "DELETE FROM qsos WHERE call='SM5EDIT';", NULL, NULL, NULL);
             QSOList prod_list;
             memset(&prod_list, 0, sizeof(prod_list));
             int cnt = db_load_all_qsos(&prod_list);
@@ -1261,6 +1423,7 @@ static void run_swedish_chars_tests(void) {
             int ok = (cnt > 0) && all_clean && swedish_found;
             record_result(ok, "Produktionsdatabas qsolog.sq3: 100% giltig UTF-8 i alla Namn-, QTH- och Noteringsfält", NULL);
             free(prod_list.items);
+            db_close();
         }
     }
 
@@ -1327,19 +1490,19 @@ static void run_swedish_chars_tests(void) {
         record_result(max_ok && min_ok, "QTH-kolumnregler validerade: minsta bredd 10 tkn och maximal bredd 30 tkn", NULL);
     }
 
-    /* 13. QRB döljs före QTH vid minskande fönsterbredd */
+    /* 13. QRB och QUJ döljs samtidigt före QTH vid minskande fönsterbredd */
     {
         LogColumnLayout l_wide, l_mid, l_80;
         calculate_log_column_layout(110, &l_wide);
         calculate_log_column_layout(92, &l_mid);
         calculate_log_column_layout(80, &l_80);
 
-        int wide_ok = (l_wide.w_qrb > 0 && l_wide.w_qth > 0);
-        int mid_ok  = (l_mid.w_qrb == 0 && l_mid.w_qth >= 10); /* QRB dold, QTH kvar */
-        int c80_ok  = (l_80.w_qrb == 0 && l_80.w_qth >= 10);  /* QRB dold, QTH kvar vid 80 kolumner */
+        int wide_ok = (l_wide.w_qrb > 0 && l_wide.w_quj > 0 && l_wide.w_qth > 0);
+        int mid_ok  = (l_mid.w_qrb == 0 && l_mid.w_quj == 0 && l_mid.w_qth >= 10); /* QRB och QUJ dolda, QTH kvar */
+        int c80_ok  = (l_80.w_qrb == 0 && l_80.w_quj == 0 && l_80.w_qth >= 10);  /* QRB och QUJ dolda, QTH kvar vid 80 kolumner */
 
         record_result(wide_ok && mid_ok && c80_ok,
-                      "QRB döljs före QTH vid minskande fönsterbredd (QTH kvarstår medan QRB döljs)", NULL);
+                      "QRB och QUJ döljs samtidigt före QTH vid minskande fönsterbredd", NULL);
     }
 
     /* 14. QTH kvarstår ned till 80 kolumner och döljs vid < 80 kolumner */
@@ -1402,6 +1565,11 @@ static void run_swedish_chars_tests(void) {
 
     /* 17. Redigering av ett hanterat QSO märker det som nytt (handled = 0) och QRB föredrar lokator */
     {
+        const char *test_edit_db = "/tmp/test_edit_flow.sq3";
+        unlink(test_edit_db);
+        db_close();
+        db_open(test_edit_db);
+
         StationSettings cur_st;
         load_station_settings(CONFIG_FILE, &cur_st);
         StationSettings test_st = cur_st;
@@ -1442,7 +1610,7 @@ static void run_swedish_chars_tests(void) {
             char status_buf[128] = "";
             try_save_current_qso(&form_qso, &tf, &af, &fcp, &idx_to_edit,
                                  &test_st, &edit_list, last_call,
-                                 status_buf, sizeof(status_buf), qrb_buf);
+                                 status_buf, sizeof(status_buf), qrb_buf, NULL);
 
             QSOList reloaded = {NULL, 0, 0};
             db_load_all_qsos(&reloaded);
@@ -1461,6 +1629,8 @@ static void run_swedish_chars_tests(void) {
         }
         save_station_settings(CONFIG_FILE, &cur_st);
         free(edit_list.items);
+        db_close();
+        unlink(test_edit_db);
         record_result(edit_marked_new_ok,
                       "Redigering av ett QSO märker det som nytt (handled = 0) och beräknar QRB från lokator", NULL);
     }
@@ -1473,10 +1643,10 @@ static void run_swedish_chars_tests(void) {
 /* [11] Färgscheman och temahantering                                        */
 /* ========================================================================= */
 static void run_theme_tests(void) {
-    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (11 teman) ===" ANSI_RESET "\n");
+    printf(ANSI_BLUE "\n=== [11] Färgscheman och temahantering (16 teman med UEI-tema som default) ===" ANSI_RESET "\n");
 
     /* 1. Antal teman */
-    record_result(THEME_COUNT == 11, "THEME_COUNT är definierat som 11 teman", NULL);
+    record_result(THEME_COUNT == 16, "THEME_COUNT är definierat som 16 teman (inkl. UEI-tema och Egen profil)", NULL);
 
     /* 2. Temanamn och validering */
     int names_ok = 1;
@@ -1488,44 +1658,193 @@ static void run_theme_tests(void) {
     }
     int expected_names = 0;
     if (names_ok &&
-        strcmp(THEME_NAMES[8], "Arktisk Natt (Nord Frost)") == 0 &&
-        strcmp(THEME_NAMES[9], "Field Day (Vintage Radio)") == 0 &&
-        strcmp(THEME_NAMES[10], "Mörkerläge (Crimson Night)") == 0) {
+        strcmp(THEME_NAMES[0], "UEI-tema") == 0 &&
+        strcmp(THEME_NAMES[1], "Turbo Pascal (MC Default)") == 0 &&
+        strcmp(THEME_NAMES[9], "Arktisk Natt (Nord Frost)") == 0 &&
+        strcmp(THEME_NAMES[10], "Field Day (Vintage Radio)") == 0 &&
+        strcmp(THEME_NAMES[11], "Mörkerläge (Crimson Night)") == 0 &&
+        strcmp(THEME_NAMES[12], "Solarized Dark (Djuphav)") == 0 &&
+        strcmp(THEME_NAMES[13], "Dracula (Neon Skymning)") == 0 &&
+        strcmp(THEME_NAMES[14], "Militärradio (Fältgrön)") == 0 &&
+        strcmp(THEME_NAMES[15], "Egen profil (Anpassad)") == 0) {
         expected_names = 1;
     }
-    record_result(names_ok && expected_names, "Alla 11 temanamn definierade, inkl. Arktisk Natt, Field Day och Mörkerläge", NULL);
+    record_result(names_ok && expected_names, "Alla 16 temanamn definierade, med UEI-tema som default och Egen profil som anpassad", NULL);
 
     /* 3. Säker exekvering av apply_color_theme för alla index inkl. gränsvärden */
-    for (int t = -2; t <= 13; ++t) {
+    for (int t = -2; t <= 18; ++t) {
         apply_color_theme(t);
     }
-    record_result(1, "apply_color_theme() exekverar stabilt för alla 11 teman och felaktiga index", NULL);
+    record_result(1, "apply_color_theme() exekverar stabilt för alla 16 teman och felaktiga index", NULL);
 
     /* 4. Sparande och laddning av nya teman i station.conf */
-    const char *test_conf = "test_theme_station.conf";
+    const char *test_conf = "/tmp/test_theme_station.conf";
     StationSettings st_save;
     memset(&st_save, 0, sizeof(st_save));
-    st_save.theme = 8; /* Arktisk Natt */
+    st_save.theme = 0; /* UEI-tema */
     copy_str(st_save.call, sizeof(st_save.call), "SM0TEST");
     save_station_settings(test_conf, &st_save);
 
     StationSettings st_load;
     memset(&st_load, 0, sizeof(st_load));
     load_station_settings(test_conf, &st_load);
-    int p1 = (st_load.theme == 8);
+    int p0 = (st_load.theme == 0);
 
-    st_save.theme = 9; /* Field Day */
+    st_save.theme = 12; /* Solarized Dark */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p2 = (st_load.theme == 9);
+    int p1 = (st_load.theme == 12);
 
-    st_save.theme = 10; /* Mörkerläge */
+    st_save.theme = 13; /* Dracula */
     save_station_settings(test_conf, &st_save);
     load_station_settings(test_conf, &st_load);
-    int p3 = (st_load.theme == 10);
+    int p2 = (st_load.theme == 13);
+
+    st_save.theme = 14; /* Militärradio */
+    save_station_settings(test_conf, &st_save);
+    load_station_settings(test_conf, &st_load);
+    int p3 = (st_load.theme == 14);
+
+    /* 5. Egen färgprofil (CustomTheme) initiering, presets och persistens */
+    CustomTheme def_ct, preset_ct;
+    custom_theme_init_defaults(&def_ct);
+    custom_theme_init_preset(&preset_ct, 3); /* Dracula preset */
+
+    int ct_init_ok = (def_ct.bg_main == 4 && def_ct.fg_text == 14 && def_ct.border == 11) &&
+                     (preset_ct.border_active == 19 && preset_ct.title == 9);
+
+    st_save.theme = THEME_CUSTOM;
+    st_save.custom_theme = def_ct;
+    st_save.custom_theme.border = 15; /* Ändra till Orange */
+    st_save.custom_theme.title = 14;  /* Ändra till Solgul */
+    save_station_settings(test_conf, &st_save);
+
+    memset(&st_load, 0, sizeof(st_load));
+    load_station_settings(test_conf, &st_load);
+    int custom_persist_ok = (st_load.theme == THEME_CUSTOM) &&
+                            (st_load.custom_theme.border == 15) &&
+                            (st_load.custom_theme.title == 14) &&
+                            (st_load.custom_theme.bg_main == def_ct.bg_main);
+
+    /* Validera att utebliven THEME i station.conf ger default (UEI-tema = 0) */
+    StationSettings st_def;
+    load_station_settings("/tmp/nonexistent_conf.conf", &st_def);
+    int def_theme_ok = (st_def.theme == THEME_DEFAULT);
 
     unlink(test_conf);
-    record_result(p1 && p2 && p3, "StationSettings sparar och läser in alla nya teman korrekt via station.conf", NULL);
+    record_result(p0 && p1 && p2 && p3 && ct_init_ok && custom_persist_ok && def_theme_ok,
+                  "CustomTheme: presets, init_defaults och fullständig persistens i station.conf (THEME=15)", NULL);
+}
+
+/* ========================================================================= */
+/* [12] Direktloggning mot QRZ.COM (Inställningar, ADIF & Svarsanalys)       */
+/* ========================================================================= */
+static void run_qrz_direct_log_tests(void) {
+    printf(ANSI_BLUE "\n=== [12] Direktloggning mot QRZ.COM ===" ANSI_RESET "\n");
+
+    const char *test_conf = "/tmp/test_qrz_log_station.conf";
+    unlink(test_conf);
+
+    /* 1. Default-regel: Manuell om användarnamn och lösenord för QRZ.COM är ifyllda */
+    {
+        FILE *fp = fopen(test_conf, "w");
+        if (fp) {
+            fprintf(fp, "CALL=SM5UEI\nQRZ_USER=SM5UEI\nQRZ_PASS=hemligt\n");
+            fclose(fp);
+        }
+        StationSettings st_cred;
+        load_station_settings(test_conf, &st_cred);
+
+        FILE *fp2 = fopen(test_conf, "w");
+        if (fp2) {
+            fprintf(fp2, "CALL=SM5UEI\n");
+            fclose(fp2);
+        }
+        StationSettings st_nocred;
+        load_station_settings(test_conf, &st_nocred);
+
+        int ok = (st_cred.qrz_log_enabled == QRZ_LOG_MANUAL) &&
+                 (st_nocred.qrz_log_enabled == QRZ_LOG_OFF);
+        record_result(ok, "Default för Direktlogg QRZ.COM är Manuell om QRZ-användare/lösen är ifyllt, annars Av", NULL);
+    }
+
+    /* 2. Persistens av QRZ_LOG_ENABLED (Av, Automatisk, Manuell) och QRZ_API_KEY */
+    {
+        StationSettings st_save, st_load;
+        memset(&st_save, 0, sizeof(st_save));
+        copy_str(st_save.call, sizeof(st_save.call), "SM5UEI");
+        copy_str(st_save.qrz_api_key, sizeof(st_save.qrz_api_key), "ABCD-1234-EFGH-5678");
+
+        st_save.qrz_log_enabled = QRZ_LOG_AUTO;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_auto = (st_load.qrz_log_enabled == QRZ_LOG_AUTO) &&
+                      (strcmp(st_load.qrz_api_key, "ABCD-1234-EFGH-5678") == 0);
+
+        st_save.qrz_log_enabled = QRZ_LOG_MANUAL;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_man = (st_load.qrz_log_enabled == QRZ_LOG_MANUAL);
+
+        st_save.qrz_log_enabled = QRZ_LOG_OFF;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_off = (st_load.qrz_log_enabled == QRZ_LOG_OFF);
+
+        unlink(test_conf);
+        record_result(ok_auto && ok_man && ok_off,
+                      "QRZ_LOG_ENABLED (Av, Automatisk, Manuell) och QRZ_API_KEY sparas och läses in korrekt", NULL);
+    }
+
+    /* 3. qrz_build_adif_record genererar korrekt ADIF-post */
+    {
+        QSO q;
+        memset(&q, 0, sizeof(q));
+        copy_str(q.call, sizeof(q.call), "DL1ABC");
+        copy_str(q.name, sizeof(q.name), "Hans");
+        copy_str(q.date, sizeof(q.date), "2026-11-15");
+        copy_str(q.time_utc, sizeof(q.time_utc), "12:30");
+        copy_str(q.freq, sizeof(q.freq), "14.205");
+        copy_str(q.band, sizeof(q.band), "20 m");
+        copy_str(q.mode, sizeof(q.mode), "SSB");
+        copy_str(q.rst_sent, sizeof(q.rst_sent), "59");
+        copy_str(q.rst_rcvd, sizeof(q.rst_rcvd), "59");
+        copy_str(q.gridsquare, sizeof(q.gridsquare), "JO52");
+        copy_str(q.qth, sizeof(q.qth), "Berlin");
+
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+        copy_str(st.gridsquare, sizeof(st.gridsquare), "JO89VJ");
+
+        char adif[1024];
+        qrz_build_adif_record(&q, &st, adif, sizeof(adif));
+
+        int ok = (strstr(adif, "<CALL:6>DL1ABC") != NULL) &&
+                 (strstr(adif, "<QSO_DATE:8>20261115") != NULL) &&
+                 (strstr(adif, "<TIME_ON:4>1230") != NULL) &&
+                 (strstr(adif, "<FREQ:6>14.205") != NULL) &&
+                 (strstr(adif, "<BAND:3>20m") != NULL) &&
+                 (strstr(adif, "<MODE:3>SSB") != NULL) &&
+                 (strstr(adif, "<STATION_CALLSIGN:6>SM5UEI") != NULL) &&
+                 (strstr(adif, "<EOR>") != NULL);
+        record_result(ok, "qrz_build_adif_record bygger giltig ADIF-post med CALL, QSO_DATE, TIME_ON, BAND, MODE och <EOR>", NULL);
+    }
+
+    /* 4. qrz_parse_logbook_response tolkar OK, REPLACE, FAIL och AUTH */
+    {
+        char err[128] = "";
+        int ok1 = qrz_parse_logbook_response("RESULT=OK&LOGID=987654&COUNT=1", err, sizeof(err));
+        int ok2 = qrz_parse_logbook_response("STATUS=OK&RESULT=REPLACE&LOGIDS=987654", err, sizeof(err));
+        int fail1 = qrz_parse_logbook_response("RESULT=FAIL&REASON=Unable to add QSO to database: duplicate&EXTENDED=", err, sizeof(err));
+        int has_reason = (strstr(err, "duplicate") != NULL);
+        char err2[128] = "";
+        int fail2 = qrz_parse_logbook_response("RESULT=AUTH&REASON=invalid api key", err2, sizeof(err2));
+        int has_auth_err = (strstr(err2, "invalid api key") != NULL);
+
+        int ok = (ok1 == 1) && (ok2 == 1) && (fail1 == 0) && has_reason && (fail2 == 0) && has_auth_err;
+        record_result(ok, "qrz_parse_logbook_response hanterar RESULT=OK, RESULT=REPLACE, RESULT=FAIL och RESULT=AUTH", NULL);
+    }
 }
 
 /* ========================================================================= */
@@ -1552,6 +1871,7 @@ int main(int argc, char *argv[]) {
     run_sqlite_tests();
     run_swedish_chars_tests();
     run_theme_tests();
+    run_qrz_direct_log_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

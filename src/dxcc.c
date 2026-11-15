@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 /* Struktur för en DXCC-regel */
 typedef struct {
@@ -55,6 +56,24 @@ void load_dxcc_file(const char *filename) {
     free_dxcc_db();
 
     FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        /* Försök hitta filen i samma katalog som den körbara filen */
+        char exe_dir_path[1024];
+        ssize_t len = readlink("/proc/self/exe", exe_dir_path, sizeof(exe_dir_path) - 1);
+        if (len > 0) {
+            exe_dir_path[len] = '\0';
+            char *slash = strrchr(exe_dir_path, '/');
+            if (slash != NULL) {
+                *(slash + 1) = '\0';
+                strncat(exe_dir_path, filename, sizeof(exe_dir_path) - strlen(exe_dir_path) - 1);
+                fp = fopen(exe_dir_path, "r");
+            }
+        }
+    }
+    if (fp == NULL) {
+        /* Fallback till standardkataloger */
+        fp = fopen("/home/anders/Documents/UEI-Logg/dxcc.txt", "r");
+    }
     if (fp == NULL) return;
 
     char line[256];
@@ -190,7 +209,7 @@ void lookup_dxcc(const char *call_in, char *out, size_t out_sz) {
     }
     call[j] = '\0';
 
-    if (j < 2) return;
+    if (j < 1) return;
 
     /* 1. Kontrollera exakt matchning */
     const char *exact = match_exact_dxcc(call);
@@ -220,7 +239,7 @@ void lookup_dxcc(const char *call_in, char *out, size_t out_sz) {
         if (second_slash) *second_slash = '\0';
 
         if (is_modifier_suffix(part2)) {
-            if (strlen(part1) >= 2) {
+            if (strlen(part1) >= 1) {
                 const char *c1 = match_exact_dxcc(part1);
                 if (!c1) c1 = match_prefix_dxcc(part1);
                 if (c1) copy_str(out, out_sz, c1);
