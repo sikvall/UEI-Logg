@@ -749,6 +749,61 @@ static void run_string_and_utf8_tests(void) {
                  (strcmp(rst_c2, "59+20/59+5") == 0) &&
                  (strcmp(rst_c3, "59/59") == 0);
     record_result(rst_ok, "format_rst_combined sammanfogar RST T och RST R som '599/599' och '59+20/59+5'", NULL);
+
+    /* 8. Tidsinmatning 21:58 (HH:MM) och 2158 (HHMM) tolkas likadant */
+    {
+        char t_colon_ui[16], t_digits_ui[16];
+        char t_colon_adif[16], t_digits_adif[16];
+        char t_colon_hhmm[16], t_digits_hhmm[16];
+
+        format_time_hh_mm("21:58", t_colon_ui, sizeof(t_colon_ui));
+        format_time_hh_mm("2158", t_digits_ui, sizeof(t_digits_ui));
+        normalize_time_adif("21:58", t_colon_adif, sizeof(t_colon_adif));
+        normalize_time_adif("2158", t_digits_adif, sizeof(t_digits_adif));
+        format_time_hhmm("21:58", t_colon_hhmm, sizeof(t_colon_hhmm));
+        format_time_hhmm("2158", t_digits_hhmm, sizeof(t_digits_hhmm));
+
+        QSO q_leave;
+        memset(&q_leave, 0, sizeof(q_leave));
+        copy_str(q_leave.time_utc, sizeof(q_leave.time_utc), "2158");
+        StationSettings st_tmp;
+        memset(&st_tmp, 0, sizeof(st_tmp));
+        char last_smcb[32] = "", status_msg[128] = "", qrb[32] = "", quj[32] = "";
+        apply_field_defaults_on_leave(&q_leave, FLD_TIME, NULL, &st_tmp,
+                                      last_smcb, sizeof(last_smcb),
+                                      status_msg, sizeof(status_msg),
+                                      qrb, sizeof(qrb), quj, sizeof(quj));
+
+        QSO qa, qb;
+        memset(&qa, 0, sizeof(qa));
+        memset(&qb, 0, sizeof(qb));
+        copy_str(qa.call, sizeof(qa.call), "SM5UEI");
+        copy_str(qa.date, sizeof(qa.date), "2026-11-15");
+        copy_str(qa.time_utc, sizeof(qa.time_utc), "21:58");
+        copy_str(qa.band, sizeof(qa.band), "20 m");
+
+        copy_str(qb.call, sizeof(qb.call), "SM5UEI");
+        copy_str(qb.date, sizeof(qb.date), "2026-11-15");
+        copy_str(qb.time_utc, sizeof(qb.time_utc), "2158");
+        copy_str(qb.band, sizeof(qb.band), "20 m");
+
+        QSOList dlist;
+        memset(&dlist, 0, sizeof(dlist));
+        qso_list_push(&dlist, &qa);
+        int is_dup = qso_is_duplicate(&dlist, &qb);
+        int cmp_eq = (cmp_qso_chronological(&qa, &qb) == 0);
+        free(dlist.items);
+
+        int time_eq_ok = (strcmp(t_colon_ui, "21:58") == 0) &&
+                         (strcmp(t_digits_ui, "21:58") == 0) &&
+                         (strcmp(t_colon_adif, "2158") == 0) &&
+                         (strcmp(t_digits_adif, "2158") == 0) &&
+                         (strcmp(t_colon_hhmm, "2158") == 0) &&
+                         (strcmp(t_digits_hhmm, "2158") == 0) &&
+                         (strcmp(q_leave.time_utc, "21:58") == 0) &&
+                         (is_dup == 1) && cmp_eq;
+        record_result(time_eq_ok, "Tidsinmatning '21:58' (HH:MM) och '2158' (HHMM) normaliseras och tolkas identiskt", NULL);
+    }
 }
 
 /* ========================================================================= */

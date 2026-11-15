@@ -123,6 +123,8 @@ int db_load_all_qsos(QSOList *list) {
         read_column_text(stmt, 2, q.name, sizeof(q.name));
         read_column_text(stmt, 3, q.date, sizeof(q.date));
         read_column_text(stmt, 4, q.time_utc, sizeof(q.time_utc));
+        if (q.date[0] != '\0') format_date_yyyy_mm_dd(q.date, q.date, sizeof(q.date));
+        if (q.time_utc[0] != '\0') format_time_hh_mm(q.time_utc, q.time_utc, sizeof(q.time_utc));
         read_column_text(stmt, 5, q.gridsquare, sizeof(q.gridsquare));
         read_column_text(stmt, 6, q.freq, sizeof(q.freq));
         read_column_text(stmt, 7, q.band, sizeof(q.band));
@@ -150,17 +152,20 @@ static const char *INSERT_SQL =
 
 static int bind_qso_params(sqlite3_stmt *stmt, const QSO *qso) {
     char s_call[64], s_name[128], s_qth[128], s_comm[512], s_dxcc[128], s_grid[32];
+    char s_date[16], s_time[16];
     sanitize_to_utf8(qso->call, s_call, sizeof(s_call));
     sanitize_to_utf8(qso->name, s_name, sizeof(s_name));
     sanitize_to_utf8(qso->qth, s_qth, sizeof(s_qth));
     sanitize_to_utf8(qso->comment, s_comm, sizeof(s_comm));
     sanitize_to_utf8(qso->dxcc, s_dxcc, sizeof(s_dxcc));
     sanitize_to_utf8(qso->gridsquare, s_grid, sizeof(s_grid));
+    format_date_yyyy_mm_dd(qso->date, s_date, sizeof(s_date));
+    format_time_hh_mm(qso->time_utc, s_time, sizeof(s_time));
 
     sqlite3_bind_text(stmt, 1, s_call, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, s_name, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, qso->date, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 4, qso->time_utc, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, s_date, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, s_time, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 5, s_grid, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 6, qso->freq, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 7, qso->band, -1, SQLITE_TRANSIENT);

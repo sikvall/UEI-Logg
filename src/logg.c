@@ -656,11 +656,15 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
  */
 int qso_is_duplicate(const QSOList *list, const QSO *q) {
     if (q->call[0] == '\0') return 0;
+    char q_time[16];
+    normalize_time_adif(q->time_utc, q_time, sizeof(q_time));
     for (size_t i = 0; i < list->count; ++i) {
         const QSO *ex = &list->items[i];
+        char ex_time[16];
+        normalize_time_adif(ex->time_utc, ex_time, sizeof(ex_time));
         if (strcasecmp(ex->call, q->call) == 0 &&
             strcmp(ex->date, q->date) == 0 &&
-            strcmp(ex->time_utc, q->time_utc) == 0) {
+            strcmp(ex_time, q_time) == 0) {
             if (ex->band[0] == '\0' || q->band[0] == '\0' || strcasecmp(ex->band, q->band) == 0 ||
                 (ex->freq[0] != '\0' && q->freq[0] != '\0' && strcmp(ex->freq, q->freq) == 0)) {
                 return 1;
@@ -681,7 +685,10 @@ int cmp_qso_chronological(const void *a_ptr, const void *b_ptr) {
     const QSO *b = (const QSO *)b_ptr;
     int c = strcmp(a->date, b->date);
     if (c != 0) return c;
-    return strcmp(a->time_utc, b->time_utc);
+    char a_time[16], b_time[16];
+    normalize_time_adif(a->time_utc, a_time, sizeof(a_time));
+    normalize_time_adif(b->time_utc, b_time, sizeof(b_time));
+    return strcmp(a_time, b_time);
 }
 
 /**
@@ -931,6 +938,12 @@ void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
         if (qso->rst_sent[0] == '\0') copy_str(qso->rst_sent, sizeof(qso->rst_sent), def_rst);
         if (qso->rst_rcvd[0] == '\0') copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), def_rst);
         persist_qso_radio_settings(qso, st);
+    }
+    if (leaving_field == FLD_DATE && qso->date[0] != '\0') {
+        format_date_yyyy_mm_dd(qso->date, qso->date, sizeof(qso->date));
+    }
+    if (leaving_field == FLD_TIME && qso->time_utc[0] != '\0') {
+        format_time_hh_mm(qso->time_utc, qso->time_utc, sizeof(qso->time_utc));
     }
 }
 

@@ -81,7 +81,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Rad 1: Signal (10), RST T (6), RST R (6), Namn (14)",
             "  * Rad 2: DXCC (land), Lokator (6), QRB (avstånd), QTH (14)",
             "  * Rad 3: Frekvens (MHz), Band (dropdown), Mode, QUJ (bäring)",
-            "  * Rad 4: Datum (YYYY-MM-DD), UTC (HH:MM), Notering (resten av raden)",
+            "  * Rad 4: Datum (YYYY-MM-DD), UTC (HH:MM el. HHMM), Notering (resten av raden)",
             "",
             "Smarta funktioner:",
             "  * Klockan uppdateras live varje sekund tills inmatning påbörjas i ett fält.",

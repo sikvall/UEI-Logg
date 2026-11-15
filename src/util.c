@@ -813,6 +813,8 @@ void normalize_time_adif(const char *in, char *out, size_t out_sz) {
     if (cj >= 4) {
         clean[4] = '\0';
         copy_str(out, out_sz, clean);
+    } else if (cj == 3) {
+        snprintf(out, out_sz, "0%s", clean);
     } else {
         copy_str(out, out_sz, in ? in : "");
     }
@@ -1127,9 +1129,10 @@ void format_time_hhmm(const char *time_in, char *out, size_t out_sz) {
     out[0] = '\0';
     if (time_in == NULL || time_in[0] == '\0') return;
 
-    if (strlen(time_in) >= 5 && time_in[2] == ':') {
-        snprintf(out, out_sz, "%c%c%c%c",
-                 time_in[0], time_in[1], time_in[3], time_in[4]);
+    char digits[16];
+    normalize_time_adif(time_in, digits, sizeof(digits));
+    if (strlen(digits) >= 4) {
+        snprintf(out, out_sz, "%.4s", digits);
         return;
     }
     copy_str(out, out_sz, time_in);
