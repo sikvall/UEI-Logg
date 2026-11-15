@@ -17,6 +17,7 @@
 #include "logg.h"
 #include "settings.h"
 #include "qrb.h"
+#include "qrz.h"
 #include "dxcc.h"
 #include "tui.h"
 #include "space_weather.h"
@@ -1736,6 +1737,117 @@ static void run_theme_tests(void) {
 }
 
 /* ========================================================================= */
+/* [12] Direktloggning mot QRZ.COM (Inställningar, ADIF & Svarsanalys)       */
+/* ========================================================================= */
+static void run_qrz_direct_log_tests(void) {
+    printf(ANSI_BLUE "\n=== [12] Direktloggning mot QRZ.COM ===" ANSI_RESET "\n");
+
+    const char *test_conf = "/tmp/test_qrz_log_station.conf";
+    unlink(test_conf);
+
+    /* 1. Default-regel: Manuell om användarnamn och lösenord för QRZ.COM är ifyllda */
+    {
+        FILE *fp = fopen(test_conf, "w");
+        if (fp) {
+            fprintf(fp, "CALL=SM5UEI\nQRZ_USER=SM5UEI\nQRZ_PASS=hemligt\n");
+            fclose(fp);
+        }
+        StationSettings st_cred;
+        load_station_settings(test_conf, &st_cred);
+
+        FILE *fp2 = fopen(test_conf, "w");
+        if (fp2) {
+            fprintf(fp2, "CALL=SM5UEI\n");
+            fclose(fp2);
+        }
+        StationSettings st_nocred;
+        load_station_settings(test_conf, &st_nocred);
+
+        int ok = (st_cred.qrz_log_enabled == QRZ_LOG_MANUAL) &&
+                 (st_nocred.qrz_log_enabled == QRZ_LOG_OFF);
+        record_result(ok, "Default för Direktlogg QRZ.COM är Manuell om QRZ-användare/lösen är ifyllt, annars Av", NULL);
+    }
+
+    /* 2. Persistens av QRZ_LOG_ENABLED (Av, Automatisk, Manuell) och QRZ_API_KEY */
+    {
+        StationSettings st_save, st_load;
+        memset(&st_save, 0, sizeof(st_save));
+        copy_str(st_save.call, sizeof(st_save.call), "SM5UEI");
+        copy_str(st_save.qrz_api_key, sizeof(st_save.qrz_api_key), "ABCD-1234-EFGH-5678");
+
+        st_save.qrz_log_enabled = QRZ_LOG_AUTO;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_auto = (st_load.qrz_log_enabled == QRZ_LOG_AUTO) &&
+                      (strcmp(st_load.qrz_api_key, "ABCD-1234-EFGH-5678") == 0);
+
+        st_save.qrz_log_enabled = QRZ_LOG_MANUAL;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_man = (st_load.qrz_log_enabled == QRZ_LOG_MANUAL);
+
+        st_save.qrz_log_enabled = QRZ_LOG_OFF;
+        save_station_settings(test_conf, &st_save);
+        load_station_settings(test_conf, &st_load);
+        int ok_off = (st_load.qrz_log_enabled == QRZ_LOG_OFF);
+
+        unlink(test_conf);
+        record_result(ok_auto && ok_man && ok_off,
+                      "QRZ_LOG_ENABLED (Av, Automatisk, Manuell) och QRZ_API_KEY sparas och läses in korrekt", NULL);
+    }
+
+    /* 3. qrz_build_adif_record genererar korrekt ADIF-post */
+    {
+        QSO q;
+        memset(&q, 0, sizeof(q));
+        copy_str(q.call, sizeof(q.call), "DL1ABC");
+        copy_str(q.name, sizeof(q.name), "Hans");
+        copy_str(q.date, sizeof(q.date), "2026-11-15");
+        copy_str(q.time_utc, sizeof(q.time_utc), "12:30");
+        copy_str(q.freq, sizeof(q.freq), "14.205");
+        copy_str(q.band, sizeof(q.band), "20 m");
+        copy_str(q.mode, sizeof(q.mode), "SSB");
+        copy_str(q.rst_sent, sizeof(q.rst_sent), "59");
+        copy_str(q.rst_rcvd, sizeof(q.rst_rcvd), "59");
+        copy_str(q.gridsquare, sizeof(q.gridsquare), "JO52");
+        copy_str(q.qth, sizeof(q.qth), "Berlin");
+
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+        copy_str(st.gridsquare, sizeof(st.gridsquare), "JO89VJ");
+
+        char adif[1024];
+        qrz_build_adif_record(&q, &st, adif, sizeof(adif));
+
+        int ok = (strstr(adif, "<CALL:6>DL1ABC") != NULL) &&
+                 (strstr(adif, "<QSO_DATE:8>20261115") != NULL) &&
+                 (strstr(adif, "<TIME_ON:4>1230") != NULL) &&
+                 (strstr(adif, "<FREQ:6>14.205") != NULL) &&
+                 (strstr(adif, "<BAND:3>20m") != NULL) &&
+                 (strstr(adif, "<MODE:3>SSB") != NULL) &&
+                 (strstr(adif, "<STATION_CALLSIGN:6>SM5UEI") != NULL) &&
+                 (strstr(adif, "<EOR>") != NULL);
+        record_result(ok, "qrz_build_adif_record bygger giltig ADIF-post med CALL, QSO_DATE, TIME_ON, BAND, MODE och <EOR>", NULL);
+    }
+
+    /* 4. qrz_parse_logbook_response tolkar OK, REPLACE, FAIL och AUTH */
+    {
+        char err[128] = "";
+        int ok1 = qrz_parse_logbook_response("RESULT=OK&LOGID=987654&COUNT=1", err, sizeof(err));
+        int ok2 = qrz_parse_logbook_response("STATUS=OK&RESULT=REPLACE&LOGIDS=987654", err, sizeof(err));
+        int fail1 = qrz_parse_logbook_response("RESULT=FAIL&REASON=Unable to add QSO to database: duplicate&EXTENDED=", err, sizeof(err));
+        int has_reason = (strstr(err, "duplicate") != NULL);
+        char err2[128] = "";
+        int fail2 = qrz_parse_logbook_response("RESULT=AUTH&REASON=invalid api key", err2, sizeof(err2));
+        int has_auth_err = (strstr(err2, "invalid api key") != NULL);
+
+        int ok = (ok1 == 1) && (ok2 == 1) && (fail1 == 0) && has_reason && (fail2 == 0) && has_auth_err;
+        record_result(ok, "qrz_parse_logbook_response hanterar RESULT=OK, RESULT=REPLACE, RESULT=FAIL och RESULT=AUTH", NULL);
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -1759,6 +1871,7 @@ int main(int argc, char *argv[]) {
     run_sqlite_tests();
     run_swedish_chars_tests();
     run_theme_tests();
+    run_qrz_direct_log_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

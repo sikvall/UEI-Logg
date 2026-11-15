@@ -37,7 +37,8 @@ static const HelpTopic HELP_TOPICS[] = {
         "Globala tangentbordskommandon",
         {
             "F1           - Rensa inmatningsformulär & återstarta UTC-klockan",
-            "F2 el. Enter - Logga och spara pågående QSO till loggboken",
+            "F2 el. Enter - Logga och spara pågående QSO (även till QRZ vid Automatisk)",
+            "Ctrl+L (^L)  - Logga direkt mot QRZ.COM (i formulär eller på loggrad)",
             "F3 el. ^F    - Sök och filtrera rader i logglistan i realtid",
             "F4 el. ^O    - Växla tangentbordsfokus mellan inmatningsfält och loggrader",
             "F5           - Manuellt uppslag mot QRZ.COM (eller lokala källor)",
@@ -55,7 +56,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        17
+        18
     },
     {
         "[2] Inmatning",
@@ -133,6 +134,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Multimarkering och statusändring:",
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
+            "  * Ctrl+L (^L): Loggar markerade rader eller vald rad direkt till QRZ.COM.",
             "  * F5: Växlar status mellan Hanterad (✓) och Ny (✗).",
             "  * F6: Växlar visning av noteringar i loggraderna (på/av).",
             "  * F7: Sätter ALLA loggrader som Hanterade (✓).",
@@ -148,7 +150,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck ESC för att återställa sökningen och visa hela loggboken igen.",
             NULL
         },
-        23
+        24
     },
     {
         "[5] Inställningar",
@@ -157,8 +159,10 @@ static const HelpTopic HELP_TOPICS[] = {
             "Stationsinställningar (station.conf):",
             "  * Min signal, Operatörsnamn, QTH och Lokator (6 tecken, t.ex. JO89VJ).",
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
-            "  * Inloggningsuppgifter för QRZ.COM (lösenord maskeras med **********).",
+            "  * Inloggningsuppgifter för QRZ.COM samt QRZ Logbook API-nyckel.",
             "  * Auto QRZ.COM: Av, Auto eller Manuell (vid Manuell sker uppslag enbart via F5).",
+            "  * Direktlogg QRZ.COM: Av, Automatisk (vid Enter/F2) eller Manuell (via Ctrl+L).",
+            "    Default är Manuell om användarnamn och lösenord för QRZ.COM är ifyllda.",
             "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
             "",
             "ADIF Import (F5 i inställningar):",
@@ -178,7 +182,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        24
+        26
     },
     {
         "[6] Rymdväder",

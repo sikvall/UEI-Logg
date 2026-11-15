@@ -817,6 +817,9 @@ void qrz_build_adif_record(const QSO *qso, const StationSettings *st, char *out,
     }
     if (raw_band[0] != '\0' && strcmp(raw_band, "?") != 0 && strcmp(raw_band, "-") != 0) {
         normalize_band_adif(raw_band, clean_band, sizeof(clean_band));
+        for (char *c = clean_band; *c != '\0'; ++c) {
+            *c = (char)tolower((unsigned char)*c);
+        }
     }
 
     char clean_freq[32] = "";

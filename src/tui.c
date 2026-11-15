@@ -1031,6 +1031,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
                 items[count++] = (FKeyItem){"Esc", "Återställ"};
             }
             items[count++] = (FKeyItem){"Enter", "Redigera"};
+            items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F4", "Fokus"};
             items[count++] = (FKeyItem){"F5", "Hant/Ny"};
             items[count++] = (FKeyItem){"F6", "Noter"};
@@ -1043,14 +1044,15 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
                 items[count++] = (FKeyItem){"Esc", "Återställ"};
             }
             items[count++] = (FKeyItem){"F2", "Logga"};
+            items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
             items[count++] = (FKeyItem){"F4", "Logg"};
-            items[count++] = (FKeyItem){"F5", "Uppslag"};
+            items[count++] = (FKeyItem){"F5", (COLS >= 92) ? "Uppslag" : "Uppsl"};
             items[count++] = (FKeyItem){"F6", "Noter"};
             items[count++] = (FKeyItem){"F7", "QRB"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
-            items[count++] = (FKeyItem){"F10", (COLS >= 88) ? "Avsluta" : "Avsl"};
-            items[count++] = (FKeyItem){"F12", (COLS >= 88) ? "Inställn." : "Inst"};
+            items[count++] = (FKeyItem){"F10", (COLS >= 92) ? "Avsluta" : "Avsl"};
+            items[count++] = (FKeyItem){"F12", (COLS >= 92) ? "Inställn." : "Inst"};
         }
     }
 
@@ -1058,7 +1060,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
     for (int i = 0; i < count; ++i) {
         int klen = (int)strlen(items[i].fkey);
         int llen = utf8_display_width(items[i].label);
-        if (col + klen + llen + 2 > COLS) break;
+        if (col + klen + llen > COLS) break;
 
         attron(COLOR_PAIR(CP_FKEY_NUM) | A_BOLD);
         mvprintw(y, col, "%s", items[i].fkey);
@@ -1070,7 +1072,9 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         attroff(COLOR_PAIR(CP_FKEY_LABEL));
         col += llen;
 
-        mvaddch(y, col++, ' ');
+        if (col < COLS) {
+            mvaddch(y, col++, ' ');
+        }
     }
 }
 
