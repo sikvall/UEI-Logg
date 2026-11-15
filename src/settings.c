@@ -35,12 +35,14 @@ void load_station_settings(const char *filename, StationSettings *st) {
     memset(st, 0, sizeof(*st));
     st->smcb_enabled = 0;
     st->qrz_enabled = QRZ_MODE_OFF;
+    st->qrz_log_enabled = QRZ_LOG_OFF;
     st->show_stats = 1;
     st->show_space_weather = 1;
     st->show_notes = 1;
     st->theme = THEME_DEFAULT;
     st->qrz_username[0] = '\0';
     st->qrz_password[0] = '\0';
+    st->qrz_api_key[0] = '\0';
     custom_theme_init_defaults(&st->custom_theme);
     copy_str(st->last_band, sizeof(st->last_band), "20 m");
     copy_str(st->last_freq, sizeof(st->last_freq), "14.200");
@@ -52,6 +54,7 @@ void load_station_settings(const char *filename, StationSettings *st) {
         return;
     }
 
+    int has_qrz_log_setting = 0;
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -99,6 +102,8 @@ void load_station_settings(const char *filename, StationSettings *st) {
             copy_str(st->qrz_username, sizeof(st->qrz_username), val);
         } else if (strcasecmp(key, "QRZ_PASS") == 0) {
             copy_str(st->qrz_password, sizeof(st->qrz_password), val);
+        } else if (strcasecmp(key, "QRZ_API_KEY") == 0) {
+            copy_str(st->qrz_api_key, sizeof(st->qrz_api_key), val);
         } else if (strcasecmp(key, "QRZ_ENABLED") == 0) {
             if (strcasecmp(val, "auto") == 0 || strcmp(val, "1") == 0) {
                 st->qrz_enabled = QRZ_MODE_AUTO;
@@ -106,6 +111,15 @@ void load_station_settings(const char *filename, StationSettings *st) {
                 st->qrz_enabled = QRZ_MODE_MANUAL;
             } else {
                 st->qrz_enabled = QRZ_MODE_OFF;
+            }
+        } else if (strcasecmp(key, "QRZ_LOG_ENABLED") == 0) {
+            has_qrz_log_setting = 1;
+            if (strcasecmp(val, "auto") == 0 || strcasecmp(val, "automatisk") == 0 || strcmp(val, "1") == 0) {
+                st->qrz_log_enabled = QRZ_LOG_AUTO;
+            } else if (strcasecmp(val, "manual") == 0 || strcasecmp(val, "manuell") == 0 || strcmp(val, "2") == 0) {
+                st->qrz_log_enabled = QRZ_LOG_MANUAL;
+            } else {
+                st->qrz_log_enabled = QRZ_LOG_OFF;
             }
         } else if (strcasecmp(key, "AUTO_RST") == 0) {
             st->auto_rst_59 = (atoi(val) != 0) ? 1 : 0;
@@ -129,6 +143,13 @@ void load_station_settings(const char *filename, StationSettings *st) {
         }
     }
     fclose(fp);
+    if (!has_qrz_log_setting) {
+        if (st->qrz_username[0] != '\0' && st->qrz_password[0] != '\0') {
+            st->qrz_log_enabled = QRZ_LOG_MANUAL;
+        } else {
+            st->qrz_log_enabled = QRZ_LOG_OFF;
+        }
+    }
     set_custom_theme(&st->custom_theme);
 }
 
@@ -165,7 +186,9 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "SMCB=%d\n", st->smcb_enabled ? 1 : 0);
     fprintf(fp, "QRZ_USER=%s\n", st->qrz_username);
     fprintf(fp, "QRZ_PASS=%s\n", st->qrz_password);
+    fprintf(fp, "QRZ_API_KEY=%s\n", st->qrz_api_key);
     fprintf(fp, "QRZ_ENABLED=%d\n", st->qrz_enabled);
+    fprintf(fp, "QRZ_LOG_ENABLED=%d\n", st->qrz_log_enabled);
     fprintf(fp, "AUTO_RST=%d\n", st->auto_rst_59 ? 1 : 0);
     fprintf(fp, "FILTER_LOG=%d\n", st->filter_log ? 1 : 0);
     fprintf(fp, "SHOW_STATS=%d\n", st->show_stats ? 1 : 0);
