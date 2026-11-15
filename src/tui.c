@@ -1130,9 +1130,9 @@ void draw_space_weather_box(int top_y, int width) {
 
     /* Beräkna kolumnpositioner för kolon */
     int colon0 = 12;
-    int colon1 = (width >= 90) ? (width * 31 / 100) : 33;
-    int colon2 = (width >= 90) ? (width * 55 / 100) : 53;
-    int colon3 = (width >= 90) ? (width * 77 / 100) : 69;
+    int colon1 = (width >= 90) ? (width * 31 / 100) : 32;
+    int colon2 = (width >= 90) ? (width * 54 / 100) : 52;
+    int colon3 = (width >= 90) ? (width * 77 / 100) : 68;
 
     int r1 = top_y + 1;
     int r2 = top_y + 2;
@@ -1143,10 +1143,11 @@ void draw_space_weather_box(int top_y, int width) {
     print_sw_field(r1, colon2, "LUF", sw.luf, sw_tone_to_color_pair(sw.luf_tone));
     print_sw_field(r1, colon3, "CME", sw.cme, sw_tone_to_color_pair(sw.cme_tone));
 
-    /* RAD 2: Solfackla, Solvind, Norrsken */
+    /* RAD 2: Solfackla, Solvind, Norrsken, DX/NVIS */
     print_sw_field(r2, colon0, "Solfackla", sw.solfackla, sw_tone_to_color_pair(sw.solfackla_tone));
     print_sw_field(r2, colon1, "Solvind", sw.solvind, sw_tone_to_color_pair(sw.solvind_tone));
     print_sw_field(r2, colon2, "Norrsken", sw.norrsken, sw_tone_to_color_pair(sw.norrsken_tone));
+    print_sw_field(r2, colon3, "DX/NVIS", sw.dx_nvis, sw_tone_to_color_pair(sw.dx_nvis_tone));
 }
 
 /**

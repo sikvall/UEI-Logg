@@ -126,12 +126,84 @@ static int extract_card_value(const char *html, const char *card_name, char *val
 }
 
 /**
+ * @brief Extraherar bästa band (t.ex. "15m" eller "80m", utan mellanslag) för en angiven
+ * undersektion ("DX" eller "NVIS") under "Bandval just nu" i HTML-koden från hf.avitec.se.
+ * @param html Hela HTML-dokumentet.
+ * @param section_title Rubrikprefix i sektionen, t.ex. "DX" eller "NVIS".
+ * @param band_out Buffer för kompakt bandnamn (t.ex. "15m").
+ * @param band_sz Storlek på utdatabuffert.
+ * @param tone_out Utdatapekare för färgstatus.
+ * @return 1 om ett giltigt band hittades, annars 0.
+ */
+static int extract_best_band_section(const char *html, const char *section_title,
+                                     char *band_out, size_t band_sz, SwTone *tone_out) {
+    if (html == NULL || section_title == NULL || band_out == NULL || band_sz == 0) return 0;
+    band_out[0] = '\0';
+    if (tone_out) *tone_out = SW_TONE_NORMAL;
+
+    const char *base = strstr(html, "Bandval just nu");
+    if (base == NULL) base = html;
+
+    char h3_target[64];
+    snprintf(h3_target, sizeof(h3_target), ">%s", section_title);
+    const char *sec = strstr(base, h3_target);
+    if (sec == NULL) return 0;
+
+    const char *p_end = strstr(sec, "</p>");
+    if (p_end == NULL || p_end > sec + 800) {
+        p_end = sec + 800;
+    }
+
+    const char *span_open = strstr(sec, "<span");
+    if (span_open == NULL || span_open >= p_end) return 0;
+
+    const char *tag_close = strchr(span_open, '>');
+    if (tag_close == NULL || tag_close >= p_end) return 0;
+
+    const char *span_end = strstr(tag_close + 1, "</span>");
+    if (span_end == NULL || span_end >= p_end) return 0;
+
+    /* Tolkning av färgklass på span-elementet */
+    SwTone tone = SW_TONE_OK;
+    size_t attr_len = (size_t)(tag_close - span_open);
+    char attr_buf[128];
+    if (attr_len >= sizeof(attr_buf)) attr_len = sizeof(attr_buf) - 1;
+    memcpy(attr_buf, span_open, attr_len);
+    attr_buf[attr_len] = '\0';
+
+    if (strstr(attr_buf, "text-bad") != NULL) {
+        tone = SW_TONE_BAD;
+    } else if (strstr(attr_buf, "text-warn") != NULL) {
+        tone = SW_TONE_WARN;
+    } else if (strstr(attr_buf, "text-ok") != NULL || strstr(attr_buf, "text-accent") != NULL) {
+        tone = SW_TONE_OK;
+    }
+
+    /* Kopiera innehållet mellan > och </span> utan mellanslag (t.ex. "17 m" -> "17m") */
+    size_t j = 0;
+    for (const char *p = tag_close + 1; p < span_end && j < band_sz - 1; ++p) {
+        if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') {
+            band_out[j++] = *p;
+        }
+    }
+    band_out[j] = '\0';
+
+    if (band_out[0] == '\0' || !isdigit((unsigned char)band_out[0])) {
+        band_out[0] = '\0';
+        return 0;
+    }
+
+    if (tone_out) *tone_out = tone;
+    return 1;
+}
+
+/**
  * @brief Tolkar hela HTML-svaret från hf.avitec.se och bygger upp en SpaceWeatherData-struktur med färgstatusar.
  * @param html Nedladdad HTML.
  * @param out Pekare till struktur som ska fyllas i.
  * @return 1 om minst K-index och MUF hittades, annars 0.
  */
-static int parse_space_weather_html(const char *html, SpaceWeatherData *out) {
+int parse_space_weather_html(const char *html, SpaceWeatherData *out) {
     if (html == NULL || out == NULL) return 0;
 
     SpaceWeatherData temp;
@@ -217,6 +289,29 @@ static int parse_space_weather_html(const char *html, SpaceWeatherData *out) {
     } else {
         copy_str(temp.norrsken, sizeof(temp.norrsken), "-");
         temp.norrsken_tone = SW_TONE_NORMAL;
+    }
+
+    /* 8. DX/NVIS bästa band just nu (t.ex. "15m/80m") */
+    char dx_band[16] = "";
+    char nvis_band[16] = "";
+    SwTone dx_tone = SW_TONE_NORMAL;
+    SwTone nvis_tone = SW_TONE_NORMAL;
+    int has_dx   = extract_best_band_section(html, "DX",   dx_band,   sizeof(dx_band),   &dx_tone);
+    int has_nvis = extract_best_band_section(html, "NVIS", nvis_band, sizeof(nvis_band), &nvis_tone);
+
+    if (has_dx && has_nvis) {
+        snprintf(temp.dx_nvis, sizeof(temp.dx_nvis), "%s/%s", dx_band, nvis_band);
+        temp.dx_nvis_tone = (dx_tone == SW_TONE_BAD || nvis_tone == SW_TONE_BAD) ? SW_TONE_WARN :
+                            (dx_tone == SW_TONE_WARN || nvis_tone == SW_TONE_WARN) ? SW_TONE_WARN : SW_TONE_OK;
+    } else if (has_dx) {
+        snprintf(temp.dx_nvis, sizeof(temp.dx_nvis), "%s/-", dx_band);
+        temp.dx_nvis_tone = dx_tone;
+    } else if (has_nvis) {
+        snprintf(temp.dx_nvis, sizeof(temp.dx_nvis), "-/%s", nvis_band);
+        temp.dx_nvis_tone = nvis_tone;
+    } else {
+        copy_str(temp.dx_nvis, sizeof(temp.dx_nvis), "-");
+        temp.dx_nvis_tone = SW_TONE_NORMAL;
     }
 
     time_t now = time(NULL);
@@ -320,6 +415,7 @@ void space_weather_init(void) {
     copy_str(g_sw_data.solfackla, sizeof(g_sw_data.solfackla), "-");
     copy_str(g_sw_data.solvind, sizeof(g_sw_data.solvind), "-");
     copy_str(g_sw_data.norrsken, sizeof(g_sw_data.norrsken), "-");
+    copy_str(g_sw_data.dx_nvis, sizeof(g_sw_data.dx_nvis), "-");
     g_sw_running = 1;
     g_sw_trigger = 0;
     pthread_mutex_unlock(&g_sw_mutex);

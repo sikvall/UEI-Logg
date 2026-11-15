@@ -641,8 +641,21 @@ static void run_settings_tests(void) {
         int right_aligned_ok = (tx == 67 && (tx + tlen == width - 1));
         int label_ok = (sw.k_kiruna[0] != '\0');
 
-        record_result(right_aligned_ok && label_ok,
-                      "Rymdvädersrutan: K/Kp och tidsstämpel högerställd i titelraden (t.ex. ' (kl 16:45) ')", NULL);
+        /* Testa tolkning av DX/NVIS (t.ex. "15m/80m") från hf.avitec.se HTML */
+        const char *sample_sw_html =
+            "<div class=\"whitespace-nowrap\">2/1</div><div>K-index</div>"
+            "<div class=\"whitespace-nowrap\">21,4<span class=\"text-muted\">MHz</span></div><div>MUF</div>"
+            "<h2>Bandval just nu</h2>"
+            "<div><h3>DX · 3 000 km</h3><p>Dagtid är <span class=\"font-medium text-ok\">15 m</span> bäst för DX på 3 000 km, bra läge.</p></div>"
+            "<div><h3>NVIS · 400 km</h3><p>Dagtid är <span class=\"font-medium text-ok\">80 m</span> bäst för NVIS på 400 km, bra läge.</p></div>";
+        SpaceWeatherData parsed_sw;
+        memset(&parsed_sw, 0, sizeof(parsed_sw));
+        int sw_parse_ok = parse_space_weather_html(sample_sw_html, &parsed_sw) &&
+                          (strcmp(parsed_sw.dx_nvis, "15m/80m") == 0) &&
+                          (parsed_sw.dx_nvis_tone == SW_TONE_OK);
+
+        record_result(right_aligned_ok && label_ok && sw_parse_ok,
+                      "Rymdvädersrutan: K/Kp, DX/NVIS ('15m/80m') och tidsstämpel högerställd i titelraden", NULL);
     }
 
     /* Titelrad (top bar): Anropssignal, QTH och Lokator utan parenteser */
