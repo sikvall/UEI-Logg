@@ -93,6 +93,36 @@ void qrz_invalidate_session(void);
  */
 void qrz_cleanup(void);
 
+/**
+ * @brief Bygger en ADIF-post för ett enskilt QSO anpassad för QRZ.COM Logbook API.
+ * @param qso QSO som ska formateras.
+ * @param st Stationsinställningar (för egen signal, lokator m.m.).
+ * @param out Målbuffer för ADIF-strängen.
+ * @param out_sz Storlek på målbuffer.
+ */
+void qrz_build_adif_record(const QSO *qso, const StationSettings *st, char *out, size_t out_sz);
+
+/**
+ * @brief Tolkar svaret från QRZ.COM Logbook API.
+ * @param resp Rå svarssträng från API:et.
+ * @param err_out Buffer för felmeddelande vid misslyckande.
+ * @param err_sz Storlek på felmeddelandebuffert.
+ * @return 1 vid framgång (RESULT=OK eller RESULT=REPLACE), 0 vid fel.
+ */
+int qrz_parse_logbook_response(const char *resp, char *err_out, size_t err_sz);
+
+/**
+ * @brief Skickar ett QSO direkt till QRZ.COM Logbook via dess HTTPS API (ACTION=INSERT).
+ * @param api_key QRZ Logbook API-nyckel.
+ * @param qso QSO som ska loggas.
+ * @param st Stationsinställningar.
+ * @param err_out Buffer för felmeddelande vid misslyckande.
+ * @param err_sz Storlek på felmeddelandebuffert.
+ * @return 1 vid framgång, 0 vid fel.
+ */
+int qrz_logbook_insert(const char *api_key, const QSO *qso, const StationSettings *st,
+                       char *err_out, size_t err_sz);
+
 #ifdef __cplusplus
 }
 #endif

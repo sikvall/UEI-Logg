@@ -46,7 +46,7 @@ extern char g_log_filename[256];
 #define MIN_COLS 60
 #define MIN_LINES 20
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 16
+#define STATION_FIELD_COUNT 18
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001
@@ -114,6 +114,15 @@ enum {
 };
 
 /**
+ * @brief Lägen för direktloggning mot QRZ.COM Logbook API (inställning: Direktlogg QRZ.COM).
+ */
+enum {
+    QRZ_LOG_OFF    = 0, /**< Av: Ingen direktloggning mot QRZ.COM */
+    QRZ_LOG_AUTO   = 1, /**< Automatisk: Loggning sker direkt på Enter/F2 även till QRZ.COM */
+    QRZ_LOG_MANUAL = 2  /**< Manuell: Loggning till QRZ.COM sker med Ctrl+L på loggrad eller i inmatningsrutan */
+};
+
+/**
  * @brief Index för inmatningsfälten i visnings- och tabulatorordning (4 rader).
  */
 enum {
@@ -143,7 +152,9 @@ typedef struct {
     char timezone[32];     /**< Lokal tidszon (t.ex. UTC+1, Europe/Stockholm) */
     char qrz_username[36]; /**< QRZ.COM användarnamn */
     char qrz_password[36]; /**< QRZ.COM lösenord */
-    int  qrz_enabled;      /**< QRZ-läge: QRZ_MODE_OFF (0), QRZ_MODE_AUTO (1), QRZ_MODE_MANUAL (2) */
+    char qrz_api_key[64];  /**< QRZ.COM Logbook API-nyckel (för logbook.qrz.com/api) */
+    int  qrz_enabled;      /**< QRZ-uppslagsläge: QRZ_MODE_OFF (0), QRZ_MODE_AUTO (1), QRZ_MODE_MANUAL (2) */
+    int  qrz_log_enabled;  /**< QRZ-direktloggningsläge: QRZ_LOG_OFF (0), QRZ_LOG_AUTO (1), QRZ_LOG_MANUAL (2) */
     int  theme;            /**< Index för aktivt färgschema (0..THEME_COUNT-1) */
     CustomTheme custom_theme; /**< Egen anpassad färgprofil */
     int  smcb_enabled;     /**< 1 om automatisk SM Callbook-uppslagning är aktiv */
