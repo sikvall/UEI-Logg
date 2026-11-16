@@ -702,6 +702,29 @@ void apply_color_theme(int theme_idx) {
         }
     }
 
+    /* Färgpar för loggradens bakgrundscykling (Standard, Grön, Gul, Röd) */
+    short c_grn_bg  = (COLORS >= 256) ? 28  : COLOR_GREEN;
+    short c_yel_bg  = (COLORS >= 256) ? 178 : COLOR_YELLOW;
+    short c_red_bg  = (COLORS >= 256) ? 124 : COLOR_RED;
+    short c_grn_sel = (COLORS >= 256) ? 34  : COLOR_GREEN;
+    short c_yel_sel = (COLORS >= 256) ? 220 : COLOR_YELLOW;
+    short c_red_sel = (COLORS >= 256) ? 160 : COLOR_RED;
+
+    init_pair(CP_LOG_GREEN,        COLOR_BLACK,  c_grn_bg);
+    init_pair(CP_LOG_YELLOW,       COLOR_BLACK,  c_yel_bg);
+    init_pair(CP_LOG_RED,          COLOR_WHITE,  c_red_bg);
+
+    init_pair(CP_LOG_GREEN_SEL,    COLOR_WHITE,  c_grn_sel);
+    init_pair(CP_LOG_YELLOW_SEL,   COLOR_BLACK,  c_yel_sel);
+    init_pair(CP_LOG_RED_SEL,      COLOR_YELLOW, c_red_sel);
+
+    init_pair(CP_FLAG_NEW_GRN,     COLOR_RED,    c_grn_bg);
+    init_pair(CP_FLAG_HANDLED_GRN, COLOR_BLACK,  c_grn_bg);
+    init_pair(CP_FLAG_NEW_YEL,     COLOR_RED,    c_yel_bg);
+    init_pair(CP_FLAG_HANDLED_YEL, COLOR_BLACK,  c_yel_bg);
+    init_pair(CP_FLAG_NEW_RED,     COLOR_WHITE,  c_red_bg);
+    init_pair(CP_FLAG_HANDLED_RED, COLOR_GREEN,  c_red_bg);
+
     bkgd(COLOR_PAIR(CP_MAIN_BG));
 }
 
@@ -1541,8 +1564,21 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         int is_selected = (focus_mode == FOCUS_LOG && f_idx == selected_log_pos);
         int is_marked   = item->marked;
 
-        int row_color = is_selected ? CP_LOG_SELECTED : (is_marked ? CP_LOG_MARKED : CP_LOG_ROW);
-        int row_attr  = (is_selected || is_marked) ? A_BOLD : 0;
+        int row_color;
+        if (is_selected) {
+            if (item->color == LOG_COLOR_GREEN)       row_color = CP_LOG_GREEN_SEL;
+            else if (item->color == LOG_COLOR_YELLOW) row_color = CP_LOG_YELLOW_SEL;
+            else if (item->color == LOG_COLOR_RED)    row_color = CP_LOG_RED_SEL;
+            else row_color = CP_LOG_SELECTED;
+        } else if (is_marked) {
+            row_color = CP_LOG_MARKED;
+        } else {
+            if (item->color == LOG_COLOR_GREEN)       row_color = CP_LOG_GREEN;
+            else if (item->color == LOG_COLOR_YELLOW) row_color = CP_LOG_YELLOW;
+            else if (item->color == LOG_COLOR_RED)    row_color = CP_LOG_RED;
+            else row_color = CP_LOG_ROW;
+        }
+        int row_attr  = (is_selected || is_marked || item->color != LOG_COLOR_NORMAL) ? A_BOLD : 0;
 
         attron(COLOR_PAIR(row_color) | row_attr);
         mvhline(row_y, 1, ' ', COLS - 2);
@@ -1611,9 +1647,18 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         attroff(COLOR_PAIR(row_color) | row_attr);
 
         /* Hanterad statusflagga: grön bock (✓) eller rött kryss (✗) */
-        int flag_color = item->handled ?
-            (is_selected ? CP_FLAG_HANDLED_SEL : (is_marked ? CP_FLAG_HANDLED_MRK : CP_FLAG_HANDLED)) :
-            (is_selected ? CP_FLAG_NEW_SEL : (is_marked ? CP_FLAG_NEW_MRK : CP_FLAG_NEW));
+        int flag_color;
+        if (item->color == LOG_COLOR_GREEN && !is_marked) {
+            flag_color = item->handled ? CP_FLAG_HANDLED_GRN : CP_FLAG_NEW_GRN;
+        } else if (item->color == LOG_COLOR_YELLOW && !is_marked) {
+            flag_color = item->handled ? CP_FLAG_HANDLED_YEL : CP_FLAG_NEW_YEL;
+        } else if (item->color == LOG_COLOR_RED && !is_marked) {
+            flag_color = item->handled ? CP_FLAG_HANDLED_RED : CP_FLAG_NEW_RED;
+        } else {
+            flag_color = item->handled ?
+                (is_selected ? CP_FLAG_HANDLED_SEL : (is_marked ? CP_FLAG_HANDLED_MRK : CP_FLAG_HANDLED)) :
+                (is_selected ? CP_FLAG_NEW_SEL : (is_marked ? CP_FLAG_NEW_MRK : CP_FLAG_NEW));
+        }
 
         attron(COLOR_PAIR(flag_color) | A_BOLD);
         mvprintw(row_y, col_ny, item->handled ? " ✓ " : " ✗ ");
@@ -1643,7 +1688,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                 note_buf[--nlen] = '\0';
             }
 
-            if (is_selected || is_marked) {
+            if (is_selected || is_marked || item->color != LOG_COLOR_NORMAL) {
                 mvprintw(note_y, note_col, "Notering: %s", note_buf);
                 attroff(COLOR_PAIR(row_color) | row_attr);
             } else {

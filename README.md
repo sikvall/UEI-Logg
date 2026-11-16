@@ -250,7 +250,9 @@ När `ueilog` körs är följande tangenter tillgängliga:
 |---|---|
 | **F1** | Rensa inmatningsformuläret och starta UTC-klockan |
 | **F2** | I inmatningsläge: Starta UTC-klockan igen så att den kör live även om inmatning påbörjats |
-| **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF (samt QRZ.COM vid Automatisk).<br>I loggläge: Ladda markerat QSO till formuläret för redigering (märks automatiskt som nytt, ✗) |
+| **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF (samt QRZ.COM vid Automatisk).<br>I loggläge: Ladda markerat QSO till formuläret för redigering (sparas med Enter i formuläret, återgår därefter till loggraderna) |
+| **w** / **s** | I loggläge: Ändra ordning på loggraderna (flytta vald rad uppåt med **w** eller nedåt med **s**) |
+| **c** | I loggläge: Cykla bakgrundsfärg på aktuell loggrad (Standard -> Grön -> Gul -> Röd -> Standard) |
 | **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
 | **F5** | I inmatningsläge: Manuellt uppslag mot QRZ.COM (vid Auto eller Manuell)<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |

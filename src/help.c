@@ -132,8 +132,10 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Piltangenterna Upp / Ned stegar radvis i loggen.",
             "  * Page Up / Page Down bläddrar hela sidor i logghistoriken.",
             "  * Home / End: Går längst upp respektive längst ned i aktuell logglista.",
+            "  * w / s: Ändra ordning på raderna (flytta vald rad uppåt / nedåt).",
             "",
-            "Multimarkering och statusändring:",
+            "Färg och statusändring:",
+            "  * c: Cykla bakgrundsfärg på raden (Standard -> Grön -> Gul -> Röd).",
             "  * Insert (INS): Markerar eller avmarkerar aktuell loggrad.",
             "  * Ctrl+L (^L): Loggar markerade rader eller vald rad direkt till QRZ.COM.",
             "  * F5: Växlar status mellan Hanterad (✓) och Ny (✗).",
@@ -143,7 +145,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "",
             "Redigering och radering:",
             "  * Enter på en rad: Laddar upp QSO:t i formuläret för direkt korrigering.",
-            "    När du trycker Enter i formuläret sparas ändringen och märks som nytt (✗).",
+            "    När du trycker Enter i formuläret sparas ändringen och du återgår till loggen.",
             "  * F8: Raderar markerade rader (eller vald rad) efter bekräftelse.",
             "",
             "Sök och filtrering (F3 / Ctrl+F):",
@@ -151,7 +153,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Tryck ESC för att återställa sökningen och visa hela loggboken igen.",
             NULL
         },
-        24
+        26
     },
     {
         "[5] Inställningar",

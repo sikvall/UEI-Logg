@@ -67,6 +67,17 @@ extern const char * const THEME_NAMES[];
 #define THEME_CUSTOM 15
 
 /**
+ * @brief Radens bakgrundsfärg i loggradskomponenten.
+ */
+enum {
+    LOG_COLOR_NORMAL = 0, /**< Standard / Normal */
+    LOG_COLOR_GREEN  = 1, /**< Grön */
+    LOG_COLOR_YELLOW = 2, /**< Gul */
+    LOG_COLOR_RED    = 3, /**< Röd */
+    LOG_COLOR_COUNT  = 4
+};
+
+/**
  * @brief Egen anpassad färgprofil (Custom Theme).
  * Innehåller index till färger i paletten för respektive gränssnittselement.
  */
@@ -189,6 +200,7 @@ typedef struct {
     char distance[16];   /**< Beräknat avstånd i km (ADIF: DISTANCE) */
     int  handled;        /**< Hanteringsstatus: 0 = ny (✗), 1 = hanterad (✓) */
     int  marked;         /**< 1 om raden är tillfälligt markerad med INS */
+    int  color;          /**< Radfärg: 0=Standard/Normal, 1=Grön, 2=Gul, 3=Röd */
 } QSO;
 
 /**

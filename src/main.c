@@ -159,6 +159,7 @@ int main(int argc, char *argv[]) {
     int field_cursor_pos = 0;
     int field_fresh = 1;
     int editing_index = -1;
+    int edit_from_log = 0;
     int idle_ticks_on_call = 0;
     int idle_ticks_on_qth = 0;
     int idle_ticks_on_grid = 0;
@@ -277,6 +278,7 @@ int main(int argc, char *argv[]) {
             }
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
+            edit_from_log = 0;
             reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
             field_fresh = 1;
             preferred_col = 0;
@@ -286,6 +288,7 @@ int main(int argc, char *argv[]) {
             /* F1: Rensa formuläret och låt UTC-klockan ticka igen */
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
+            edit_from_log = 0;
             reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
             field_fresh = 1;
             preferred_col = 0;
@@ -323,12 +326,13 @@ int main(int argc, char *argv[]) {
                 if (f_cnt > 0) {
                     focus_mode = FOCUS_LOG;
                     if (selected_log_pos >= f_cnt) selected_log_pos = 0;
-                    copy_str(status_msg, sizeof(status_msg), "Loggrader: Ins=Märk, ^L=QRZ, F5=Hant/Ny, F6=Noter, F7=Alla hant., F8=Radera, Enter=Redigera.");
+                    copy_str(status_msg, sizeof(status_msg), "Loggrader: w/s=Flytta, c=Färg, Ins=Märk, ^L=QRZ, F5=Hant/Ny, F6=Noter, F7=Alla, F8=Radera, Enter=Redigera.");
                 } else {
                     copy_str(status_msg, sizeof(status_msg), "Inga loggrader att välja ännu.");
                 }
             } else {
                 focus_mode = FOCUS_INPUT;
+                edit_from_log = 0;
                 field_cursor_pos = 0;
                 field_fresh = 1;
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
@@ -419,6 +423,93 @@ int main(int argc, char *argv[]) {
                 if (log_scroll_offset + avail > f_cnt) {
                     log_scroll_offset = f_cnt - avail;
                     if (log_scroll_offset < 0) log_scroll_offset = 0;
+                }
+            } else if (ch == 'w' || ch == 'W') {
+                /* w: Flytta aktuell loggrad uppåt i listan */
+                if (f_cnt > 1 && selected_log_pos > 0) {
+                    int orig_curr = f_idx[selected_log_pos];
+                    int orig_above = f_idx[selected_log_pos - 1];
+                    QSO tmp = log_list.items[orig_curr];
+                    log_list.items[orig_curr] = log_list.items[orig_above];
+                    log_list.items[orig_above] = tmp;
+
+                    if (editing_index == orig_curr) editing_index = orig_above;
+                    else if (editing_index == orig_above) editing_index = orig_curr;
+
+                    selected_log_pos--;
+                    if (selected_log_pos < log_scroll_offset) {
+                        log_scroll_offset = selected_log_pos;
+                    }
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
+                    snprintf(status_msg, sizeof(status_msg), "Flyttade QSO med %s uppåt.", log_list.items[orig_above].call);
+                }
+            } else if (ch == 's' || ch == 'S') {
+                /* s: Flytta aktuell loggrad nedåt i listan */
+                if (f_cnt > 1 && selected_log_pos + 1 < f_cnt) {
+                    int orig_curr = f_idx[selected_log_pos];
+                    int orig_below = f_idx[selected_log_pos + 1];
+                    QSO tmp = log_list.items[orig_curr];
+                    log_list.items[orig_curr] = log_list.items[orig_below];
+                    log_list.items[orig_below] = tmp;
+
+                    if (editing_index == orig_curr) editing_index = orig_below;
+                    else if (editing_index == orig_below) editing_index = orig_curr;
+
+                    selected_log_pos++;
+                    int avail = get_avail_log_rows(&station);
+                    if (selected_log_pos >= log_scroll_offset + avail) {
+                        log_scroll_offset = selected_log_pos - avail + 1;
+                    }
+                    if (!db_is_open()) {
+                        save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                    }
+                    snprintf(status_msg, sizeof(status_msg), "Flyttade QSO med %s nedåt.", log_list.items[orig_below].call);
+                }
+            } else if (ch == 'c' || ch == 'C') {
+                /* c: Cykla bakgrundsfärgen på aktuell loggrad: Standard -> Grön -> Gul -> Röd -> Standard */
+                if (f_cnt > 0 && selected_log_pos >= 0 && selected_log_pos < f_cnt) {
+                    int orig_idx = f_idx[selected_log_pos];
+                    static const char * const color_names[] = {"Standard", "Grön", "Gul", "Röd"};
+                    int m_cnt = 0;
+                    for (size_t mi = 0; mi < log_list.count; ++mi) {
+                        if (log_list.items[mi].marked) m_cnt++;
+                    }
+
+                    if (m_cnt > 0) {
+                        int new_color = (log_list.items[orig_idx].color + 1) % LOG_COLOR_COUNT;
+                        for (size_t mi = 0; mi < log_list.count; ++mi) {
+                            if (log_list.items[mi].marked) {
+                                log_list.items[mi].color = new_color;
+                                if (db_is_open() && log_list.items[mi].id > 0) {
+                                    db_set_color(log_list.items[mi].id, new_color);
+                                }
+                            }
+                        }
+                        if (editing_index >= 0 && (size_t)editing_index < log_list.count && log_list.items[editing_index].marked) {
+                            current_qso.color = new_color;
+                        }
+                        if (!db_is_open()) {
+                            save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                        }
+                        snprintf(status_msg, sizeof(status_msg),
+                                 "Bakgrundsfärg för %d markerade QSO: %s.", m_cnt, color_names[new_color]);
+                    } else {
+                        int new_color = (log_list.items[orig_idx].color + 1) % LOG_COLOR_COUNT;
+                        log_list.items[orig_idx].color = new_color;
+                        if (editing_index == orig_idx) {
+                            current_qso.color = new_color;
+                        }
+                        if (db_is_open() && log_list.items[orig_idx].id > 0) {
+                            db_set_color(log_list.items[orig_idx].id, new_color);
+                        } else if (!db_is_open()) {
+                            save_all_qsos_adif(LOG_FILE, &log_list, &station);
+                        }
+                        snprintf(status_msg, sizeof(status_msg),
+                                 "Bakgrundsfärg för QSO med %s: %s.",
+                                 log_list.items[orig_idx].call, color_names[new_color]);
+                    }
                 }
             } else if (ch == KEY_IC || ch == 331) {
                 /* INS: Markera aktuell rad och flytta till nästa rad */
@@ -577,6 +668,7 @@ int main(int argc, char *argv[]) {
                     current_qso = log_list.items[orig_idx];
                     current_qso.handled = 0;
                     editing_index = orig_idx;
+                    edit_from_log = 1;
                     time_frozen = 1;
                     active_field = FLD_CALL;
                     band_selecting = 0;
@@ -903,6 +995,10 @@ int main(int argc, char *argv[]) {
             int saved_idx = -1;
             if (prev_editing_index >= 0 && editing_index < 0 && (size_t)prev_editing_index < log_list.count) {
                 saved_idx = prev_editing_index;
+                if (edit_from_log) {
+                    focus_mode = FOCUS_LOG;
+                    edit_from_log = 0;
+                }
             } else if (log_list.count > count_before) {
                 saved_idx = (int)log_list.count - 1;
                 selected_log_pos = 0;

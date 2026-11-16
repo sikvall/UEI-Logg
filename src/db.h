@@ -83,6 +83,14 @@ int db_delete_marked(const QSOList *list);
 int db_set_handled(int64_t id, int handled);
 
 /**
+ * @brief Sätter bakgrundsfärg (color) för ett enskilt QSO i databasen.
+ * @param id Databasens primärnyckel.
+ * @param color Färgindex: 0=Standard, 1=Grön, 2=Gul, 3=Röd.
+ * @return 0 vid framgång, -1 vid fel.
+ */
+int db_set_color(int64_t id, int color);
+
+/**
  * @brief Sätter hanteringsstatus (handled) för ALLA QSO:n i databasen (F7).
  * @param handled 1 för hanterad (✓), 0 för ny (✗).
  * @return Antal uppdaterade rader, eller -1 vid fel.

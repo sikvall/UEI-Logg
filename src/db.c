@@ -31,7 +31,8 @@ static const char *SCHEMA_SQL =
     "    dxcc TEXT,\n"
     "    comment TEXT,\n"
     "    distance TEXT,\n"
-    "    handled INTEGER DEFAULT 0\n"
+    "    handled INTEGER DEFAULT 0,\n"
+    "    color INTEGER DEFAULT 0\n"
     ");\n"
     "CREATE INDEX IF NOT EXISTS idx_qsos_call ON qsos(call);\n"
     "CREATE INDEX IF NOT EXISTS idx_qsos_date_time ON qsos(qso_date, time_utc);\n"
@@ -67,6 +68,9 @@ int db_open(const char *path) {
         s_db = NULL;
         return -1;
     }
+
+    /* Säkerställ bakåtkompatibilitet för äldre databasfiler utan color-kolumn */
+    sqlite3_exec(s_db, "ALTER TABLE qsos ADD COLUMN color INTEGER DEFAULT 0;", NULL, NULL, NULL);
 
     /* Sanera och reparera eventuellt felaktigt kodade UTF-8- eller Latin-1-poster i databasen */
     db_sanitize_all_utf8();
@@ -105,7 +109,7 @@ int db_load_all_qsos(QSOList *list) {
 
     const char *sql =
         "SELECT id, call, name, qso_date, time_utc, gridsquare, freq, band, mode, "
-        "rst_sent, rst_rcvd, qth, dxcc, comment, distance, handled "
+        "rst_sent, rst_rcvd, qth, dxcc, comment, distance, handled, color "
         "FROM qsos ORDER BY qso_date ASC, time_utc ASC, id ASC;";
 
     sqlite3_stmt *stmt = NULL;
@@ -136,6 +140,7 @@ int db_load_all_qsos(QSOList *list) {
         read_column_text(stmt, 13, q.comment, sizeof(q.comment));
         read_column_text(stmt, 14, q.distance, sizeof(q.distance));
         q.handled = sqlite3_column_int(stmt, 15);
+        q.color = sqlite3_column_int(stmt, 16);
         q.marked = 0;
 
         qso_list_push(list, &q);
@@ -147,8 +152,8 @@ int db_load_all_qsos(QSOList *list) {
 
 static const char *INSERT_SQL =
     "INSERT INTO qsos (call, name, qso_date, time_utc, gridsquare, freq, band, mode, "
-    "rst_sent, rst_rcvd, qth, dxcc, comment, distance, handled) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    "rst_sent, rst_rcvd, qth, dxcc, comment, distance, handled, color) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 static int bind_qso_params(sqlite3_stmt *stmt, const QSO *qso) {
     char s_call[64], s_name[128], s_qth[128], s_comm[512], s_dxcc[128], s_grid[32];
@@ -177,6 +182,7 @@ static int bind_qso_params(sqlite3_stmt *stmt, const QSO *qso) {
     sqlite3_bind_text(stmt, 13, s_comm, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 14, qso->distance, -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 15, qso->handled);
+    sqlite3_bind_int(stmt, 16, qso->color);
     return SQLITE_OK;
 }
 
@@ -210,7 +216,7 @@ int db_update_qso(const QSO *qso) {
     const char *sql =
         "UPDATE qsos SET call=?, name=?, qso_date=?, time_utc=?, gridsquare=?, "
         "freq=?, band=?, mode=?, rst_sent=?, rst_rcvd=?, qth=?, dxcc=?, comment=?, "
-        "distance=?, handled=? WHERE id=?;";
+        "distance=?, handled=?, color=? WHERE id=?;";
 
     sqlite3_stmt *stmt = NULL;
     int rc = sqlite3_prepare_v2(s_db, sql, -1, &stmt, NULL);
@@ -220,7 +226,7 @@ int db_update_qso(const QSO *qso) {
     }
 
     bind_qso_params(stmt, qso);
-    sqlite3_bind_int64(stmt, 16, qso->id);
+    sqlite3_bind_int64(stmt, 17, qso->id);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -279,6 +285,21 @@ int db_set_handled(int64_t id, int handled) {
     if (sqlite3_prepare_v2(s_db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
 
     sqlite3_bind_int(stmt, 1, handled ? 1 : 0);
+    sqlite3_bind_int64(stmt, 2, id);
+
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_set_color(int64_t id, int color) {
+    if (s_db == NULL || id <= 0) return -1;
+
+    const char *sql = "UPDATE qsos SET color = ? WHERE id = ?;";
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(s_db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
+
+    sqlite3_bind_int(stmt, 1, color);
     sqlite3_bind_int64(stmt, 2, id);
 
     int rc = sqlite3_step(stmt);

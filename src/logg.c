@@ -301,6 +301,11 @@ void write_qso_record_adif(FILE *fp, const QSO *qso, const StationSettings *st) 
     if (qso->handled) {
         write_adif_field(fp, "APP_QSOLOG_HANDLED", "1");
     }
+    if (qso->color > 0) {
+        char col_str[16];
+        snprintf(col_str, sizeof(col_str), "%d", qso->color);
+        write_adif_field(fp, "APP_QSOLOG_COLOR", col_str);
+    }
     if (st != NULL) {
         write_adif_field(fp, "STATION_CALLSIGN", st->call);
         write_adif_field(fp, "OPERATOR", st->call);
@@ -417,6 +422,9 @@ void assign_adif_field(QSO *qso, const char *tag, const char *val) {
         copy_str(qso->distance, sizeof(qso->distance), val);
     } else if (strcasecmp(tag, "APP_QSOLOG_HANDLED") == 0) {
         qso->handled = (atoi(val) != 0 || strcasecmp(val, "Y") == 0 || strcasecmp(val, "YES") == 0 || strcasecmp(val, "TRUE") == 0);
+    } else if (strcasecmp(tag, "APP_QSOLOG_COLOR") == 0) {
+        qso->color = atoi(val);
+        if (qso->color < 0 || qso->color >= LOG_COLOR_COUNT) qso->color = 0;
     }
 }
 

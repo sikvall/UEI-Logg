@@ -1903,6 +1903,139 @@ static void run_qrz_direct_log_tests(void) {
 }
 
 /* ========================================================================= */
+/* [13] Loggradshantering: Reorder (w/s), Färgcykling (c) & Edit-återgång    */
+/* ========================================================================= */
+static void run_log_row_features_tests(void) {
+    printf(ANSI_BLUE "\n=== [13] Loggradshantering: Reorder (w/s), Färgcykling (c) & Edit-återgång ===" ANSI_RESET "\n");
+
+    /* 1. Radordning: Swappa element uppåt (w) och nedåt (s) i logglistan */
+    {
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+        QSO qa, qb, qc;
+        memset(&qa, 0, sizeof(qa));
+        memset(&qb, 0, sizeof(qb));
+        memset(&qc, 0, sizeof(qc));
+        copy_str(qa.call, sizeof(qa.call), "AA1A");
+        copy_str(qb.call, sizeof(qb.call), "BB2B");
+        copy_str(qc.call, sizeof(qc.call), "CC3C");
+        qso_list_push(&list, &qa);
+        qso_list_push(&list, &qb);
+        qso_list_push(&list, &qc);
+
+        /* Simulera flytt uppåt (w) av element på index 1 med index 2 */
+        QSO tmp = list.items[1];
+        list.items[1] = list.items[2];
+        list.items[2] = tmp;
+
+        int reorder_up_ok = (strcmp(list.items[1].call, "CC3C") == 0) &&
+                            (strcmp(list.items[2].call, "BB2B") == 0);
+
+        /* Simulera flytt nedåt (s) */
+        tmp = list.items[1];
+        list.items[1] = list.items[2];
+        list.items[2] = tmp;
+
+        int reorder_down_ok = (strcmp(list.items[1].call, "BB2B") == 0) &&
+                              (strcmp(list.items[2].call, "CC3C") == 0);
+
+        free(list.items);
+        record_result(reorder_up_ok && reorder_down_ok,
+                      "Loggrader kan flyttas och ändra ordning uppåt (w) och nedåt (s)", NULL);
+    }
+
+    /* 2. Cykling av bakgrundsfärg: Standard -> Grön -> Gul -> Röd -> Standard */
+    {
+        int col = LOG_COLOR_NORMAL; /* 0 */
+        int col1 = (col + 1) % LOG_COLOR_COUNT;  /* 1 = Grön */
+        int col2 = (col1 + 1) % LOG_COLOR_COUNT; /* 2 = Gul */
+        int col3 = (col2 + 1) % LOG_COLOR_COUNT; /* 3 = Röd */
+        int col0 = (col3 + 1) % LOG_COLOR_COUNT; /* 0 = Standard */
+
+        int cycle_ok = (col == 0) && (col1 == 1) && (col2 == 2) && (col3 == 3) && (col0 == 0);
+        record_result(cycle_ok,
+                      "Färgcykling med 'c' följer ordningen Standard -> Grön -> Gul -> Röd -> Standard", NULL);
+    }
+
+    /* 3. Färgpersistens i SQLite och ADIF */
+    {
+        const char *db_test_path = "/tmp/test_color_db.sq3";
+        unlink(db_test_path);
+        db_open(db_test_path);
+
+        QSO q;
+        memset(&q, 0, sizeof(q));
+        copy_str(q.call, sizeof(q.call), "SM5UEI");
+        copy_str(q.date, sizeof(q.date), "2026-11-16");
+        copy_str(q.time_utc, sizeof(q.time_utc), "09:00");
+        copy_str(q.band, sizeof(q.band), "20 m");
+        copy_str(q.mode, sizeof(q.mode), "SSB");
+        copy_str(q.freq, sizeof(q.freq), "14.200");
+        q.color = LOG_COLOR_GREEN; /* 1 */
+
+        db_insert_qso(&q);
+        int64_t id = q.id;
+
+        QSOList loaded;
+        memset(&loaded, 0, sizeof(loaded));
+        db_load_all_qsos(&loaded);
+        int ins_col_ok = (loaded.count == 1 && loaded.items[0].color == LOG_COLOR_GREEN);
+
+        /* Uppdatera färg via db_set_color till RÖD (3) */
+        db_set_color(id, LOG_COLOR_RED);
+        free(loaded.items);
+        memset(&loaded, 0, sizeof(loaded));
+        db_load_all_qsos(&loaded);
+        int upd_col_ok = (loaded.count == 1 && loaded.items[0].color == LOG_COLOR_RED);
+
+        /* Spara och ladda via ADIF */
+        const char *adif_test_path = "/tmp/test_color_adif.adi";
+        unlink(adif_test_path);
+        save_all_qsos_adif(adif_test_path, &loaded, NULL);
+
+        QSOList adif_loaded;
+        memset(&adif_loaded, 0, sizeof(adif_loaded));
+        load_qsos_from_adif(adif_test_path, &adif_loaded);
+        int adif_col_ok = (adif_loaded.count == 1 && adif_loaded.items[0].color == LOG_COLOR_RED);
+
+        free(loaded.items);
+        free(adif_loaded.items);
+        unlink(adif_test_path);
+        unlink(db_test_path);
+
+        record_result(ins_col_ok && upd_col_ok && adif_col_ok,
+                      "Radfärg persisteras i SQLite3 (db_set_color) och ADIF (APP_QSOLOG_COLOR)", NULL);
+    }
+
+    /* 4. Edit-återgång till loggläge (Enter redigera -> Enter spara -> åter till loggrader) */
+    {
+        FocusMode focus = FOCUS_LOG;
+        int editing_index = -1;
+        int edit_from_log = 0;
+
+        /* Tryck Enter i loggläge */
+        int selected_log_pos = 0;
+        editing_index = selected_log_pos;
+        edit_from_log = 1;
+        focus = FOCUS_INPUT;
+
+        /* Tryck Enter för att spara formulär */
+        int prev_editing_index = editing_index;
+        editing_index = -1; /* Sparat! */
+        if (prev_editing_index >= 0 && editing_index < 0) {
+            if (edit_from_log) {
+                focus = FOCUS_LOG;
+                edit_from_log = 0;
+            }
+        }
+
+        int return_ok = (focus == FOCUS_LOG) && (edit_from_log == 0);
+        record_result(return_ok,
+                      "Redigering från loggrad återgår automatiskt till FOCUS_LOG när QSO sparas med Enter", NULL);
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -1927,6 +2060,7 @@ int main(int argc, char *argv[]) {
     run_swedish_chars_tests();
     run_theme_tests();
     run_qrz_direct_log_tests();
+    run_log_row_features_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

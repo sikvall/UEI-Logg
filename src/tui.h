@@ -48,7 +48,19 @@ enum {
     CP_SW_OK,      /**< Grön (optimalt / lugnt) */
     CP_SW_WARN,    /**< Gul (förhöjt / måttligt) */
     CP_SW_BAD,     /**< Röd (stört / hög dämpning) */
-    CP_SW_SEVERE   /**< Magenta / Stark storm */
+    CP_SW_SEVERE,  /**< Magenta / Stark storm */
+    CP_LOG_GREEN,
+    CP_LOG_YELLOW,
+    CP_LOG_RED,
+    CP_LOG_GREEN_SEL,
+    CP_LOG_YELLOW_SEL,
+    CP_LOG_RED_SEL,
+    CP_FLAG_NEW_GRN,
+    CP_FLAG_HANDLED_GRN,
+    CP_FLAG_NEW_YEL,
+    CP_FLAG_HANDLED_YEL,
+    CP_FLAG_NEW_RED,
+    CP_FLAG_HANDLED_RED
 };
 
 /**
