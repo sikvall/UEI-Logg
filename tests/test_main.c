@@ -2036,6 +2036,81 @@ static void run_log_row_features_tests(void) {
 }
 
 /* ========================================================================= */
+/* [14] QRZ.COM Synkronisering (Hämtning & Minnes-ADIF-import)               */
+/* ========================================================================= */
+static void run_qrz_sync_tests(void) {
+    printf(ANSI_BLUE "\n=== [14] QRZ.COM Synkronisering & Minnes-ADIF-import ===" ANSI_RESET "\n");
+
+    /* 1. STATION_FIELD_COUNT är 19 */
+    record_result(STATION_FIELD_COUNT == 19,
+                  "STATION_FIELD_COUNT är 19 (inkl. Synka QRZ.COM som fält 17)", NULL);
+
+    /* 2. qrz_logbook_fetch validerar API-nyckel */
+    {
+        char *adif_out = NULL;
+        size_t adif_sz = 0;
+        char err[128] = "";
+        int res_null = qrz_logbook_fetch(NULL, &adif_out, &adif_sz, err, sizeof(err));
+        int res_empty = qrz_logbook_fetch("", &adif_out, &adif_sz, err, sizeof(err));
+        int ok = (!res_null && !res_empty && strstr(err, "API-nyckel saknas") != NULL);
+        record_result(ok, "qrz_logbook_fetch avvisar tom eller saknad API-nyckel med tydligt felmeddelande", NULL);
+    }
+
+    /* 3. import_qsos_from_memory importerar poster, sätter handled=1 och beräknar DXCC & QRB */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+        copy_str(st.gridsquare, sizeof(st.gridsquare), "JO89we");
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        const char *adif_test =
+            "<adif_ver:5>3.1.4\n<eoh>\n"
+            "<call:6>SM0ABC<qso_date:8>20261115<time_on:4>1200<band:3>20m<freq:6>14.200<mode:3>SSB<gridsquare:6>JO89xf<rst_sent:2>59<rst_rcvd:2>59<eor>\n"
+            "<call:6>DL1XYZ<qso_date:8>20261115<time_on:4>1300<band:3>40m<freq:5>7.100<mode:2>CW<gridsquare:6>JO62qm<rst_sent:3>599<rst_rcvd:3>599<eor>\n";
+
+        int imported = import_qsos_from_memory(adif_test, strlen(adif_test), &list, &st, 1, NULL);
+        int ok = (imported == 2 && list.count == 2);
+        if (ok) {
+            ok = ok && (list.items[0].handled == 1) && (list.items[1].handled == 1);
+            ok = ok && (strcmp(list.items[0].call, "SM0ABC") == 0);
+            ok = ok && (strcmp(list.items[1].call, "DL1XYZ") == 0);
+            ok = ok && (strcmp(list.items[0].gridsquare, "JO89XF") == 0);
+            ok = ok && (strcmp(list.items[1].gridsquare, "JO62QM") == 0);
+        }
+        record_result(ok, "import_qsos_from_memory importerar 2 QSO:n, sätter handled=1 och normaliserar fält", NULL);
+
+        /* 4. Dubblettkontroll vid synkronisering: ignorerar redan befintliga QSO:n */
+        const char *adif_with_dup_and_new =
+            "<call:6>SM0ABC<qso_date:8>20261115<time_on:4>1200<band:3>20m<mode:3>SSB<eor>\n" /* Dubblett */
+            "<call:6>OH2NEW<qso_date:8>20261115<time_on:4>1400<band:3>20m<freq:6>14.250<mode:3>SSB<gridsquare:6>KP20ab<eor>\n"; /* Ny! */
+
+        int imported2 = import_qsos_from_memory(adif_with_dup_and_new, strlen(adif_with_dup_and_new), &list, &st, 1, NULL);
+        int dup_ok = (imported2 == 1 && list.count == 3);
+        if (dup_ok) {
+            dup_ok = dup_ok && (strcmp(list.items[2].call, "OH2NEW") == 0);
+            dup_ok = dup_ok && (list.items[2].handled == 1);
+        }
+        record_result(dup_ok, "import_qsos_from_memory filtrerar bort dubbletter och lägger endast till nya poster", NULL);
+
+        /* 5. Kronologisk sortering efter import */
+        const char *adif_older =
+            "<call:5>G3OLD<qso_date:8>20261114<time_on:4>1000<band:3>20m<freq:6>14.195<mode:3>SSB<eor>\n";
+        int imported3 = import_qsos_from_memory(adif_older, strlen(adif_older), &list, &st, 1, NULL);
+        int sort_ok = (imported3 == 1 && list.count == 4);
+        if (sort_ok) {
+            /* G3OLD (2026-11-14) ska hamna först efter kronologisk sortering */
+            sort_ok = sort_ok && (strcmp(list.items[0].call, "G3OLD") == 0);
+        }
+        record_result(sort_ok, "import_qsos_from_memory sorterar listan kronologiskt", NULL);
+
+        free(list.items);
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -2061,6 +2136,7 @@ int main(int argc, char *argv[]) {
     run_theme_tests();
     run_qrz_direct_log_tests();
     run_log_row_features_tests();
+    run_qrz_sync_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

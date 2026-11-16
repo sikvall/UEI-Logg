@@ -8,6 +8,7 @@
 #include "dxcc.h"
 #include "logg.h"
 #include "qrb.h"
+#include "qrz.h"
 #include "tui.h"
 #include "util.h"
 #include "file_dialog.h"
@@ -306,34 +307,21 @@ void finalize_imported_qso(QSO *current, const StationSettings *st) {
 }
 
 /**
- * @brief Importerar och slår samman ADIF-poster från en extern fil till aktuell logg.
- * Sorterar listan kronologiskt och sparar till qsolog.adi.
- * @param filename Sökvägen till ADIF-filen som ska importeras.
+ * @brief Importerar och slår samman ADIF-poster från en minnesbuffert till aktuell logg.
+ * Sorterar listan kronologiskt och sparar till databasen.
+ * @param content Pekare till minnesbuffert innehållande ADIF-data.
+ * @param content_len Storlek på bufferten.
  * @param list Logglistan.
  * @param st Stationsinställningar.
- * @return Antal importerade poster, eller -1 vid filfel.
+ * @param mark_as_handled 1 om de importerade QSO:na ska markeras som hanterade (handled=1), 0 för nya.
+ * @param progress_title Titel för förloppsrutan (eller NULL för tyst läge utan UI-uppritning).
+ * @return Antal importerade poster, eller -1 vid fel.
  */
-int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st) {
-    if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
-    FILE *fp = fopen(filename, "r");
-    if (fp == NULL) return -1;
-
-    fseek(fp, 0, SEEK_END);
-    long fsize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    if (fsize <= 0) {
-        fclose(fp);
-        return 0;
-    }
-
-    char *content = malloc((size_t)fsize + 1);
-    if (content == NULL) {
-        fclose(fp);
-        return -1;
-    }
-    size_t read_bytes = fread(content, 1, (size_t)fsize, fp);
-    content[read_bytes] = '\0';
-    fclose(fp);
+int import_qsos_from_memory(const char *content, size_t content_len, QSOList *list,
+                            const StationSettings *st, int mark_as_handled,
+                            const char *progress_title) {
+    if (content == NULL || list == NULL) return -1;
+    if (content_len == 0) return 0;
 
     const char *p = content;
     const char *cursor = content;
@@ -344,6 +332,7 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
         }
         cursor++;
     }
+    if (p == NULL) p = content;
 
     int imported_count = 0;
     QSO current;
@@ -360,9 +349,9 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
         }
 
         time_t now = time(NULL);
-        if (now != last_status_update) {
+        if (progress_title != NULL && now != last_status_update) {
             last_status_update = now;
-            int percent = (fsize > 0) ? (int)(((size_t)(p - content) * 100) / (size_t)fsize) : 0;
+            int percent = (content_len > 0) ? (int)(((size_t)(p - content) * 100) / content_len) : 0;
             if (percent > 100) percent = 100;
             if (stdscr != NULL && !isendwin()) {
                 int box_w = 46;
@@ -372,7 +361,7 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
                 if (box_y < 0) box_y = 0;
                 if (box_x < 0) box_x = 0;
                 attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                draw_box_with_title(box_y, box_x, box_h, box_w, "ADIF-import", 1);
+                draw_box_with_title(box_y, box_x, box_h, box_w, progress_title, 1);
                 char stat_str[64];
                 snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
                 int slen = utf8_display_width(stat_str);
@@ -394,6 +383,9 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
         if (strcasecmp(tag_buf, "EOR") == 0) {
             if (current.call[0] != '\0') {
                 finalize_imported_qso(&current, st);
+                if (mark_as_handled) {
+                    current.handled = 1;
+                }
                 if (!qso_is_duplicate(list, &current)) {
                     qso_list_push(list, &current);
                     imported_count++;
@@ -427,17 +419,20 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
 
     if (current.call[0] != '\0') {
         finalize_imported_qso(&current, st);
+        if (mark_as_handled) {
+            current.handled = 1;
+        }
         if (!qso_is_duplicate(list, &current)) {
             qso_list_push(list, &current);
             imported_count++;
         }
     }
 
-    while (line_scan < content + read_bytes) {
-        if (*line_scan == '\n') lines_processed++;
-        line_scan++;
-    }
-    if (stdscr != NULL && !isendwin()) {
+    if (progress_title != NULL && stdscr != NULL && !isendwin()) {
+        while (line_scan < content + content_len) {
+            if (*line_scan == '\n') lines_processed++;
+            line_scan++;
+        }
         int box_w = 46;
         int box_h = 5;
         int box_y = (LINES - box_h) / 2;
@@ -445,7 +440,7 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
         if (box_y < 0) box_y = 0;
         if (box_x < 0) box_x = 0;
         attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-        draw_box_with_title(box_y, box_x, box_h, box_w, "ADIF-import", 1);
+        draw_box_with_title(box_y, box_x, box_h, box_w, progress_title, 1);
         char stat_str[64];
         snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (100%%)", lines_processed);
         int slen = utf8_display_width(stat_str);
@@ -453,8 +448,6 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
         attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
         refresh();
     }
-
-    free(content);
 
     if (imported_count > 0) {
         qsort(list->items, list->count, sizeof(QSO), cmp_qso_chronological);
@@ -467,6 +460,41 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
     }
 
     return imported_count;
+}
+
+/**
+ * @brief Importerar och slår samman ADIF-poster från en extern fil till aktuell logg.
+ * Sorterar listan kronologiskt och sparar till qsolog.adi.
+ * @param filename Sökvägen till ADIF-filen som ska importeras.
+ * @param list Logglistan.
+ * @param st Stationsinställningar.
+ * @return Antal importerade poster, eller -1 vid filfel.
+ */
+int import_qsos_from_adif(const char *filename, QSOList *list, const StationSettings *st) {
+    if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) return -1;
+
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    if (fsize <= 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    char *content = malloc((size_t)fsize + 1);
+    if (content == NULL) {
+        fclose(fp);
+        return -1;
+    }
+    size_t read_bytes = fread(content, 1, (size_t)fsize, fp);
+    content[read_bytes] = '\0';
+    fclose(fp);
+
+    int res = import_qsos_from_memory(content, read_bytes, list, st, 0, "ADIF-import");
+    free(content);
+    return res;
 }
 
 /**
@@ -632,7 +660,8 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     int r_sw       = start_y + 14;
     int r_import   = start_y + 15;
     int r_export   = start_y + 16;
-    int r_clear    = start_y + 17;
+    int r_sync     = start_y + 17;
+    int r_clear    = start_y + 18;
 
     int fcol = colon_col + 2;
 
@@ -848,13 +877,32 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 17: Töm loggbok och börja på nytt */
+    /* Fält 17: Synka nya QSO från QRZ.COM (F8) */
+    const char *lbl_sync = "Synka QRZ.COM (F8)";
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    mvprintw(r_sync, colon_col - utf8_display_width(lbl_sync), "%s:", lbl_sync);
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+    const char *sync_hint = "[ F8 / Enter: Hämta nya QSO från QRZ.COM ]";
+    if (active == 17) {
+        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        mvprintw(r_sync, fcol, "%-s", sync_hint);
+        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        *cur_y = r_sync;
+        *cur_x = fcol + 2;
+    } else {
+        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+        mvprintw(r_sync, fcol, "%-s", sync_hint);
+        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    }
+
+    /* Fält 18: Töm loggbok och börja på nytt */
     const char *lbl_clear = "Töm loggbok";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 17) {
+    if (active == 18) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -866,7 +914,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    if (status_msg != NULL && status_msg[0] != '\0' && LINES >= 19) {
+    if (status_msg != NULL && status_msg[0] != '\0' && LINES >= 20) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -876,7 +924,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         if (active == 10) {
             mvprintw(LINES - 2, 3, "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara.");
         } else {
-            mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F7: Egen färgprofil. F5=Import, F6=Export. Esc=Avbryt.");
+            mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F5=Import, F6=Export, F8=QRZ-synk. F2/F12: Spara.");
         }
     }
 
@@ -1262,7 +1310,76 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (ch == KEY_F(8) || (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+            if (edit.qrz_api_key[0] == '\0') {
+                copy_str(status_msg, status_sz, "QRZ API-nyckel saknas i inställningar.");
+                apply_color_theme(edit.theme);
+                continue;
+            }
+
+            if (stdscr != NULL && !isendwin()) {
+                int box_w = 46;
+                int box_h = 5;
+                int box_y = (LINES - box_h) / 2;
+                int box_x = (COLS - box_w) / 2;
+                if (box_y < 0) box_y = 0;
+                if (box_x < 0) box_x = 0;
+                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                draw_box_with_title(box_y, box_x, box_h, box_w, "QRZ.COM Synk", 1);
+                const char *stat_str = "Hämtar loggbok från QRZ.COM...";
+                int slen = utf8_display_width(stat_str);
+                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+                refresh();
+            }
+
+            QSO orig_edited;
+            int had_edit = 0;
+            if (editing_index && *editing_index >= 0 && log_list && (size_t)*editing_index < log_list->count) {
+                orig_edited = log_list->items[*editing_index];
+                had_edit = 1;
+            }
+
+            char err_buf[256] = "";
+            char *adif_data = NULL;
+            size_t adif_sz = 0;
+            int fetch_ok = qrz_logbook_fetch(edit.qrz_api_key, &adif_data, &adif_sz, err_buf, sizeof(err_buf));
+            if (!fetch_ok) {
+                snprintf(status_msg, status_sz, "QRZ-synk misslyckades: %s", err_buf[0] ? err_buf : "Okänt fel");
+            } else {
+                int added = import_qsos_from_memory(adif_data ? adif_data : "", adif_sz, log_list, &edit, 1, "Synkar från QRZ.COM");
+                if (added < 0) {
+                    copy_str(status_msg, status_sz, "Kunde inte tolka data från QRZ.COM.");
+                } else if (added == 0) {
+                    copy_str(status_msg, status_sz, "Synk klar: Inga nya QSO hittades på QRZ.COM.");
+                } else {
+                    snprintf(status_msg, status_sz, "Synkroniserade %d nya QSO från QRZ.COM!", added);
+                    if (had_edit && editing_index && log_list) {
+                        int found_new_idx = -1;
+                        for (size_t k = 0; k < log_list->count; ++k) {
+                            const QSO *item = &log_list->items[k];
+                            if (strcasecmp(item->call, orig_edited.call) == 0 &&
+                                strcmp(item->date, orig_edited.date) == 0 &&
+                                strcmp(item->time_utc, orig_edited.time_utc) == 0 &&
+                                strcasecmp(item->band, orig_edited.band) == 0) {
+                                found_new_idx = (int)k;
+                                break;
+                            }
+                        }
+                        *editing_index = found_new_idx;
+                        if (found_new_idx >= 0 && qso) {
+                            qso->id = log_list->items[found_new_idx].id;
+                        }
+                    }
+                    if (selected_log_pos && log_list && log_list->count > 0) {
+                        *selected_log_pos = (int)log_list->count - 1;
+                    }
+                }
+            }
+            if (adif_data) free(adif_data);
+            apply_color_theme(edit.theme);
+            continue;
+        } else if (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;

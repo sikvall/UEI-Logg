@@ -37,6 +37,21 @@ int save_station_settings(const char *filename, const StationSettings *st);
 void finalize_imported_qso(QSO *current, const StationSettings *st);
 
 /**
+ * @brief Importerar och slår samman ADIF-poster från en minnesbuffert till logglistan.
+ * Kontrollerar dubbletter, beräknar QRB/DXCC, sparar i databasen och sorterar kronologiskt.
+ * @param content Pekare till minnesbuffert innehållande ADIF-data.
+ * @param content_len Storlek på bufferten.
+ * @param list Logglistan där nya QSO:n läggs till.
+ * @param st Min stations inställningar.
+ * @param mark_as_handled 1 om de importerade QSO:na ska markeras som hanterade (handled=1), 0 för nya.
+ * @param progress_title Titel för förloppsrutan (eller NULL för tyst läge utan UI-uppritning).
+ * @return Antal importerade QSO:n, eller -1 vid fel.
+ */
+int import_qsos_from_memory(const char *content, size_t content_len, QSOList *list,
+                            const StationSettings *st, int mark_as_handled,
+                            const char *progress_title);
+
+/**
  * @brief Importerar QSO:n från en extern ADIF-fil till logglistan med dubblettkontroll.
  * @param filename Sökväg till ADIF-filen som ska importeras.
  * @param list Logglistan där nya QSO:n läggs till.

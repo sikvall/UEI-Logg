@@ -123,6 +123,18 @@ int qrz_parse_logbook_response(const char *resp, char *err_out, size_t err_sz);
 int qrz_logbook_insert(const char *api_key, const QSO *qso, const StationSettings *st,
                        char *err_out, size_t err_sz);
 
+/**
+ * @brief Hämtar loggade QSO:n från QRZ.COM Logbook API (ACTION=FETCH).
+ * @param api_key QRZ Logbook API-nyckel.
+ * @param adif_out Pekare till dynamiskt allokerad sträng med ADIF-innehållet (anroparen frigör med free).
+ * @param adif_sz Pekare till storlek på hämtat ADIF-innehåll.
+ * @param err_out Buffer för felmeddelande vid misslyckande.
+ * @param err_sz Storlek på felmeddelandebuffert.
+ * @return 1 vid framgång, 0 vid fel.
+ */
+int qrz_logbook_fetch(const char *api_key, char **adif_out, size_t *adif_sz,
+                      char *err_out, size_t err_sz);
+
 #ifdef __cplusplus
 }
 #endif

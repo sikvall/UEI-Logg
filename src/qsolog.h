@@ -44,9 +44,9 @@ extern char g_log_filename[256];
 #endif
 
 #define MIN_COLS 60
-#define MIN_LINES 20
+#define MIN_LINES 24
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 18
+#define STATION_FIELD_COUNT 19
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001

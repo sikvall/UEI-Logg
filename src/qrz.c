@@ -993,3 +993,140 @@ int qrz_logbook_insert(const char *api_key, const QSO *qso, const StationSetting
     free(resp.data);
     return ok;
 }
+
+/**
+ * @brief Hämtar loggade QSO:n från QRZ.COM Logbook API (ACTION=FETCH).
+ */
+int qrz_logbook_fetch(const char *api_key, char **adif_out, size_t *adif_sz,
+                      char *err_out, size_t err_sz) {
+    if (err_out && err_sz > 0) err_out[0] = '\0';
+    if (adif_out) *adif_out = NULL;
+    if (adif_sz) *adif_sz = 0;
+
+    if (!api_key || api_key[0] == '\0') {
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "QRZ Logbook API-nyckel saknas i inställningar (F12)");
+        }
+        return 0;
+    }
+
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        if (err_out && err_sz > 0) copy_str(err_out, err_sz, "Kunde inte initiera cURL");
+        return 0;
+    }
+
+    char clean_key[64];
+    copy_str(clean_key, sizeof(clean_key), api_key);
+    trim_str(clean_key);
+
+    char *enc_key = curl_easy_escape(curl, clean_key, 0);
+
+    char post_fields[256];
+    snprintf(post_fields, sizeof(post_fields),
+             "KEY=%s&ACTION=FETCH&OPTION=TYPE:ADIF",
+             enc_key ? enc_key : clean_key);
+
+    if (enc_key) curl_free(enc_key);
+
+    CurlBuf resp = {malloc(1), 0};
+    if (resp.data) resp.data[0] = '\0';
+
+    curl_easy_setopt(curl, CURLOPT_URL, QRZ_LOGBOOK_URL);
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&resp);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, QRZ_AGENT);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 8L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK || resp.data == NULL) {
+        curl_easy_cleanup(curl);
+        if (resp.data) free(resp.data);
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "Nätverksfel vid kontakt med QRZ.COM");
+        }
+        return 0;
+    }
+
+    /* Kontrollera om QRZ svarade med ett felmeddelande (RESULT=FAIL, RESULT=AUTH osv.) */
+    char result[64] = "";
+    char status[64] = "";
+    extract_kv_param(resp.data, "RESULT", result, sizeof(result));
+    extract_kv_param(resp.data, "STATUS", status, sizeof(status));
+
+    if (strcasecmp(result, "FAIL") == 0 || strcasecmp(result, "AUTH") == 0 ||
+        strcasecmp(status, "FAIL") == 0 || strcasecmp(status, "AUTH") == 0) {
+        qrz_parse_logbook_response(resp.data, err_out, err_sz);
+        free(resp.data);
+        curl_easy_cleanup(curl);
+        return 0;
+    }
+
+    /* Lokalisera ADIF-innehållet i svaret */
+    const char *adif_start = NULL;
+    const char *p_data = strstr(resp.data, "DATA=");
+    const char *p_adif = strstr(resp.data, "ADIF=");
+    if (p_data != NULL) {
+        adif_start = p_data + 5;
+    } else if (p_adif != NULL) {
+        adif_start = p_adif + 5;
+    } else {
+        adif_start = strchr(resp.data, '<');
+    }
+
+    if (!adif_start) {
+        if (strcasecmp(result, "OK") == 0 || strcasecmp(status, "OK") == 0) {
+            /* Inga QSO fanns på QRZ */
+            if (adif_out) {
+                *adif_out = strdup("");
+            }
+            if (adif_sz) *adif_sz = 0;
+            free(resp.data);
+            curl_easy_cleanup(curl);
+            return 1;
+        }
+        if (err_out && err_sz > 0) {
+            copy_str(err_out, err_sz, "Inget giltigt ADIF-svar från QRZ.COM");
+        }
+        free(resp.data);
+        curl_easy_cleanup(curl);
+        return 0;
+    }
+
+    while (*adif_start == ' ' || *adif_start == '\r' || *adif_start == '\n') {
+        adif_start++;
+    }
+
+    /* Avkoda URL-encoding om QRZ har url-enkodat ADIF-innehållet */
+    char *final_adif = NULL;
+    size_t final_len = 0;
+    if (adif_start[0] == '%' && (adif_start[1] == '3' || adif_start[1] == '2')) {
+        int unescaped_len = 0;
+        char *unescaped = curl_easy_unescape(curl, adif_start, 0, &unescaped_len);
+        if (unescaped) {
+            final_adif = strdup(unescaped);
+            final_len = (size_t)unescaped_len;
+            curl_free(unescaped);
+        }
+    }
+
+    if (!final_adif) {
+        final_adif = strdup(adif_start);
+        final_len = strlen(adif_start);
+    }
+
+    curl_easy_cleanup(curl);
+    free(resp.data);
+
+    if (adif_out) *adif_out = final_adif;
+    else if (final_adif) free(final_adif);
+
+    if (adif_sz) *adif_sz = final_len;
+    return 1;
+}
