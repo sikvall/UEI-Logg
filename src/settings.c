@@ -323,6 +323,41 @@ int import_qsos_from_memory(const char *content, size_t content_len, QSOList *li
     if (content == NULL || list == NULL) return -1;
     if (content_len == 0) return 0;
 
+    char *unescaped_copy = NULL;
+    if (strchr(content, '<') == NULL && strstr(content, "&lt;") != NULL) {
+        unescaped_copy = strdup(content);
+        if (unescaped_copy != NULL) {
+            char *p_in = unescaped_copy;
+            char *w = unescaped_copy;
+            while (*p_in) {
+                if (*p_in == '&') {
+                    if (strncmp(p_in, "&lt;", 4) == 0) {
+                        *w++ = '<'; p_in += 4;
+                    } else if (strncmp(p_in, "&gt;", 4) == 0) {
+                        *w++ = '>'; p_in += 4;
+                    } else if (strncmp(p_in, "&amp;", 5) == 0) {
+                        *w++ = '&'; p_in += 5;
+                    } else if (strncmp(p_in, "&quot;", 6) == 0) {
+                        *w++ = '"'; p_in += 6;
+                    } else if (strncmp(p_in, "&apos;", 6) == 0) {
+                        *w++ = '\''; p_in += 6;
+                    } else if (strncmp(p_in, "&#039;", 6) == 0) {
+                        *w++ = '\''; p_in += 6;
+                    } else if (strncmp(p_in, "&#39;", 5) == 0) {
+                        *w++ = '\''; p_in += 5;
+                    } else {
+                        *w++ = *p_in++;
+                    }
+                } else {
+                    *w++ = *p_in++;
+                }
+            }
+            *w = '\0';
+            content = unescaped_copy;
+            content_len = strlen(unescaped_copy);
+        }
+    }
+
     const char *p = content;
     const char *cursor = content;
     while ((cursor = strchr(cursor, '<')) != NULL) {
@@ -457,6 +492,10 @@ int import_qsos_from_memory(const char *content, size_t content_len, QSOList *li
         } else {
             save_all_qsos_adif(LOG_FILE, list, st);
         }
+    }
+
+    if (unescaped_copy != NULL) {
+        free(unescaped_copy);
     }
 
     return imported_count;

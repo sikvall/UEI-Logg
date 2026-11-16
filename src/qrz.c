@@ -132,6 +132,10 @@ static void xml_unescape(char *str) {
                 *w++ = '"'; p += 6;
             } else if (strncmp(p, "&apos;", 6) == 0) {
                 *w++ = '\''; p += 6;
+            } else if (strncmp(p, "&#039;", 6) == 0) {
+                *w++ = '\''; p += 6;
+            } else if (strncmp(p, "&#39;", 5) == 0) {
+                *w++ = '\''; p += 5;
             } else if (strncmp(p, "&lt;", 4) == 0) {
                 *w++ = '<'; p += 4;
             } else if (strncmp(p, "&gt;", 4) == 0) {
@@ -1078,6 +1082,9 @@ int qrz_logbook_fetch(const char *api_key, char **adif_out, size_t *adif_sz,
         adif_start = p_adif + 5;
     } else {
         adif_start = strchr(resp.data, '<');
+        if (!adif_start) {
+            adif_start = strstr(resp.data, "&lt;");
+        }
     }
 
     if (!adif_start) {
@@ -1119,6 +1126,12 @@ int qrz_logbook_fetch(const char *api_key, char **adif_out, size_t *adif_sz,
     if (!final_adif) {
         final_adif = strdup(adif_start);
         final_len = strlen(adif_start);
+    }
+
+    /* QRZ Logbook API returnerar ADIF XML/HTML-entitetskodat (&lt;...&gt;) */
+    if (final_adif) {
+        xml_unescape(final_adif);
+        final_len = strlen(final_adif);
     }
 
     curl_easy_cleanup(curl);

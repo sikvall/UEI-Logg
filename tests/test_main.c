@@ -2138,6 +2138,28 @@ static void run_qrz_sync_tests(void) {
                       (strcmp(key_edit, "ABCD-1234-EFGH-5678") == 0);
         record_result(mask_ok, "QRZ API-nyckel maskeras som ********** vid visning och visas i klartext vid redigering", NULL);
     }
+
+    /* 7. Tolkning av HTML/XML-entitetskodat ADIF från QRZ.COM (&lt; och &gt;) */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        const char *html_adif =
+            "&lt;call:7&gt;LA1TEST&lt;qso_date:8&gt;20261116&lt;time_on:4&gt;1000&lt;band:3&gt;20m&lt;mode:3&gt;SSB&lt;rst_sent:2&gt;59&lt;rst_rcvd:2&gt;59&lt;eor&gt;\n";
+
+        int imported = import_qsos_from_memory(html_adif, strlen(html_adif), &list, &st, 1, NULL);
+        int ok = (imported == 1 && list.count == 1);
+        if (ok) {
+            ok = ok && (strcmp(list.items[0].call, "LA1TEST") == 0);
+            ok = ok && (list.items[0].handled == 1);
+        }
+        record_result(ok, "import_qsos_from_memory hanterar HTML/XML-entitetskodad ADIF (&lt; och &gt;) från QRZ API", NULL);
+        if (list.items) free(list.items);
+    }
 }
 
 /* ========================================================================= */
