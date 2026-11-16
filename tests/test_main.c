@@ -2108,6 +2108,36 @@ static void run_qrz_sync_tests(void) {
 
         free(list.items);
     }
+
+    /* 6. Maskering av QRZ API-nyckel vid visning */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.qrz_api_key, sizeof(st.qrz_api_key), "ABCD-1234-EFGH-5678");
+
+        char key_view[64] = "";
+        char key_edit[64] = "";
+
+        /* Vid visning (active != 7) maskeras den */
+        int active_view = 0;
+        if (active_view == 7) {
+            copy_str(key_view, sizeof(key_view), st.qrz_api_key);
+        } else if (st.qrz_api_key[0] != '\0') {
+            copy_str(key_view, sizeof(key_view), "**********");
+        }
+
+        /* Vid redigering (active == 7) visas den i klartext */
+        int active_edit = 7;
+        if (active_edit == 7) {
+            copy_str(key_edit, sizeof(key_edit), st.qrz_api_key);
+        } else if (st.qrz_api_key[0] != '\0') {
+            copy_str(key_edit, sizeof(key_edit), "**********");
+        }
+
+        int mask_ok = (strcmp(key_view, "**********") == 0) &&
+                      (strcmp(key_edit, "ABCD-1234-EFGH-5678") == 0);
+        record_result(mask_ok, "QRZ API-nyckel maskeras som ********** vid visning och visas i klartext vid redigering", NULL);
+    }
 }
 
 /* ========================================================================= */

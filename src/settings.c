@@ -648,8 +648,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     }
     draw_field_aligned(start_y + 6, colon_col, "QRZ.COM Lösenord", pass_display, fw, active == 6, cursor_pos, cur_y, cur_x);
 
-    /* Fält 7: QRZ Logbook API-nyckel */
-    draw_field_aligned(start_y + 7, colon_col, "QRZ API-nyckel", edit->qrz_api_key, fw, active == 7, cursor_pos, cur_y, cur_x);
+    /* Fält 7: QRZ Logbook API-nyckel (visas i klartext vid inmatning, maskeras som ********** när inaktivt) */
+    char key_display[64] = "";
+    if (active == 7) {
+        copy_str(key_display, sizeof(key_display), edit->qrz_api_key);
+    } else if (edit->qrz_api_key[0] != '\0') {
+        copy_str(key_display, sizeof(key_display), "**********");
+    }
+    draw_field_aligned(start_y + 7, colon_col, "QRZ API-nyckel", key_display, fw, active == 7, cursor_pos, cur_y, cur_x);
 
     int r_qrz_auto = start_y + 8;
     int r_qrz_log  = start_y + 9;
