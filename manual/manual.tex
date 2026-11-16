@@ -39,7 +39,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: automatisk DXCC-identifiering i realtid, asynkrona signaluppslag via QRZ.com, beräkning av avstånd och bäring (QRB/QUJ), realtidsvisning av rymdväder och HF-konditioner från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
+\noindent\textbf{UEI-Logg} är ett textbaserat (TUI) loggboksprogram för amatörradio konstruerat för snabb och störningsfri loggning i realtid. Programmet körs i Linux-terminalen via \texttt{ncurses} och förenar klassisk ergonomi från Turbo Pascal och Midnight Commander med moderna funktioner: automatisk DXCC-identifiering i realtid, asynkrona signaluppslag samt direktloggning och tvåvägssynkronisering mot QRZ.com, beräkning av avstånd och bäring (QRB/QUJ), realtidsvisning av rymdväder, HF-konditioner och optimala band (DX/NVIS) från \texttt{hf.avitec.se}, flexibla färgteman, fullt ADIF 3-stöd samt ett fristående verktyg för att underhålla DXCC-databasen.
 \end{abstract}
 
 \vspace{0.5cm}
@@ -53,11 +53,12 @@ UEI-Logg är utvecklat för radioamatörer som vill ha ett resurssnålt, blixtsn
 
 Programmets styrkor:
 \begin{itemize}
-    \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar.
+    \item \textbf{Snabb inmatning:} Fyrraders formulär optimerat för minsta möjliga antal tangenttryckningar med automatisk markörstyrning och flexibel tidsinmatning (både HH:MM och HHMM).
     \item \textbf{Smart fälthantering:} Skrivning i förifyllt fält rensar automatiskt gammal text; \texttt{Delete} tömmer hela fältet direkt.
     \item \textbf{Automatisk DXCC och QRB:} Identifierar direkt land, zon och räknar ut avstånd (km) och kompassbäring utifrån motstationens lokator.
-    \item \textbf{QRZ.com- och DXCC-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen samt bakgrundsuppslag mot QRZ.com XML Logbook Service.
-    \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata samt HF-konditioner från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
+    \item \textbf{QRZ.com-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen, bakgrundsuppslag mot QRZ.com XML Data Service, direktloggning av QSO i realtid samt dubbelriktad synkronisering från QRZ.com Logbook API.
+    \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata, HF-konditioner samt bästa band för DX och NVIS från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
+    \item \textbf{Flexibel logghantering:} Sortera och flytta loggrader direkt med \texttt{w}/\texttt{s}, cykla radfärger med \texttt{c} och återgå automatiskt till logglistan efter sparad redigering.
     \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
     \item \textbf{DXCC-hjälpverktyg:} Fristående terminalprogram (\texttt{dxcc}) för databasuppdatering och statistik.
@@ -185,24 +186,28 @@ Inmatningsfältet är ordnat på fyra rader:
     \item \textbf{Rad 4:}
     \begin{itemize}
         \item \texttt{Datum}: Datum för kontakten (ÅÅÅÅ-MM-DD, standard dagens UTC-datum).
-        \item \texttt{UTC}: Tidpunkt (TT:MM:SS, standard aktuell UTC-tid).
+        \item \texttt{UTC}: Tidpunkt (TT:MM eller TTMM, standard aktuell UTC-tid). Klockan tickar automatiskt i realtid tills inmatning i formuläret påbörjas. Med tangenten \texttt{F2} kan klockan återstartas så att den fortsätter räkna upp även om inmatning pågår. Tidsinmatningen accepterar och tolkar både format som \texttt{21:58} (HH:MM) och \texttt{2158} (HHMM) helt likvärdigt.
         \item \texttt{Notering}: Fritextfält för rigg, effekt, antenn, QSL-information eller tävlingsnummer.
     \end{itemize}
 \end{itemize}
+Det aktiva inmatningsfältet framhävs alltid med tydlig accentuerad färg och en synlig textmarkör för enkel orientering.
 
 \subsection{Loggradstabell (Tidigare QSO)}
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
     \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), QUJ (bäring i grader, t.ex.\ \texttt{145°}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
     \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och \textbf{QUJ} samtidigt och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
+    \item \textbf{Ordning och färgkodning:} Loggradernas inbördes ordning kan justeras direkt från tangentbordet med tangenterna \texttt{w} (flytta rad uppåt) och \texttt{s} (flytta rad nedåt). Bakgrundsfärgen på aktuell rad kan cyklas med tangenten \texttt{c} i ordningen Standard/Normal $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd $\rightarrow$ Standard. Radfärgen sparas permanent i SQLite3-databasen (\texttt{color}) och exporteras till ADIF under taggen \texttt{<APP\_QSOLOG\_COLOR>}.
+    \item \textbf{Återgång till loggläget vid redigering:} När en loggrad öppnas för redigering med \texttt{Enter} laddas den upp i inmatningsformuläret. När ändringen sedan sparas med \texttt{Enter} återgår markören och fokus automatiskt direkt tillbaka till loggraderna, vilket gör snabba justeringar mycket smidiga.
     \item \textbf{Tydliga noteringar:} Om ett QSO har en sparad notering som inte ryms i tabellkolumnen, visas noteringen tydligt indragen på raden direkt under själva kontakten.
-    \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, statusändring eller radering).
+    \item \textbf{Statusmarkörer:} En grön bock (\texttt{✓}) eller ett rött kryss (\texttt{✗}) anger om kontakten är hanterad eller ny. En asterisk (\texttt{*}) intill radnumret anger att raden är manuellt markerad för flervalsåtgärd (export, direktloggning, statusändring eller radering).
 \end{itemize}
 
 \subsection{Rymdvädersruta}
 När terminalen har minst 25 rader och funktionen är aktiverad i inställningarna visas en informationsruta med data från \texttt{hf.avitec.se}. Tiden för senaste datahämtning presenteras högerställt i rutans titelrad (t.ex.\ \texttt{(kl 16:45)}).
 \begin{itemize}
     \item \textbf{K/Kp:} Lokalt och planetärt geomagnetiskt K-index ($K \le 2$ betyder lugna förhållanden).
+    \item \textbf{DX/NVIS:} Bästa amatörradioband just nu för DX respektive marknära NVIS-förbindelser (t.ex.\ \texttt{15m/80m}) hämtat direkt från HF Avitec.
     \item \textbf{MUF och LUF:} Maximal och lägsta användbara frekvens för jonosfärisk vågutbredning.
     \item \textbf{CME:} Koronamassutkastningar från solen mot jorden.
     \item \textbf{Solfackla:} Röntgenflöde och senaste solutbrott (klasser A, B, C, M, X).
@@ -232,8 +237,9 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Pilar Upp/Ned} & Inmatning & Byt inmatningsrad / fält \\
 \texttt{Delete (DEL)} & Inmatning & \textbf{Rensa hela det aktiva fältet omedelbart} \\
 \texttt{F1} & Allmänt & Visa snabbhjälp och tangentbordsguide \\
-\texttt{F2} / \texttt{Ctrl+S} & Inmatning & \textbf{Spara QSO} till loggboken \\
-\texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (vid redigering sparas ändringen och QSO:t märks som nytt, ✗) \\
+\texttt{F2} & Inmatning & \textbf{Starta UTC-klockan igen} i formuläret (rullar även om inmatning påbörjats) \\
+\texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (loggning sker uteslutande med Enter; loggar även till QRZ.COM om Automatisk är valt) \\
+\texttt{Ctrl+L} & Allmänt & \textbf{Direktlogga mot QRZ.COM} (i formuläret eller vald/markerade loggrader) \\
 \texttt{F3} & Allmänt & Sök och filtrera loggrader \\
 \texttt{F4} & Allmänt & Växla fokus mellan inmatningsrutan och loggradstabellen \\
 \texttt{F5} & Inmatning & Manuellt uppslag mot QRZ.COM (vid läge Auto eller Manuell) \\
@@ -243,7 +249,10 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{F7} & Loggläge & Markera samtliga loggrader som hanterade (✓) \\
 \texttt{F7} & Inställningar & Öppna editorn för egen färgprofil \\
 \texttt{F8} & Loggläge & Radera vald / markerade rader efter bekräftelse \\
-\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (märks automatiskt som nytt, ✗) \\
+\texttt{F8} & Inställningar & \textbf{Synka QRZ.COM}: Hämta och slå samman nya QSO från QRZ.COM \\
+\texttt{Enter} & Loggläge & Ladda markerat QSO till inmatningsfältet för redigering (spara med Enter återgår automatiskt till loggraderna) \\
+\texttt{w} / \texttt{s} & Loggläge & \textbf{Ändra radordning}: Flytta aktiv loggrad uppåt (\texttt{w}) respektive nedåt (\texttt{s}) \\
+\texttt{c} & Loggläge & \textbf{Cykla bakgrundsfärg}: Växla radfärg (Standard $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd) \\
 \texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
 \texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
 \texttt{Home / End} & Loggläge & Hoppa längst upp (senaste) / längst ned (äldsta) i logglistan \\
@@ -260,8 +269,11 @@ All interaktion i UEI-Logg styrs via tangentbordet.
     \item \textbf{Rensa vid ny inmatning:} Om ett fält redan innehåller text och du trycker på en bokstav eller siffra, rensas fältet automatiskt innan det nya tecknet skrivs in. Därefter fungerar skrivningen som vanligt. Vill du istället redigera befintlig text trycker du först på en piltangent.
     \item \textbf{DEL-tangenten:} Tryck på \texttt{Delete} för att tömma hela fältet direkt.
     \item \textbf{Versaler:} Anropssignal och lokator matas alltid in med stora bokstäver automatiskt.
+    \item \textbf{Flexibel tidsinmatning:} Tidsfältet accepterar och tolkar både format med kolon (\texttt{21:58}) och fyrsiffrigt format utan kolon (\texttt{2158}) helt likvärdigt och formaterar automatiskt till standardformatet \texttt{HH:MM}.
+    \item \textbf{Starta klockan med F2:} När du börjar skriva stannar den automatiska UTC-klockan för att förhindra att tiden ändras under inmatning. Om du vill att klockan ska fortsätta rulla ändå (t.ex.\ under ett längre QSO), trycker du enkelt på \texttt{F2}. Loggning bekräftas uteslutande med \texttt{Enter}.
     \item \textbf{Automatisk frekvens-, band- och våglängdskoppling:} När du anger en frekvens (t.ex. \texttt{1936 kHz}, \texttt{14,200}, \texttt{14.074}) sätts automatiskt rätt amatörradioband (\texttt{160 m}, \texttt{20 m}). Om frekvensen ligger utanför de etablerade amatörbanden beräknas våglängden automatiskt ($\lambda = 300 / f_{\text{MHz}}$, t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
-    \item \textbf{Redigering av QSO:} När du väljer ett QSO i logglistan och trycker \texttt{Enter} laddas alla fält till inmatningsrutan och kontakten märks direkt som ny (\texttt{handled = 0}, rött kryss ✗). När du sparar ändringarna med \texttt{Enter} eller \texttt{F2} uppdateras databasen och posten behåller sin status som ny tills den exporteras.
+    \item \textbf{Redigering av QSO och automatisk återgång till loggen:} När du väljer ett QSO i logglistan och trycker \texttt{Enter} laddas alla fält till inmatningsrutan och kontakten märks som ny (\texttt{handled = 0}, rött kryss ✗). När du sparar ändringarna med \texttt{Enter} uppdateras databasen och fokus återgår automatiskt direkt till loggraderna på exakt samma radposition.
+    \item \textbf{Ordning och färgkodning i loggen (w/s och c):} I loggläget kan du snabbt organisera kontakter med tangenterna \texttt{w} (flytta uppåt) och \texttt{s} (flytta nedåt), samt markera viktiga rader visuellt med \texttt{c} (cyklar mellan Standard, Grön, Gul och Röd). Färgen sparas i databasen och ADIF.
     \item \textbf{Manuell QRB- och QUJ-beräkning (F7):} Om du i inmatningsläget trycker på \texttt{F7} görs en omedelbar ny beräkning av QRB och bäring (QUJ). Programmet föredrar den angivna lokatorn; om lokator saknas används i stället motstationens QTH.
 \end{itemize}
 
@@ -276,10 +288,19 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Mitt namn:} Operatörens namn.
     \item \textbf{Mitt QTH:} Stationens ort.
     \item \textbf{Min lokator:} Stationens Maidenhead-lokator (t.ex. \texttt{JO89we}), utgångspunkt för avstånd och bäring.
-    \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{UTC+1}).
-    \item \textbf{QRZ Användare \& Lösenord:} Inloggningsuppgifter för QRZ.com XML-abonnemang.
+    \item \textbf{Tidszon:} Tidszonsoffset (t.ex. \texttt{Europe/Stockholm} eller \texttt{UTC+1}).
+    \item \textbf{QRZ Användare:} Användarnamn för QRZ.com.
+    \item \textbf{QRZ Lösenord:} Lösenord för QRZ.com.
+    \item \textbf{QRZ API-nyckel:} Personlig API-nyckel för QRZ.com Logbook API (erhålls från kontoinställningarna på QRZ.com). För att skydda känsliga uppgifter maskeras nyckeln automatiskt som \texttt{**********} vid visning och visas i klartext först när fältet aktiveras för redigering.
     \item \textbf{Auto QRZ.COM:} \texttt{< Av >} / \texttt{< Auto >} / \texttt{< Manuell >}. Vid \texttt{Auto} slås motstationens data (namn, QTH och lokator) upp i bakgrunden vid inmatning och paus; vid \texttt{Manuell} sker uppslag endast när operatören trycker \texttt{F5}; vid \texttt{Av} är QRZ-uppslag helt och hållet avslaget.
-    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Totalt 16 färgteman finns tillgängliga:
+    \item \textbf{Direktlogg QRZ.COM:} \texttt{< Av >} / \texttt{< Automatisk >} / \texttt{< Manuell >}.
+    \begin{itemize}
+        \item \emph{Automatisk:} Varje sparat QSO loggas omedelbart mot QRZ.com Logbook API i realtid när du trycker \texttt{Enter}.
+        \item \emph{Manuell:} Direktloggning utförs endast på begäran med snabbkommandot \texttt{Ctrl+L} i formuläret eller för markerade rader i loggen.
+        \item \emph{Av:} Ingen direktloggning sker mot QRZ.com.
+    \end{itemize}
+    Default är \emph{Manuell} om användarnamn och lösenord angetts i inställningarna. Statusraden visar resultat (\texttt{QRZ: OK} eller specifik felkod). Vid godkänd loggning markeras kontakten direkt som hanterad (\texttt{✓}).
+    \item \textbf{Färgschema (Drop-down lista):} Tryck på \texttt{Enter} eller \texttt{Mellanslag} för att fälla ut en interaktiv drop-down lista. Vid navigering med piltangenterna (\texttt{Upp}/\texttt{Ned}) förhandsgranskas schemat omedelbart i realtid. Bekräfta med \texttt{Enter} eller avbryt med \texttt{Esc}. Tryck \texttt{F7} eller \texttt{E} för att öppna den inbyggda färgprofilseditorn. Totalt 16 färgteman finns tillgängliga:
     \begin{itemize}
         \item \emph{UEI-tema (Standard, default):} Programmets signaturschema i marinblå bas, solgula accenter, skogsgröna ramar, bärnstensfokus och havsblå markering.
         \item \emph{Turbo Pascal (MC Default):} Klassisk borlandblå/cyan/vit layout.
@@ -298,15 +319,24 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{Militärradio (Fältgrön):} Taktisk militär känsla i stil med bärbara fältradiostationer, djup olivdrab botten med khaki canvastypografi och mässingsdetaljer.
         \item \emph{Egen profil (Anpassad):} Användarens egna skräddarsydda färgprofil som skapas och redigeras via den inbyggda färgprofilseditorn (\texttt{F7}).
     \end{itemize}
-    \item \textbf{Egen färgprofil (\texttt{F7}):} Direktknapp för att starta den interaktiva färgprofilseditorn (se avsnitt~\ref{sec:theme_editor}).
     \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
     \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
     \item \textbf{Rymdväderruta:} \texttt{< På (hf.avitec.se) >} / \texttt{< Av >}. Slår på eller av rymdväderspanelen. När den är avstängd ges 4 extra rader till loggradstabellen.
     \item \textbf{Importera ADIF (F5):} Öppnar filväljare för att läsa in externa ADIF-filer.
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
+    \item \textbf{Synka QRZ.COM (F8):} Hämtar loggade kontakter direkt från ditt QRZ.com-konto via Logbook API (ACTION=FETCH). Hämtad data avkodas automatiskt från XML/HTML-entiteter, matchas mot den lokala databasen så att dubbletter undviks, och infogas sömlöst i kronologisk ordning. De importerade kontakterna markeras automatiskt som hanterade (\texttt{✓}).
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
+
+\subsection{QRZ.COM-integration: Uppslag, Direktloggning och Synkronisering}
+\label{sec:qrz_integration}
+UEI-Logg erbjuder en komplett och sömlös integration mot QRZ.com på tre nivåer:
+\begin{itemize}
+    \item \textbf{Signaluppslag (XML Data Service):} När du matar in en motstations anropssignal slås data upp i bakgrunden utan att blockera gränssnittet. Namn, QTH och Maidenhead-lokator fylls i automatiskt, och avstånd samt bäring (QRB/QUJ) beräknas direkt.
+    \item \textbf{Direktloggning i realtid (ACTION=INSERT):} Varje genomfört QSO kan skickas direkt till din online-loggbok på QRZ.com via dess HTTPS API. I läget \emph{Automatisk} sker detta omedelbart när du trycker \texttt{Enter} för att logga; i läget \emph{Manuell} trycker du \texttt{Ctrl+L}. Statusraden ger direkt återkoppling på anropet.
+    \item \textbf{Tvåvägssynkronisering (ACTION=FETCH):} Med tangenten \texttt{F8} i inställningsmenyn hämtas hela din online-loggbok. Programmet avkodar det HTML-entitetskodade ADIF-svaret från QRZ.com, filtrerar bort QSO:n som redan finns lokalt, och sparar alla nya kontakter direkt till SQLite3-databasen \texttt{qsolog.sq3}.
+\end{itemize}
 
 \subsection{Egen Färgprofilseditor (F7 i inställningar)}
 \label{sec:theme_editor}
@@ -411,6 +441,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
     \item \textbf{A-index:} Dygnsmedelvärde av den geomagnetiska aktiviteten ($0\dots 400$).
     \item \textbf{Solvind:} Hastighet i km/s och densitet i partiklar per kubikcentimeter. Höga hastigheter ($>600\,\text{km/s}$) vid koronahål utlöser ofta stormar.
     \item \textbf{Röntgenflöde (X-ray):} Solflares i klasserna C, M och X kan orsaka plötsliga blackout-perioder på dagsljusets HF-band (SID / D-skiktsabsorption).
+    \item \textbf{DX/NVIS:} Beräknade rekommendationer för bästa amatörradioband just nu hämtade direkt från \texttt{hf.avitec.se}. Fältet anger optimalt band för interkontinentala DX-kontakter respektive marknära NVIS-trafik (Near Vertical Incidence Skywave) utan dödzon inom 0--600 km (t.ex.\ \texttt{15m/80m}).
 \end{itemize}
 
 \section{Filstruktur och Teknisk Översikt}
@@ -430,15 +461,15 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/tui.c} / \texttt{tui.h} & Terminalgränssnitt i ncurses, färgteman och rutfördelning. \\
 \texttt{src/logg.c} / \texttt{logg.h} & QSO-datastrukturer, filsparning och ADIF import/export. \\
 \texttt{src/settings.c} & Inställningsmodal (F12) och konfiguration. \\
-\texttt{src/space\_weather.c} & Asynkron HTTP-hämtning av rymdväder från \texttt{hf.avitec.se}. \\
+\texttt{src/space\_weather.c} & Asynkron HTTP-hämtning av rymdväder och DX/NVIS från \texttt{hf.avitec.se}. \\
 \texttt{src/dxcc.c} / \texttt{dxcc.h} & Prefixsökning och prefixprefixregler för länder. \\
 \texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
 \texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
-\texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Data Service. \\
+\texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Service (uppslag, direktlogg och synk). \\
 \texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
-\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester. \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (95 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
@@ -457,18 +488,21 @@ Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fälte
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
 
-Projektet inkluderar en separat testbinär, \texttt{testing}, som kör omfattande verifieringstester mot projektets funktioner:
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 95 omfattande verifieringstester mot programmets samtliga kärnfunktioner:
 \begin{itemize}
     \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
-    \item \textbf{ADIF-import:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz och att felaktiga skalningar återställs.
+    \item \textbf{ADIF-import och minnestolkning:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz, att felaktiga skalningar återställs och att minnesbaserad ADIF-import hanterar poster korrekt.
     \item \textbf{Logghantering och F7:} Verifierar att F7 sätter alla loggrader till hanterade (\texttt{handled = 1}), att statistikcachen invalideras och att flaggan bevaras vid ADIF-sparning.
-    \item \textbf{Navigering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt sök- och bandfiltrering.
+    \item \textbf{Navigering och filtrering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt realtidssökning och bandfiltrering.
     \item \textbf{QRB, QUJ och lokatorer:} Validering av Maidenhead-lokatorer, avstånds- och bäringsberäkning samt formatering.
     \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
-    \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf}.
-    \item \textbf{Sträng- och UTF-8-verktyg:} Trimning, versalisering och beräkning av teckenbredd.
+    \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf} inkl. dolda lösenord och maskerad QRZ API-nyckel.
+    \item \textbf{Sträng- och tidsverktyg:} Trimning, versalisering, beräkning av UTF-8-teckenbredd samt flexibel tidsinmatning för både \texttt{21:58} och \texttt{2158}.
     \item \textbf{SQLite3-databaslagring:} Omfattande backend-tester som verifierar schemainitiering, WAL-läge, tabellindex, autoincrement-ID:n, kronologisk ordning, SQL-injektionsskydd med specialtecken, hantering av tomma fält, uppdatering, selektiv status, F7 i databasen, radering, tömning, batch-inläggning inom transaktion, diskpersistens över omstart, felhantering vid stängd databas samt ADIF-migrering och import/export.
     \item \textbf{Svenska tecken (ÅÄÖ):} Fullständig verifiering av å, ä, ö, Å, Ä, Ö i fälten Namn, QTH och Notering inklusive direkt SQLite3-persistens, uppdatering, automatisk Latin-1-sanering, ADIF-export/import, exakt UTF-8-markörpositionering (1 steg per tecken istället för byte-längd), säker teckenklippning i TUI samt skiftlägesokänslig loggfiltrering.
+    \item \textbf{Direktloggning mot QRZ.COM:} Verifiering av driftlägen (Av, Automatisk, Manuell med \texttt{Ctrl+L}), API-nyckelkrav, ADIF-postbygge och tolkning av svarskoder från QRZ API.
+    \item \textbf{Loggradshantering:} Flyttning och omordning av rader med \texttt{w} och \texttt{s}, cykling av bakgrundsfärger med \texttt{c} (Standard $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd), persistens i SQLite3 och ADIF samt automatisk återgång till loggläget efter sparad redigering.
+    \item \textbf{QRZ.COM-synkronisering:} Validering av stationsfält, hämtning från API, avkodning av HTML-entiteter (\texttt{\&lt;} och \texttt{\&gt;}), filtrering av dubbletter och kronologisk sammanfogning.
 \end{itemize}
 
 Testsviten körs från kommandoraden med:
