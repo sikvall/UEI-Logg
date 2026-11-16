@@ -1486,7 +1486,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     mvprintw(log_top + 1, layout.col_date, "YYMMDD");
     mvprintw(log_top + 1, layout.col_time, "HHMM");
     mvprintw(log_top + 1, layout.col_call, "Signal    ");
-    mvprintw(log_top + 1, layout.col_freq, "%-8s", "Frekv");
+    mvprintw(log_top + 1, layout.col_freq, "%8s", "Frekv");
     mvprintw(log_top + 1, layout.col_band, "%6s", "Band");
     mvprintw(log_top + 1, layout.col_mode, "Mode");
     mvprintw(log_top + 1, layout.col_rst,  "%-10s", "RST");
@@ -1599,7 +1599,9 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         mvprintw(row_y, layout.col_time, "%-4s", t_str);
 
         mvprintw(row_y, layout.col_call, "%-10s", item->call);
-        mvprintw(row_y, layout.col_freq, "%-8s", item->freq);
+        char freq_dsp[16];
+        format_freq_display(item->freq, freq_dsp, sizeof(freq_dsp));
+        mvprintw(row_y, layout.col_freq, "%s", freq_dsp);
 
         char band_dsp[16];
         format_band_display(item->band, band_dsp, sizeof(band_dsp));

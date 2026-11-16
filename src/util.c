@@ -720,6 +720,73 @@ int find_band_index(const char *band_str) {
 }
 
 /**
+ * @brief Formaterar en frekvenssträng för loggradsvisning (högerställd på 8 tecken med punkten fixerad på pos 4).
+ * @param in Rå frekvenssträng.
+ * @param out Målbuffer.
+ * @param out_sz Målbufferns storlek.
+ */
+void format_freq_display(const char *in, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    out[0] = '\0';
+
+    if (in == NULL || in[0] == '\0') {
+        snprintf(out, out_sz, "%8s", "");
+        return;
+    }
+
+    char clean[32];
+    copy_str(clean, sizeof(clean), in);
+    trim_str(clean);
+    if (clean[0] == '\0') {
+        snprintf(out, out_sz, "%8s", "");
+        return;
+    }
+
+    /* Normalisera frekvensen via parse_and_normalize_freq ifall giltigt flyttal */
+    char norm[32];
+    double mhz = parse_and_normalize_freq(clean, norm, sizeof(norm));
+    const char *src = (mhz > 0.0 && norm[0] != '\0') ? norm : clean;
+
+    /* Extrahera heltalsdel och decimaldel */
+    char int_part[16] = "";
+    char frac_part[16] = "";
+    const char *dot = strchr(src, '.');
+    if (!dot) dot = strchr(src, ',');
+
+    if (dot != NULL) {
+        size_t int_len = (size_t)(dot - src);
+        if (int_len >= sizeof(int_part)) int_len = sizeof(int_part) - 1;
+        memcpy(int_part, src, int_len);
+        int_part[int_len] = '\0';
+        copy_str(frac_part, sizeof(frac_part), dot + 1);
+    } else {
+        copy_str(int_part, sizeof(int_part), src);
+        copy_str(frac_part, sizeof(frac_part), "000");
+    }
+
+    /* Ta endast siffertecken i frac_part och fyll ut till minst 3 tecken */
+    char clean_frac[16];
+    size_t cj = 0;
+    for (const char *fp = frac_part; *fp != '\0' && cj < sizeof(clean_frac) - 1; ++fp) {
+        if (isdigit((unsigned char)*fp)) {
+            clean_frac[cj++] = *fp;
+        }
+    }
+    clean_frac[cj] = '\0';
+
+    while (cj < 3) {
+        clean_frac[cj++] = '0';
+        clean_frac[cj] = '\0';
+    }
+    if (cj > 3) {
+        clean_frac[3] = '\0';
+    }
+
+    /* Heltalsdelen högerställs på 4 tecken (pos 0..3), punkten hamnar på pos 4, decimaler på pos 5..7 */
+    snprintf(out, out_sz, "%4s.%-3s", int_part, clean_frac);
+}
+
+/**
  * @brief Formaterar bandnamn för visning med mellanslag mellan siffra och enhet (t.ex. "80 m", "70 cm").
  * @param in Inkommande bandsträng.
  * @param out Målbuffer.

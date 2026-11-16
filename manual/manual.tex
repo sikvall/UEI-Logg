@@ -195,7 +195,7 @@ Det aktiva inmatningsfältet framhävs alltid med tydlig accentuerad färg och e
 \subsection{Loggradstabell (Tidigare QSO)}
 Mittersta delen av skärmen listar historiska kontakter. Varje rad presenterar:
 \begin{itemize}
-    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), QUJ (bäring i grader, t.ex.\ \texttt{145°}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
+    \item Radnummer (\#), komprimerat datum (\texttt{YYMMDD}), UTC-tid (\texttt{HHMM}), Signal, Frekvens (\texttt{Frekv}, högerställd med fixerad decimalpunkt på samma kolumn), Band, Mode, kombinerad rapport (\texttt{RST}, t.ex.\ \texttt{599/599} eller \texttt{59+20/59+5}), Namn, QTH, QRB (avstånd som ren siffra, t.ex.\ \texttt{344}), QUJ (bäring i grader, t.ex.\ \texttt{145°}), Lokator, DXCC samt statusflagga (\texttt{Ny}).
     \item \textbf{Dynamisk kolumnprioritering och QTH-expansion:} När terminalens fönsterbredd minskar döljs kolumner automatiskt i följande ordning: \textbf{DXCC}, därefter \textbf{Lokator}, därefter \textbf{QRB} och \textbf{QUJ} samtidigt och slutligen \textbf{QTH} (vid fönsterbredd under 80 kolumner). Fältet för \textbf{QTH} har en minimibredd på 10 tecken och expanderar dynamiskt upp till maximalt 30 tecken när utrymme finns, vilket ger gott om plats åt långa ortsnamn. För att spara plats och säkerställa att QTH förblir synligt ända ned till 80 kolumner tas kolumnen med QSO-nummer (\texttt{\#}) automatiskt bort så snart fönstret blir smalare än 90 kolumner. Kärndata (datum, tid, anropssignal, frekvens, band, mode och rapport) förblir alltid synliga.
     \item \textbf{Ordning och färgkodning:} Loggradernas inbördes ordning kan justeras direkt från tangentbordet med tangenterna \texttt{w} (flytta rad uppåt) och \texttt{s} (flytta rad nedåt). Bakgrundsfärgen på aktuell rad kan cyklas med tangenten \texttt{c} i ordningen Standard/Normal $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd $\rightarrow$ Standard. Radfärgen sparas permanent i SQLite3-databasen (\texttt{color}) och exporteras till ADIF under taggen \texttt{<APP\_QSOLOG\_COLOR>}.
     \item \textbf{Återgång till loggläget vid redigering:} När en loggrad öppnas för redigering med \texttt{Enter} laddas den upp i inmatningsformuläret. När ändringen sedan sparas med \texttt{Enter} återgår markören och fokus automatiskt direkt tillbaka till loggraderna, vilket gör snabba justeringar mycket smidiga.
@@ -469,7 +469,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
-\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (95 tester). \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (96 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
@@ -488,7 +488,7 @@ Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fälte
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
 
-Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 95 omfattande verifieringstester mot programmets samtliga kärnfunktioner:
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 96 omfattande verifieringstester mot programmets samtliga kärnfunktioner:
 \begin{itemize}
     \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
     \item \textbf{ADIF-import och minnestolkning:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz, att felaktiga skalningar återställs och att minnesbaserad ADIF-import hanterar poster korrekt.

@@ -161,6 +161,31 @@ static void run_freq_and_band_tests(void) {
                  disp20, disp38, adif20, adif38, adif11);
         record_result(ok, "format_band_display och normalize_band_adif standardiserar 'meter' -> 'm' och 'M'", ok ? NULL : detail);
     }
+
+    /* 9. format_freq_display högerställer frekvens och sätter '.' på exakt samma kolumn (pos 4) */
+    {
+        char f1[16] = "", f2[16] = "", f3[16] = "", f4[16] = "", f5[16] = "", f6[16] = "";
+        format_freq_display("14.200", f1, sizeof(f1));
+        format_freq_display("7.100", f2, sizeof(f2));
+        format_freq_display("144.300", f3, sizeof(f3));
+        format_freq_display("1296.200", f4, sizeof(f4));
+        format_freq_display("7", f5, sizeof(f5));
+        format_freq_display("", f6, sizeof(f6));
+
+        int ok = (strcmp(f1, "  14.200") == 0) &&
+                 (strcmp(f2, "   7.100") == 0) &&
+                 (strcmp(f3, " 144.300") == 0) &&
+                 (strcmp(f4, "1296.200") == 0) &&
+                 (strcmp(f5, "   7.000") == 0) &&
+                 (strcmp(f6, "        ") == 0);
+
+        /* Kontrollera att '.' alltid ligger på index 4 för alla icke-tomma frekvenser */
+        if (ok) {
+            ok = ok && (f1[4] == '.') && (f2[4] == '.') && (f3[4] == '.') &&
+                       (f4[4] == '.') && (f5[4] == '.') && (strlen(f1) == 8);
+        }
+        record_result(ok, "format_freq_display högerställer kolumnen och låser '.' till exakt samma kolumn (pos 4)", NULL);
+    }
 }
 
 /* ========================================================================= */

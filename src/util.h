@@ -203,6 +203,14 @@ int find_band_index(const char *band_str);
 void format_band_display(const char *in, char *out, size_t out_sz);
 
 /**
+ * @brief Formaterar en frekvenssträng för loggradsvisning (högerställd på 8 tecken med punkten fixerad på pos 4).
+ * @param in Rå frekvenssträng.
+ * @param out Målbuffer.
+ * @param out_sz Målbufferns storlek.
+ */
+void format_freq_display(const char *in, char *out, size_t out_sz);
+
+/**
  * @brief Normaliserar ett bandnamn för standardiserad ADIF-lagring (t.ex. "20 m" -> "20m").
  * @param in Bandsträng.
  * @param out Buffer för normaliserat namn.
