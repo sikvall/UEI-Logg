@@ -86,7 +86,7 @@ void tui_init(void) {
     timeout(250);
 
     /* Sätt terminalens fönstertitel om terminalemulatorn stöder OSC */
-    printf("\033]0;UEI-log v1.0\007");
+    printf("\033]0;UEI-log v1.0.0\007");
     fflush(stdout);
 }
 
@@ -780,7 +780,7 @@ void draw_top_bar(const StationSettings *st) {
     attroff(COLOR_PAIR(CP_TOPBAR_ACCENT) | A_BOLD);
 
     attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-    mvprintw(0, 9, "v1.0");
+    mvprintw(0, 9, "v1.0.0");
     attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
     char station_info[128];
@@ -804,7 +804,7 @@ void draw_top_bar(const StationSettings *st) {
 
     int info_w = utf8_display_width(station_info);
     int info_col = (COLS - info_w) / 2;
-    if (info_col < 14) info_col = 14;
+    if (info_col < 16) info_col = 16;
 
     char time_str[64];
     get_utc_strings(NULL, 0, NULL, 0, time_str, sizeof(time_str));

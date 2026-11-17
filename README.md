@@ -1,6 +1,6 @@
 # UEI-Logg
 
-**UEI-Logg** (UEI-log v1.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
+**UEI-Logg** (UEI-log v1.0.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
 
 ---
 
