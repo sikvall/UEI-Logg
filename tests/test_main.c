@@ -829,6 +829,37 @@ static void run_string_and_utf8_tests(void) {
                          (is_dup == 1) && cmp_eq;
         record_result(time_eq_ok, "Tidsinmatning '21:58' (HH:MM) och '2158' (HHMM) normaliseras och tolkas identiskt", NULL);
     }
+
+    /* 9. Mode-fält och auto_rst_59 */
+    {
+        QSO q_mode;
+        memset(&q_mode, 0, sizeof(q_mode));
+        copy_str(q_mode.mode, sizeof(q_mode.mode), "SSB");
+        StationSettings st_off;
+        memset(&st_off, 0, sizeof(st_off));
+        st_off.auto_rst_59 = 0;
+        char last_smcb[32] = "", status_msg[128] = "", qrb[32] = "", quj[32] = "";
+
+        apply_field_defaults_on_leave(&q_mode, FLD_MODE, NULL, &st_off,
+                                      last_smcb, sizeof(last_smcb),
+                                      status_msg, sizeof(status_msg),
+                                      qrb, sizeof(qrb), quj, sizeof(quj));
+
+        int rst_off_ok = (q_mode.rst_sent[0] == '\0') && (q_mode.rst_rcvd[0] == '\0');
+
+        StationSettings st_on;
+        memset(&st_on, 0, sizeof(st_on));
+        st_on.auto_rst_59 = 1;
+        apply_field_defaults_on_leave(&q_mode, FLD_MODE, NULL, &st_on,
+                                      last_smcb, sizeof(last_smcb),
+                                      status_msg, sizeof(status_msg),
+                                      qrb, sizeof(qrb), quj, sizeof(quj));
+
+        int rst_on_ok = (strcmp(q_mode.rst_sent, "59") == 0) && (strcmp(q_mode.rst_rcvd, "59") == 0);
+
+        record_result(rst_off_ok && rst_on_ok,
+                      "apply_field_defaults_on_leave för FLD_MODE respekterar auto_rst_59 (fyller ej i om av)", NULL);
+    }
 }
 
 /* ========================================================================= */

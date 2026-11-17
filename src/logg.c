@@ -942,9 +942,11 @@ void apply_field_defaults_on_leave(QSO *qso, int leaving_field,
     }
     if (leaving_field == FLD_MODE && qso->mode[0] != '\0') {
         to_upper_str(qso->mode);
-        const char *def_rst = (strcmp(qso->mode, "CW") == 0) ? "599" : "59";
-        if (qso->rst_sent[0] == '\0') copy_str(qso->rst_sent, sizeof(qso->rst_sent), def_rst);
-        if (qso->rst_rcvd[0] == '\0') copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), def_rst);
+        if (st != NULL && st->auto_rst_59) {
+            const char *def_rst = (strcmp(qso->mode, "CW") == 0) ? "599" : "59";
+            if (qso->rst_sent[0] == '\0') copy_str(qso->rst_sent, sizeof(qso->rst_sent), def_rst);
+            if (qso->rst_rcvd[0] == '\0') copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), def_rst);
+        }
         persist_qso_radio_settings(qso, st);
     }
     if (leaving_field == FLD_DATE && qso->date[0] != '\0') {
