@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -std=c11 -O2 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE_EXTENDED -
 CURL_LIBS = -Llib -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group
 LDFLAGS = -static -lncursesw -ltinfo $(CURL_LIBS) -lsqlite3 -lm -pthread -ldl
 TOOL_LDFLAGS = -static $(CURL_LIBS) -lm -pthread -ldl
-TARGET = ueilog
+TARGET = ueilogg
 TOOL_TARGET = dxcc
 TEST_TARGET = testing
 MANUAL_SRC = manual/manual.tex
