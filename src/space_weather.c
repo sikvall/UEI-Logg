@@ -339,8 +339,10 @@ static int fetch_space_weather_online(SpaceWeatherData *out) {
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "qsolog-uei/1.0 (amateur radio log; space weather reader)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 6L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 4L);
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 12L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
 
@@ -372,12 +374,13 @@ static void *space_weather_worker_thread(void *arg) {
     }
 
     while (g_sw_running) {
-        /* Sov i 10 minuter eller tills vi väcks via konditionsvariabel */
+        /* Sov i 10 minuter (eller 30 sekunder om ingen data erhållits än) eller tills vi väcks via konditionsvariabel */
         pthread_mutex_lock(&g_sw_mutex);
         if (!g_sw_trigger && g_sw_running) {
             struct timespec ts;
             clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += SW_REFRESH_INTERVAL_SEC;
+            int sleep_sec = (g_sw_data.has_data) ? SW_REFRESH_INTERVAL_SEC : 30;
+            ts.tv_sec += sleep_sec;
             while (!g_sw_trigger && g_sw_running) {
                 int rc = pthread_cond_timedwait(&g_sw_cond, &g_sw_mutex, &ts);
                 if (rc == ETIMEDOUT) break;

@@ -369,6 +369,9 @@ int main(int argc, char *argv[]) {
             }
             compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
             update_all_missing_qrbs(&station, &log_list);
+            if (station.show_space_weather) {
+                space_weather_refresh_async();
+            }
             continue;
         }
 
