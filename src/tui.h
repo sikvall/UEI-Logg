@@ -156,6 +156,13 @@ int build_filtered_indices(const QSOList *log_list, const char *search_filter,
 void draw_box_with_title(int y, int x, int h, int w, const char *title, int has_focus);
 
 /**
+ * @brief Ritar en centrerad förlopps-/statusruta i aktivt ncurses-fönster.
+ * @param title Rutans titel.
+ * @param message Meddelande som centreras inne i rutan.
+ */
+void draw_progress_modal(const char *title, const char *message);
+
+/**
  * @brief Ritar den översta listen med programnamn, min stations signal/lokator, datum, lokal tid och UTC.
  * @param st Min stations inställningar.
  */

@@ -75,6 +75,42 @@ static int log_qso_to_qrz(QSOList *log_list, int qso_idx,
 }
 
 /**
+ * @brief Uppdaterar härledda QSO-fält (DXCC, band, QRB, QUJ) efter radering/backspace i ett inmatningsfält.
+ */
+static void update_qso_derived_after_removal(QSO *qso, int active_field,
+                                             const StationSettings *st,
+                                             char *last_smcb_call,
+                                             char *current_qrb, size_t qrb_sz,
+                                             char *current_quj, size_t quj_sz,
+                                             int clear_qrb_on_call) {
+    if (active_field == FLD_CALL) {
+        if (last_smcb_call) last_smcb_call[0] = '\0';
+        lookup_dxcc(qso->call, qso->dxcc, sizeof(qso->dxcc));
+        if (clear_qrb_on_call) {
+            copy_str(current_qrb, qrb_sz, "-");
+            copy_str(current_quj, quj_sz, "-");
+        }
+    } else if (active_field == FLD_FREQ && qso->freq[0] != '\0') {
+        resolve_band_from_freq(qso->freq, qso->band, sizeof(qso->band));
+    } else if (active_field == FLD_GRID) {
+        if ((qso->gridsquare[0] == '\0' && qso->qth[0] != '\0') ||
+            is_valid_locator(qso->gridsquare) == 6) {
+            compute_qrb_quj_str(st, qso, current_qrb, qrb_sz, current_quj, quj_sz);
+        } else {
+            copy_str(current_qrb, qrb_sz, "-");
+            copy_str(current_quj, quj_sz, "-");
+        }
+    } else if (active_field == FLD_QTH && qso->qth[0] == '\0') {
+        if (is_valid_locator(qso->gridsquare)) {
+            compute_qrb_quj_str(st, qso, current_qrb, qrb_sz, current_quj, quj_sz);
+        } else {
+            copy_str(current_qrb, qrb_sz, "-");
+            copy_str(current_quj, quj_sz, "-");
+        }
+    }
+}
+
+/**
  * @brief Programmets huvudfunktion: initierar delsystem, laddar data och driver händelseloopen.
  * @return 0 vid normal avslutning.
  */
@@ -1117,38 +1153,10 @@ int main(int argc, char *argv[]) {
             if (field_ptr != NULL) {
                 field_fresh = 0;
                 utf8_backspace_at(field_ptr, &field_cursor_pos);
-                if (active_field == FLD_CALL) {
-                    last_smcb_call[0] = '\0';
-                    lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
-                }
-                if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
-                    resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
-                }
-                if (active_field == FLD_GRID) {
-                    if (current_qso.gridsquare[0] == '\0') {
-                        if (current_qso.qth[0] != '\0') {
-                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                        } else {
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            copy_str(current_quj, sizeof(current_quj), "-");
-                        }
-                    } else if (is_valid_locator(current_qso.gridsquare) == 6) {
-                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                    } else {
-                        copy_str(current_qrb, sizeof(current_qrb), "-");
-                        copy_str(current_quj, sizeof(current_quj), "-");
-                    }
-                }
-                if (active_field == FLD_QTH) {
-                    if (current_qso.qth[0] == '\0') {
-                        if (is_valid_locator(current_qso.gridsquare)) {
-                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                        } else {
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            copy_str(current_quj, sizeof(current_quj), "-");
-                        }
-                    }
-                }
+                update_qso_derived_after_removal(&current_qso, active_field, &station,
+                                                 last_smcb_call,
+                                                 current_qrb, sizeof(current_qrb),
+                                                 current_quj, sizeof(current_quj), 0);
             }
         } else if (active_field != FLD_BAND && ch == KEY_DC) {
             /* Trycka DEL i ett inmatningsfält ska rensa hela fältet */
@@ -1158,40 +1166,10 @@ int main(int argc, char *argv[]) {
                 field_ptr[0] = '\0';
                 field_cursor_pos = 0;
                 field_fresh = 0;
-                if (active_field == FLD_CALL) {
-                    last_smcb_call[0] = '\0';
-                    lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
-                    copy_str(current_qrb, sizeof(current_qrb), "-");
-                    copy_str(current_quj, sizeof(current_quj), "-");
-                }
-                if (active_field == FLD_FREQ && current_qso.freq[0] != '\0') {
-                    resolve_band_from_freq(current_qso.freq, current_qso.band, sizeof(current_qso.band));
-                }
-                if (active_field == FLD_GRID) {
-                    if (current_qso.gridsquare[0] == '\0') {
-                        if (current_qso.qth[0] != '\0') {
-                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                        } else {
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            copy_str(current_quj, sizeof(current_quj), "-");
-                        }
-                    } else if (is_valid_locator(current_qso.gridsquare) == 6) {
-                        compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                    } else {
-                        copy_str(current_qrb, sizeof(current_qrb), "-");
-                        copy_str(current_quj, sizeof(current_quj), "-");
-                    }
-                }
-                if (active_field == FLD_QTH) {
-                    if (current_qso.qth[0] == '\0') {
-                        if (is_valid_locator(current_qso.gridsquare)) {
-                            compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
-                        } else {
-                            copy_str(current_qrb, sizeof(current_qrb), "-");
-                            copy_str(current_quj, sizeof(current_quj), "-");
-                        }
-                    }
-                }
+                update_qso_derived_after_removal(&current_qso, active_field, &station,
+                                                 last_smcb_call,
+                                                 current_qrb, sizeof(current_qrb),
+                                                 current_quj, sizeof(current_quj), 1);
             }
         } else if (active_field != FLD_BAND && input_res == OK && wch >= 32 && wch != 127) {
             /* Frys datum och tid när användaren börjar mata in i ett fält (eller redigerar datum/tid manuellt) */
@@ -1223,18 +1201,8 @@ int main(int argc, char *argv[]) {
                     wch = towupper(wch);
                 }
 
-                char u8[8] = {0};
-                mbstate_t ps;
-                memset(&ps, 0, sizeof(ps));
-                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
-                if (u8_len == (size_t)-1 || u8_len == 0) {
-                    u8[0] = (char)wch;
-                    u8[1] = '\0';
-                    u8_len = 1;
-                } else {
-                    u8[u8_len] = '\0';
-                }
-
+                char u8[8];
+                size_t u8_len = utf8_encode_wchar((wchar_t)wch, u8, sizeof(u8));
                 utf8_insert_char_at(field_ptr, max_len, &field_cursor_pos, u8, u8_len);
 
                 if (active_field == FLD_CALL) {

@@ -327,32 +327,7 @@ int import_qsos_from_memory(const char *content, size_t content_len, QSOList *li
     if (strchr(content, '<') == NULL && strstr(content, "&lt;") != NULL) {
         unescaped_copy = strdup(content);
         if (unescaped_copy != NULL) {
-            char *p_in = unescaped_copy;
-            char *w = unescaped_copy;
-            while (*p_in) {
-                if (*p_in == '&') {
-                    if (strncmp(p_in, "&lt;", 4) == 0) {
-                        *w++ = '<'; p_in += 4;
-                    } else if (strncmp(p_in, "&gt;", 4) == 0) {
-                        *w++ = '>'; p_in += 4;
-                    } else if (strncmp(p_in, "&amp;", 5) == 0) {
-                        *w++ = '&'; p_in += 5;
-                    } else if (strncmp(p_in, "&quot;", 6) == 0) {
-                        *w++ = '"'; p_in += 6;
-                    } else if (strncmp(p_in, "&apos;", 6) == 0) {
-                        *w++ = '\''; p_in += 6;
-                    } else if (strncmp(p_in, "&#039;", 6) == 0) {
-                        *w++ = '\''; p_in += 6;
-                    } else if (strncmp(p_in, "&#39;", 5) == 0) {
-                        *w++ = '\''; p_in += 5;
-                    } else {
-                        *w++ = *p_in++;
-                    }
-                } else {
-                    *w++ = *p_in++;
-                }
-            }
-            *w = '\0';
+            xml_unescape_str(unescaped_copy);
             content = unescaped_copy;
             content_len = strlen(unescaped_copy);
         }
@@ -388,22 +363,9 @@ int import_qsos_from_memory(const char *content, size_t content_len, QSOList *li
             last_status_update = now;
             int percent = (content_len > 0) ? (int)(((size_t)(p - content) * 100) / content_len) : 0;
             if (percent > 100) percent = 100;
-            if (stdscr != NULL && !isendwin()) {
-                int box_w = 46;
-                int box_h = 5;
-                int box_y = (LINES - box_h) / 2;
-                int box_x = (COLS - box_w) / 2;
-                if (box_y < 0) box_y = 0;
-                if (box_x < 0) box_x = 0;
-                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                draw_box_with_title(box_y, box_x, box_h, box_w, progress_title, 1);
-                char stat_str[64];
-                snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
-                int slen = utf8_display_width(stat_str);
-                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                refresh();
-            }
+            char stat_str[64];
+            snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
+            draw_progress_modal(progress_title, stat_str);
         }
 
         const char *end_tag = strchr(p, '>');
@@ -464,20 +426,9 @@ int import_qsos_from_memory(const char *content, size_t content_len, QSOList *li
             if (*line_scan == '\n') lines_processed++;
             line_scan++;
         }
-        int box_w = 46;
-        int box_h = 5;
-        int box_y = (LINES - box_h) / 2;
-        int box_x = (COLS - box_w) / 2;
-        if (box_y < 0) box_y = 0;
-        if (box_x < 0) box_x = 0;
-        attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-        draw_box_with_title(box_y, box_x, box_h, box_w, progress_title, 1);
         char stat_str[64];
         snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (100%%)", lines_processed);
-        int slen = utf8_display_width(stat_str);
-        mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-        attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-        refresh();
+        draw_progress_modal(progress_title, stat_str);
     }
 
     if (imported_count > 0) {
@@ -713,7 +664,9 @@ int export_qsos_csv(const char *filename, QSOList *list, const StationSettings *
  * @param st Stationsinställningar.
  * @param only_new 1 om endast nya rader exporteras (lägger till "_nya" före filändelsen).
  */
-void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
+static void build_default_export_filename_with_ext(char *out, size_t out_sz,
+                                                   const StationSettings *st, int only_new,
+                                                   const char *ext) {
     if (out == NULL || out_sz == 0) return;
 
     char clean_call[32];
@@ -752,65 +705,15 @@ void build_default_export_filename(char *out, size_t out_sz, const StationSettin
     char dt_buf[32];
     strftime(dt_buf, sizeof(dt_buf), "%y%m%d_%H%M%S", &exp_tm);
 
-    if (only_new) {
-        snprintf(out, out_sz, "%s_%s_nya.adi", clean_call, dt_buf);
-    } else {
-        snprintf(out, out_sz, "%s_%s.adi", clean_call, dt_buf);
-    }
+    snprintf(out, out_sz, "%s_%s%s.%s", clean_call, dt_buf, only_new ? "_nya" : "", ext);
 }
 
-/**
- * @brief Bygger standardiserat filnamn för CSV-export:
- * <stationssignal>_<YYMMDD>_<HHMMSS>[_nya].csv
- * @param out Buffer för filnamnet.
- * @param out_sz Storlek på målbuffer.
- * @param st Stationsinställningar.
- * @param only_new 1 om endast nya rader exporteras (lägger till "_nya" före filändelsen).
- */
+void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
+    build_default_export_filename_with_ext(out, out_sz, st, only_new, "adi");
+}
+
 void build_default_export_csv_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
-    if (out == NULL || out_sz == 0) return;
-
-    char clean_call[32];
-    if (st != NULL && st->call[0] != '\0') {
-        copy_str(clean_call, sizeof(clean_call), st->call);
-    } else {
-        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
-    }
-    to_upper_str(clean_call);
-    trim_str(clean_call);
-    if (clean_call[0] == '\0') {
-        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
-    }
-
-    for (char *c = clean_call; *c; ++c) {
-        if (!isalnum((unsigned char)*c) && *c != '-') {
-            *c = '-';
-        }
-    }
-
-    time_t now = time(NULL);
-    struct tm exp_tm;
-    memset(&exp_tm, 0, sizeof(exp_tm));
-    long offset_sec = 0;
-    if (st != NULL && parse_tz_offset_seconds(st->timezone, &offset_sec)) {
-        time_t adj = now + offset_sec;
-        if (!gmtime_r(&adj, &exp_tm)) {
-            gmtime_r(&now, &exp_tm);
-        }
-    } else {
-        if (!localtime_r(&now, &exp_tm)) {
-            gmtime_r(&now, &exp_tm);
-        }
-    }
-
-    char dt_buf[32];
-    strftime(dt_buf, sizeof(dt_buf), "%y%m%d_%H%M%S", &exp_tm);
-
-    if (only_new) {
-        snprintf(out, out_sz, "%s_%s_nya.csv", clean_call, dt_buf);
-    } else {
-        snprintf(out, out_sz, "%s_%s.csv", clean_call, dt_buf);
-    }
+    build_default_export_filename_with_ext(out, out_sz, st, only_new, "csv");
 }
 
 /**
@@ -861,23 +764,10 @@ int sync_unhandled_qsos_to_qrz(QSOList *log_list, const StationSettings *st,
         if (log_list->items[i].handled != 0) continue;
         step++;
 
-        if (stdscr != NULL && !isendwin()) {
-            int box_w = 46;
-            int box_h = 5;
-            int box_y = (LINES - box_h) / 2;
-            int box_x = (COLS - box_w) / 2;
-            if (box_y < 0) box_y = 0;
-            if (box_x < 0) box_x = 0;
-            attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-            draw_box_with_title(box_y, box_x, box_h, box_w, "QRZ.COM Synk", 1);
-            char stat_str[128];
-            snprintf(stat_str, sizeof(stat_str), "Skickar %d/%d (%s)...",
-                     step, unhandled_count, log_list->items[i].call);
-            int slen = utf8_display_width(stat_str);
-            mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-            attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-            refresh();
-        }
+        char stat_str[128];
+        snprintf(stat_str, sizeof(stat_str), "Skickar %d/%d (%s)...",
+                 step, unhandled_count, log_list->items[i].call);
+        draw_progress_modal("QRZ.COM Synk", stat_str);
 
         char err_buf[192] = "";
         int ok = qrz_logbook_insert(st->qrz_api_key, &log_list->items[i], st,
@@ -1493,6 +1383,182 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
 }
 
 /**
+ * @brief Returnerar markörens slutposition (antal tecken) för angivet textfält i inställningarna.
+ */
+static int settings_field_cursor_end(const StationSettings *edit, int active) {
+    switch (active) {
+        case 0: return utf8_display_width(edit->call);
+        case 1: return utf8_display_width(edit->name);
+        case 2: return utf8_display_width(edit->qth);
+        case 3: return utf8_display_width(edit->gridsquare);
+        case 4: return utf8_display_width(edit->timezone);
+        case 5: return utf8_display_width(edit->qrz_username);
+        case 6: return utf8_display_width(edit->qrz_password);
+        case 7: return utf8_display_width(edit->qrz_api_key);
+        default: return 0;
+    }
+}
+
+/**
+ * @brief Återställer redigeringsindex (editing_index) efter en import/synk som sorterat om loggen.
+ */
+static void restore_editing_index_after_import(const QSOList *log_list, QSO *qso,
+                                               int *editing_index, int had_edit,
+                                               const QSO *orig_edited) {
+    if (!had_edit || !editing_index || !log_list || !orig_edited) return;
+    int found_new_idx = -1;
+    for (size_t k = 0; k < log_list->count; ++k) {
+        const QSO *item = &log_list->items[k];
+        if (strcasecmp(item->call, orig_edited->call) == 0 &&
+            strcmp(item->date, orig_edited->date) == 0 &&
+            strcmp(item->time_utc, orig_edited->time_utc) == 0 &&
+            strcasecmp(item->band, orig_edited->band) == 0) {
+            found_new_idx = (int)k;
+            break;
+        }
+    }
+    *editing_index = found_new_idx;
+    if (found_new_idx >= 0 && qso) {
+        qso->id = log_list->items[found_new_idx].id;
+    }
+}
+
+/**
+ * @brief Kör gemensamt exportflöde för ADIF (is_csv=0) och CSV (is_csv=1).
+ */
+static void run_export_dialog(const StationSettings *edit, QSO *qso, const int *editing_index,
+                              QSOList *log_list, int is_csv,
+                              char *status_msg, size_t status_sz) {
+    const char *fmt_name = is_csv ? "CSV" : "ADIF";
+    if (log_list == NULL || log_list->count == 0) {
+        copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
+        return;
+    }
+
+    int m_cnt = 0, m_new_cnt = 0, new_cnt = 0, handled_cnt = 0;
+    for (size_t i = 0; i < log_list->count; ++i) {
+        if (log_list->items[i].marked) {
+            m_cnt++;
+            if (log_list->items[i].handled == 0) m_new_cnt++;
+        }
+        if (log_list->items[i].handled == 0) new_cnt++;
+        else handled_cnt++;
+    }
+
+    int exp_mode = EXPORT_MODE_ALL;
+    int only_new = 0;
+    char diag_title[128];
+
+    if (m_cnt > 0) {
+        exp_mode = EXPORT_MODE_MARKED;
+        only_new = (m_new_cnt == m_cnt);
+        snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till %s", m_cnt, fmt_name);
+    } else if (new_cnt > 0 && handled_cnt > 0) {
+        int choice = 0;
+        char box_title[64];
+        snprintf(box_title, sizeof(box_title), "Exportera till %s", fmt_name);
+        while (1) {
+            int box_h = 8, box_w = 48;
+            int by = (LINES - box_h) / 2;
+            int bx = (COLS - box_w) / 2;
+            attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
+            for (int r = 0; r < box_h; ++r) {
+                mvhline(by + r, bx, ' ', box_w);
+            }
+            draw_box_with_title(by, bx, box_h, box_w, box_title, 1);
+            attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
+            mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
+            mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
+            attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+            refresh();
+
+            int k = getch();
+            if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
+                choice = 1;
+                break;
+            } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
+                choice = 2;
+                break;
+            } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
+                choice = 0;
+                break;
+            }
+        }
+        if (choice == 0) {
+            snprintf(status_msg, status_sz, "%s-export avbröts.", fmt_name);
+            return;
+        }
+        if (choice == 1) {
+            exp_mode = EXPORT_MODE_ONLY_NEW;
+            only_new = 1;
+            snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till %s", new_cnt, fmt_name);
+        } else {
+            exp_mode = EXPORT_MODE_ALL;
+            only_new = 0;
+            snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till %s", log_list->count, fmt_name);
+        }
+    } else if (new_cnt > 0) {
+        exp_mode = EXPORT_MODE_ALL;
+        only_new = 1;
+        snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till %s", log_list->count, fmt_name);
+    } else {
+        exp_mode = EXPORT_MODE_ALL;
+        only_new = 0;
+        snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till %s", log_list->count, fmt_name);
+    }
+
+    char def_name[PATH_MAX];
+    build_default_export_filename_with_ext(def_name, sizeof(def_name), edit, only_new, is_csv ? "csv" : "adi");
+
+    char chosen_path[PATH_MAX] = {0};
+    int chosen = run_file_dialog(diag_title, ".", is_csv ? ".csv" : ".adi;.adif", chosen_path, sizeof(chosen_path), 1, def_name);
+    if (!chosen || chosen_path[0] == '\0') {
+        snprintf(status_msg, status_sz, "%s-export avbröts.", fmt_name);
+        return;
+    }
+
+    char final_path[PATH_MAX];
+    copy_str(final_path, sizeof(final_path), chosen_path);
+    if (is_csv) {
+        const char *ext = strrchr(final_path, '.');
+        if (!ext || strcasecmp(ext, ".csv") != 0) {
+            if (strlen(final_path) + 4 < sizeof(final_path)) {
+                strcat(final_path, ".csv");
+            }
+        }
+    }
+
+    int exported = is_csv ? export_qsos_csv(final_path, log_list, edit, exp_mode)
+                          : export_qsos_adif(final_path, log_list, edit, exp_mode);
+    if (exported < 0) {
+        snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(final_path));
+        return;
+    }
+
+    if (!is_csv && qso && editing_index && *editing_index >= 0 && (size_t)*editing_index < log_list->count) {
+        qso->handled = log_list->items[*editing_index].handled;
+    }
+    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
+        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(final_path));
+    } else if (exp_mode == EXPORT_MODE_MARKED) {
+        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(final_path));
+    } else {
+        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(final_path));
+    }
+}
+
+static void save_and_apply_settings(StationSettings *st, StationSettings *edit,
+                                    char *status_msg, size_t status_sz) {
+    to_upper_str(edit->call);
+    to_upper_str(edit->gridsquare);
+    *st = *edit;
+    apply_color_theme(st->theme);
+    save_station_settings(CONFIG_FILE, st);
+    copy_str(status_msg, status_sz, "Inställningar sparade.");
+}
+
+/**
  * @brief Hanterar inställningsdialogen (F12) där användaren kan redigera min stations signal, namn, QTH,
  * lokator, tidszon, färgschema, autofyll samt utföra import (F5), export (F6) och loggtömning.
  * @param st Stationsinställningar.
@@ -1524,12 +1590,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
         if (ch == ERR) {
             continue;
         } else if (ch == KEY_F(12)) {
-            to_upper_str(edit.call);
-            to_upper_str(edit.gridsquare);
-            *st = edit;
-            apply_color_theme(st->theme);
-            save_station_settings(CONFIG_FILE, st);
-            copy_str(status_msg, status_sz, "Inställningar sparade.");
+            save_and_apply_settings(st, &edit, status_msg, status_sz);
             return;
         } else if (ch == 27) {
             apply_color_theme(st->theme);
@@ -1567,23 +1628,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                     snprintf(status_msg, status_sz, "Import klar: Inga nya QSO hittades i %s.", get_path_basename(chosen_path));
                 } else {
                     snprintf(status_msg, status_sz, "Importerade %d QSO från %s!", added, get_path_basename(chosen_path));
-                    if (had_edit && editing_index && log_list) {
-                        int found_new_idx = -1;
-                        for (size_t k = 0; k < log_list->count; ++k) {
-                            const QSO *item = &log_list->items[k];
-                            if (strcasecmp(item->call, orig_edited.call) == 0 &&
-                                strcmp(item->date, orig_edited.date) == 0 &&
-                                strcmp(item->time_utc, orig_edited.time_utc) == 0 &&
-                                strcasecmp(item->band, orig_edited.band) == 0) {
-                                found_new_idx = (int)k;
-                                break;
-                            }
-                        }
-                        *editing_index = found_new_idx;
-                        if (found_new_idx >= 0 && qso) {
-                            qso->id = log_list->items[found_new_idx].id;
-                        }
-                    }
+                    restore_editing_index_after_import(log_list, qso, editing_index, had_edit, &orig_edited);
                     if (selected_log_pos && log_list && log_list->count > 0) {
                         *selected_log_pos = (int)log_list->count - 1;
                     }
@@ -1594,224 +1639,11 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             apply_color_theme(edit.theme);
             continue;
         } else if (ch == KEY_F(6) || (active == 16 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
-            if (log_list == NULL || log_list->count == 0) {
-                copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
-                apply_color_theme(edit.theme);
-                continue;
-            }
-
-            int m_cnt = 0;
-            int m_new_cnt = 0;
-            int new_cnt = 0;
-            int handled_cnt = 0;
-            for (size_t i = 0; i < log_list->count; ++i) {
-                if (log_list->items[i].marked) {
-                    m_cnt++;
-                    if (log_list->items[i].handled == 0) m_new_cnt++;
-                }
-                if (log_list->items[i].handled == 0) new_cnt++;
-                else handled_cnt++;
-            }
-
-            int exp_mode = EXPORT_MODE_ALL;
-            int only_new = 0;
-            char diag_title[128];
-
-            if (m_cnt > 0) {
-                exp_mode = EXPORT_MODE_MARKED;
-                only_new = (m_new_cnt == m_cnt);
-                snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till ADIF", m_cnt);
-            } else if (new_cnt > 0 && handled_cnt > 0) {
-                int choice = 0;
-                while (1) {
-                    int box_h = 8, box_w = 48;
-                    int by = (LINES - box_h) / 2;
-                    int bx = (COLS - box_w) / 2;
-                    attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
-                    for (int r = 0; r < box_h; ++r) {
-                        mvhline(by + r, bx, ' ', box_w);
-                    }
-                    draw_box_with_title(by, bx, box_h, box_w, "Exportera till ADIF", 1);
-                    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
-                    mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
-                    mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
-                    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    refresh();
-
-                    int k = getch();
-                    if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
-                        choice = 1;
-                        break;
-                    } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
-                        choice = 2;
-                        break;
-                    } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
-                        choice = 0;
-                        break;
-                    }
-                }
-                if (choice == 0) {
-                    copy_str(status_msg, status_sz, "ADIF-export avbröts.");
-                    apply_color_theme(edit.theme);
-                    continue;
-                }
-                if (choice == 1) {
-                    exp_mode = EXPORT_MODE_ONLY_NEW;
-                    only_new = 1;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till ADIF", new_cnt);
-                } else {
-                    exp_mode = EXPORT_MODE_ALL;
-                    only_new = 0;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
-                }
-            } else if (new_cnt > 0) {
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 1;
-                snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till ADIF", log_list->count);
-            } else {
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 0;
-                snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till ADIF", log_list->count);
-            }
-
-            char def_name[PATH_MAX];
-            build_default_export_filename(def_name, sizeof(def_name), &edit, only_new);
-
-            char chosen_path[PATH_MAX] = {0};
-            int chosen = run_file_dialog(diag_title, ".", ".adi;.adif", chosen_path, sizeof(chosen_path), 1, def_name);
-            if (chosen && chosen_path[0] != '\0') {
-                int exported = export_qsos_adif(chosen_path, log_list, &edit, exp_mode);
-                if (exported < 0) {
-                    snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(chosen_path));
-                } else {
-                    if (editing_index && *editing_index >= 0 && (size_t)*editing_index < log_list->count) {
-                        qso->handled = log_list->items[*editing_index].handled;
-                    }
-                    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
-                        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(chosen_path));
-                    } else if (exp_mode == EXPORT_MODE_MARKED) {
-                        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(chosen_path));
-                    } else {
-                        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(chosen_path));
-                    }
-                }
-            } else {
-                copy_str(status_msg, status_sz, "ADIF-export avbröts.");
-            }
+            run_export_dialog(&edit, qso, editing_index, log_list, 0, status_msg, status_sz);
             apply_color_theme(edit.theme);
             continue;
         } else if (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
-            if (log_list == NULL || log_list->count == 0) {
-                copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
-                apply_color_theme(edit.theme);
-                continue;
-            }
-
-            int m_cnt = 0;
-            int m_new_cnt = 0;
-            int new_cnt = 0;
-            int handled_cnt = 0;
-            for (size_t i = 0; i < log_list->count; ++i) {
-                if (log_list->items[i].marked) {
-                    m_cnt++;
-                    if (log_list->items[i].handled == 0) m_new_cnt++;
-                }
-                if (log_list->items[i].handled == 0) new_cnt++;
-                else handled_cnt++;
-            }
-
-            int exp_mode = EXPORT_MODE_ALL;
-            int only_new = 0;
-            char diag_title[128];
-
-            if (m_cnt > 0) {
-                exp_mode = EXPORT_MODE_MARKED;
-                only_new = (m_new_cnt == m_cnt);
-                snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till CSV", m_cnt);
-            } else if (new_cnt > 0 && handled_cnt > 0) {
-                int choice = 0;
-                while (1) {
-                    int box_h = 8, box_w = 48;
-                    int by = (LINES - box_h) / 2;
-                    int bx = (COLS - box_w) / 2;
-                    attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
-                    for (int r = 0; r < box_h; ++r) {
-                        mvhline(by + r, bx, ' ', box_w);
-                    }
-                    draw_box_with_title(by, bx, box_h, box_w, "Exportera till CSV", 1);
-                    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
-                    mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
-                    mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
-                    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
-                    refresh();
-
-                    int k = getch();
-                    if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
-                        choice = 1;
-                        break;
-                    } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
-                        choice = 2;
-                        break;
-                    } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
-                        choice = 0;
-                        break;
-                    }
-                }
-                if (choice == 0) {
-                    copy_str(status_msg, status_sz, "CSV-export avbröts.");
-                    apply_color_theme(edit.theme);
-                    continue;
-                }
-                if (choice == 1) {
-                    exp_mode = EXPORT_MODE_ONLY_NEW;
-                    only_new = 1;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till CSV", new_cnt);
-                } else {
-                    exp_mode = EXPORT_MODE_ALL;
-                    only_new = 0;
-                    snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till CSV", log_list->count);
-                }
-            } else if (new_cnt > 0) {
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 1;
-                snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till CSV", log_list->count);
-            } else {
-                exp_mode = EXPORT_MODE_ALL;
-                only_new = 0;
-                snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till CSV", log_list->count);
-            }
-
-            char def_name[PATH_MAX];
-            build_default_export_csv_filename(def_name, sizeof(def_name), &edit, only_new);
-
-            char chosen_path[PATH_MAX] = {0};
-            int chosen = run_file_dialog(diag_title, ".", ".csv", chosen_path, sizeof(chosen_path), 1, def_name);
-            if (chosen && chosen_path[0] != '\0') {
-                char final_path[PATH_MAX];
-                copy_str(final_path, sizeof(final_path), chosen_path);
-                const char *ext = strrchr(final_path, '.');
-                if (!ext || strcasecmp(ext, ".csv") != 0) {
-                    if (strlen(final_path) + 4 < sizeof(final_path)) {
-                        strcat(final_path, ".csv");
-                    }
-                }
-                int exported = export_qsos_csv(final_path, log_list, &edit, exp_mode);
-                if (exported < 0) {
-                    snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(final_path));
-                } else {
-                    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
-                        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(final_path));
-                    } else if (exp_mode == EXPORT_MODE_MARKED) {
-                        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(final_path));
-                    } else {
-                        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(final_path));
-                    }
-                }
-            } else {
-                copy_str(status_msg, status_sz, "CSV-export avbröts.");
-            }
+            run_export_dialog(&edit, qso, editing_index, log_list, 1, status_msg, status_sz);
             apply_color_theme(edit.theme);
             continue;
         } else if (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
@@ -1828,21 +1660,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                 continue;
             }
 
-            if (stdscr != NULL && !isendwin()) {
-                int box_w = 46;
-                int box_h = 5;
-                int box_y = (LINES - box_h) / 2;
-                int box_x = (COLS - box_w) / 2;
-                if (box_y < 0) box_y = 0;
-                if (box_x < 0) box_x = 0;
-                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                draw_box_with_title(box_y, box_x, box_h, box_w, "QRZ.COM Synk", 1);
-                const char *stat_str = "Hämtar loggbok från QRZ.COM...";
-                int slen = utf8_display_width(stat_str);
-                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                refresh();
-            }
+            draw_progress_modal("QRZ.COM Synk", "Hämtar loggbok från QRZ.COM...");
 
             QSO orig_edited;
             int had_edit = 0;
@@ -1865,23 +1683,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                     copy_str(status_msg, status_sz, "Synk klar: Inga nya QSO hittades på QRZ.COM.");
                 } else {
                     snprintf(status_msg, status_sz, "Synkroniserade %d nya QSO från QRZ.COM!", added);
-                    if (had_edit && editing_index && log_list) {
-                        int found_new_idx = -1;
-                        for (size_t k = 0; k < log_list->count; ++k) {
-                            const QSO *item = &log_list->items[k];
-                            if (strcasecmp(item->call, orig_edited.call) == 0 &&
-                                strcmp(item->date, orig_edited.date) == 0 &&
-                                strcmp(item->time_utc, orig_edited.time_utc) == 0 &&
-                                strcasecmp(item->band, orig_edited.band) == 0) {
-                                found_new_idx = (int)k;
-                                break;
-                            }
-                        }
-                        *editing_index = found_new_idx;
-                        if (found_new_idx >= 0 && qso) {
-                            qso->id = log_list->items[found_new_idx].id;
-                        }
-                    }
+                    restore_editing_index_after_import(log_list, qso, editing_index, had_edit, &orig_edited);
                     if (selected_log_pos && log_list && log_list->count > 0) {
                         *selected_log_pos = (int)log_list->count - 1;
                     }
@@ -1930,33 +1732,14 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                 apply_color_theme(st->theme);
             }
         } else if (ch == KEY_F(2) || ch == 19 || (active < 15 && active != 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER))) {
-            to_upper_str(edit.call);
-            to_upper_str(edit.gridsquare);
-            *st = edit;
-            apply_color_theme(st->theme);
-            save_station_settings(CONFIG_FILE, st);
-            copy_str(status_msg, status_sz, "Inställningar sparade.");
+            save_and_apply_settings(st, &edit, status_msg, status_sz);
             return;
         } else if (ch == '\t' || ch == KEY_DOWN) {
             active = (active + 1) % STATION_FIELD_COUNT;
-            cursor_pos = (active == 0) ? utf8_display_width(edit.call) :
-                         (active == 1) ? utf8_display_width(edit.name) :
-                         (active == 2) ? utf8_display_width(edit.qth) :
-                         (active == 3) ? utf8_display_width(edit.gridsquare) :
-                         (active == 4) ? utf8_display_width(edit.timezone) :
-                         (active == 5) ? utf8_display_width(edit.qrz_username) :
-                         (active == 6) ? utf8_display_width(edit.qrz_password) :
-                         (active == 7) ? utf8_display_width(edit.qrz_api_key) : 0;
+            cursor_pos = settings_field_cursor_end(&edit, active);
         } else if (ch == KEY_BTAB || ch == KEY_UP) {
             active = (active + STATION_FIELD_COUNT - 1) % STATION_FIELD_COUNT;
-            cursor_pos = (active == 0) ? utf8_display_width(edit.call) :
-                         (active == 1) ? utf8_display_width(edit.name) :
-                         (active == 2) ? utf8_display_width(edit.qth) :
-                         (active == 3) ? utf8_display_width(edit.gridsquare) :
-                         (active == 4) ? utf8_display_width(edit.timezone) :
-                         (active == 5) ? utf8_display_width(edit.qrz_username) :
-                         (active == 6) ? utf8_display_width(edit.qrz_password) :
-                         (active == 7) ? utf8_display_width(edit.qrz_api_key) : 0;
+            cursor_pos = settings_field_cursor_end(&edit, active);
         } else if (active == 8 && (ch == KEY_LEFT || ch == KEY_RIGHT || ch == ' ')) {
             if (ch == KEY_LEFT) {
                 edit.qrz_enabled = (edit.qrz_enabled + 2) % 3;
@@ -1973,12 +1756,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
         } else if (active == 10 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ' || ch == KEY_LEFT || ch == KEY_RIGHT)) {
             int ret = run_theme_dropdown(&edit, log_list, status_msg);
             if (ret == 4) {
-                to_upper_str(edit.call);
-                to_upper_str(edit.gridsquare);
-                *st = edit;
-                apply_color_theme(st->theme);
-                save_station_settings(CONFIG_FILE, st);
-                copy_str(status_msg, status_sz, "Inställningar sparade.");
+                save_and_apply_settings(st, &edit, status_msg, status_sz);
                 return;
             } else if (ret == 2) {
                 active = (active + 1) % STATION_FIELD_COUNT;
@@ -2029,17 +1807,8 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                 if (active == 0 || active == 3) {
                     wch = towupper(wch);
                 }
-                char u8[8] = {0};
-                mbstate_t ps;
-                memset(&ps, 0, sizeof(ps));
-                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
-                if (u8_len == (size_t)-1 || u8_len == 0) {
-                    u8[0] = (char)wch;
-                    u8[1] = '\0';
-                    u8_len = 1;
-                } else {
-                    u8[u8_len] = '\0';
-                }
+                char u8[8];
+                size_t u8_len = utf8_encode_wchar((wchar_t)wch, u8, sizeof(u8));
                 utf8_insert_char_at(buf, max_len, &cursor_pos, u8, u8_len);
                 if ((active == 5 || active == 6) && !had_qrz_creds && !user_changed_qrz_log &&
                     edit.qrz_username[0] != '\0' && edit.qrz_password[0] != '\0' &&

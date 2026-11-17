@@ -117,37 +117,24 @@ static void format_title_case(char *s) {
 }
 
 /**
- * @brief Avkodar vanliga XML-entiteter (&amp;, &quot;, &apos;, &lt;, &gt;) på plats.
- * @param str Strängen som modifieras.
+ * @brief Konverterar strängen till Title Case om den saknar gemener (t.ex. från ALL-CAPS).
  */
-static void xml_unescape(char *str) {
-    if (!str) return;
-    char *p = str;
-    char *w = str;
-    while (*p) {
-        if (*p == '&') {
-            if (strncmp(p, "&amp;", 5) == 0) {
-                *w++ = '&'; p += 5;
-            } else if (strncmp(p, "&quot;", 6) == 0) {
-                *w++ = '"'; p += 6;
-            } else if (strncmp(p, "&apos;", 6) == 0) {
-                *w++ = '\''; p += 6;
-            } else if (strncmp(p, "&#039;", 6) == 0) {
-                *w++ = '\''; p += 6;
-            } else if (strncmp(p, "&#39;", 5) == 0) {
-                *w++ = '\''; p += 5;
-            } else if (strncmp(p, "&lt;", 4) == 0) {
-                *w++ = '<'; p += 4;
-            } else if (strncmp(p, "&gt;", 4) == 0) {
-                *w++ = '>'; p += 4;
-            } else {
-                *w++ = *p++;
-            }
-        } else {
-            *w++ = *p++;
+static void normalize_case_if_all_caps(char *str) {
+    if (!str || !*str) return;
+    int has_lower = 0;
+    for (const unsigned char *cp = (const unsigned char *)str; *cp; ++cp) {
+        if (*cp >= 'a' && *cp <= 'z') {
+            has_lower = 1;
+            break;
+        }
+        if (*cp == 0xC3 && (*(cp + 1) == 0xA5 || *(cp + 1) == 0xA4 || *(cp + 1) == 0xB6 || *(cp + 1) == 0xA9)) {
+            has_lower = 1;
+            break;
         }
     }
-    *w = '\0';
+    if (!has_lower) {
+        format_title_case(str);
+    }
 }
 
 /**
@@ -188,7 +175,7 @@ static int extract_xml_tag(const char *xml, const char *tag, char *out, size_t o
     memcpy(out, start, len);
     out[len] = '\0';
     trim_str(out);
-    xml_unescape(out);
+    xml_unescape_str(out);
     return 1;
 }
 
@@ -219,17 +206,7 @@ static void clean_qrz_name(const char *in, char *out, size_t out_sz) {
         tmp[--i] = '\0';
     }
 
-    /* Om namnet enbart består av versaler, formatera med stor begynnelsebokstav */
-    int has_lower = 0;
-    for (const unsigned char *cp = (const unsigned char *)tmp; *cp; ++cp) {
-        if (*cp >= 'a' && *cp <= 'z') { has_lower = 1; break; }
-        if (*cp == 0xC3 && (*(cp + 1) == 0xA5 || *(cp + 1) == 0xA4 || *(cp + 1) == 0xB6 || *(cp + 1) == 0xA9)) {
-            has_lower = 1; break;
-        }
-    }
-    if (!has_lower) {
-        format_title_case(tmp);
-    }
+    normalize_case_if_all_caps(tmp);
     copy_str(out, out_sz, tmp);
 }
 
@@ -271,16 +248,7 @@ static void clean_qrz_qth(const char *in, char *out, size_t out_sz) {
     sanitize_to_utf8(p, tmp, sizeof(tmp));
     trim_str(tmp);
 
-    int has_lower = 0;
-    for (const unsigned char *cp = (const unsigned char *)tmp; *cp; ++cp) {
-        if (*cp >= 'a' && *cp <= 'z') { has_lower = 1; break; }
-        if (*cp == 0xC3 && (*(cp + 1) == 0xA5 || *(cp + 1) == 0xA4 || *(cp + 1) == 0xB6 || *(cp + 1) == 0xA9)) {
-            has_lower = 1; break;
-        }
-    }
-    if (!has_lower) {
-        format_title_case(tmp);
-    }
+    normalize_case_if_all_caps(tmp);
     copy_str(out, out_sz, tmp);
 }
 
@@ -878,7 +846,7 @@ static int extract_kv_param(const char *resp, const char *key, char *out, size_t
             if (len >= out_sz) len = out_sz - 1;
             memcpy(out, val_start, len);
             out[len] = '\0';
-            xml_unescape(out);
+            xml_unescape_str(out);
             trim_str(out);
             return 1;
         }
@@ -1130,7 +1098,7 @@ int qrz_logbook_fetch(const char *api_key, char **adif_out, size_t *adif_sz,
 
     /* QRZ Logbook API returnerar ADIF XML/HTML-entitetskodat (&lt;...&gt;) */
     if (final_adif) {
-        xml_unescape(final_adif);
+        xml_unescape_str(final_adif);
         final_len = strlen(final_adif);
     }
 

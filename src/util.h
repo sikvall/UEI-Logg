@@ -9,6 +9,7 @@
 #include "qsolog.h"
 #include <curl/curl.h>
 #include <stddef.h>
+#include <wchar.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,6 +113,21 @@ void utf8_delete_at(char *str, int char_pos);
  * @param seq_len Längd på teckensekvensen i bytes.
  */
 void utf8_insert_char_at(char *str, size_t max_size, int *char_pos, const char *utf8_seq, size_t seq_len);
+
+/**
+ * @brief Kodar ett Unicode-tecken (wchar_t) till en null-terminerad UTF-8-sekvens.
+ * @param wch Bredtecken att koda.
+ * @param out Målbuffer (bör rymma minst 8 bytes).
+ * @param out_sz Storlek på målbuffer.
+ * @return Antal skrivna UTF-8-bytes (exklusive null-terminator).
+ */
+size_t utf8_encode_wchar(wchar_t wch, char *out, size_t out_sz);
+
+/**
+ * @brief Avkodar vanliga XML/HTML-entiteter (&amp;, &quot;, &apos;, &#039;, &#39;, &lt;, &gt;) på plats.
+ * @param str Strängen som modifieras på plats.
+ */
+void xml_unescape_str(char *str);
 
 /**
  * @brief Infogar en byte/ett ASCII-tecken vid angiven markörposition i en UTF-8-sträng (insert).

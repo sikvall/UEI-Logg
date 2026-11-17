@@ -244,6 +244,60 @@ void utf8_insert_char_at(char *str, size_t max_size, int *char_pos, const char *
     (*char_pos)++;
 }
 
+size_t utf8_encode_wchar(wchar_t wch, char *out, size_t out_sz) {
+    if (out == NULL || out_sz < 2) return 0;
+    mbstate_t ps;
+    memset(&ps, 0, sizeof(ps));
+    if (out_sz >= (size_t)MB_CUR_MAX + 1) {
+        size_t u8_len = wcrtomb(out, wch, &ps);
+        if (u8_len != (size_t)-1 && u8_len > 0 && u8_len < out_sz) {
+            out[u8_len] = '\0';
+            return u8_len;
+        }
+    }
+    out[0] = (char)wch;
+    out[1] = '\0';
+    return 1;
+}
+
+void xml_unescape_str(char *str) {
+    if (str == NULL) return;
+    static const struct {
+        const char *entity;
+        size_t len;
+        char ch;
+    } entities[] = {
+        { "&amp;",  5, '&' },
+        { "&quot;", 6, '"' },
+        { "&apos;", 6, '\'' },
+        { "&#039;", 6, '\'' },
+        { "&#39;",  5, '\'' },
+        { "&lt;",   4, '<' },
+        { "&gt;",   4, '>' }
+    };
+    char *p = str;
+    char *w = str;
+    while (*p) {
+        if (*p == '&') {
+            int matched = 0;
+            for (size_t i = 0; i < sizeof(entities) / sizeof(entities[0]); ++i) {
+                if (strncmp(p, entities[i].entity, entities[i].len) == 0) {
+                    *w++ = entities[i].ch;
+                    p += entities[i].len;
+                    matched = 1;
+                    break;
+                }
+            }
+            if (!matched) {
+                *w++ = *p++;
+            }
+        } else {
+            *w++ = *p++;
+        }
+    }
+    *w = '\0';
+}
+
 /**
  * @brief Infogar en byte/ett ASCII-tecken vid angiven markörposition i en UTF-8-sträng.
  * @param str Strängen som redigeras.
@@ -1007,23 +1061,6 @@ void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz) {
     memcpy(temp, src, slen);
     temp[slen] = '\0';
 
-    static const struct {
-        const char *bad;
-        size_t bad_len;
-        const char *good;
-    } s_mojibake_map[] = {
-        {"\xc3\x83\xc2\xa4", 4, "\xc3\xa4"}, /* ä */
-        {"\xc3\x83\xc2\xa5", 4, "\xc3\xa5"}, /* å */
-        {"\xc3\x83\xc2\xb6", 4, "\xc3\xb6"}, /* ö */
-        {"\xc3\x83\xc2\x84", 4, "\xc3\x84"}, /* Ä */
-        {"\xc3\x83\xc2\x85", 4, "\xc3\x85"}, /* Å */
-        {"\xc3\x83\xc2\x96", 4, "\xc3\x96"}, /* Ö */
-        {"\xc3\x83\xc2\xa9", 4, "\xc3\xa9"}, /* é */
-        {"\xc3\x83\xc2\xbc", 4, "\xc3\xbc"}, /* ü */
-        {"\xc3\x83\xc2",     3, ""},
-        {NULL, 0, NULL}
-    };
-
     char buf2[512];
     size_t b2_idx = 0;
     for (size_t i = 0; i < slen && b2_idx + 4 < sizeof(buf2);) {
@@ -1038,23 +1075,9 @@ void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz) {
             buf2[b2_idx++] = ((unsigned char)temp[i + 1] == 0x83) ? (char)0xC3 : (char)0xC2;
             buf2[b2_idx++] = temp[i + 3];
             i += 4;
-            continue;
-        }
-
-        int matched = 0;
-        for (int m = 0; s_mojibake_map[m].bad != NULL; ++m) {
-            if (i + s_mojibake_map[m].bad_len <= slen &&
-                memcmp(temp + i, s_mojibake_map[m].bad, s_mojibake_map[m].bad_len) == 0) {
-                const char *g = s_mojibake_map[m].good;
-                size_t glen = strlen(g);
-                memcpy(buf2 + b2_idx, g, glen);
-                b2_idx += glen;
-                i += s_mojibake_map[m].bad_len;
-                matched = 1;
-                break;
-            }
-        }
-        if (!matched) {
+        } else if (i + 3 <= slen && memcmp(temp + i, "\xc3\x83\xc2", 3) == 0) {
+            i += 3;
+        } else {
             buf2[b2_idx++] = temp[i++];
         }
     }

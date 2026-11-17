@@ -766,6 +766,34 @@ void draw_box_with_title(int y, int x, int h, int w, const char *title, int has_
     }
 }
 
+void draw_progress_modal(const char *title, const char *message) {
+    if (stdscr == NULL || isendwin()) return;
+    int box_w = 46;
+    int box_h = 5;
+    int box_y = (LINES - box_h) / 2;
+    int box_x = (COLS - box_w) / 2;
+    if (box_y < 0) box_y = 0;
+    if (box_x < 0) box_x = 0;
+
+    attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+    for (int r = 0; r < box_h; ++r) {
+        mvhline(box_y + r, box_x, ' ', box_w);
+    }
+    draw_box_with_title(box_y, box_x, box_h, box_w, title, 1);
+    if (message != NULL && message[0] != '\0') {
+        char clipped[64];
+        utf8_pad_or_clip(clipped, sizeof(clipped), message, box_w - 4, 0);
+        size_t clen = strlen(clipped);
+        while (clen > 0 && clipped[clen - 1] == ' ') clipped[--clen] = '\0';
+        int slen = utf8_display_width(clipped);
+        int msg_x = box_x + (box_w - slen) / 2;
+        if (msg_x < box_x + 2) msg_x = box_x + 2;
+        mvprintw(box_y + 2, msg_x, "%s", clipped);
+    }
+    attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+    refresh();
+}
+
 /**
  * @brief Ritar översta statuslisten med programnamn, egen anropssignal, QTH och UTC-klocka.
  * @param st Min stations inställningar.
@@ -1797,17 +1825,8 @@ int run_search_bar(const StationSettings *st, char *search_filter, size_t filter
             buf[0] = '\0';
             cursor_pos = 0;
         } else if (input_res == OK && wch >= 32 && wch != 127) {
-            char u8[8] = {0};
-            mbstate_t ps;
-            memset(&ps, 0, sizeof(ps));
-            size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
-            if (u8_len == (size_t)-1 || u8_len == 0) {
-                u8[0] = (char)wch;
-                u8[1] = '\0';
-                u8_len = 1;
-            } else {
-                u8[u8_len] = '\0';
-            }
+            char u8[8];
+            size_t u8_len = utf8_encode_wchar((wchar_t)wch, u8, sizeof(u8));
             utf8_insert_char_at(buf, sizeof(buf), &cursor_pos, u8, u8_len);
         }
     }

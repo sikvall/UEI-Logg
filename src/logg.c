@@ -482,6 +482,23 @@ int qso_list_delete_marked(QSOList *list) {
     return deleted;
 }
 
+static void finalize_adif_loaded_qso(QSOList *list, QSO *current) {
+    if (current->freq[0] != '\0') {
+        char norm_freq[32];
+        parse_and_normalize_freq_adif(current->freq, norm_freq, sizeof(norm_freq));
+        if (norm_freq[0] != '\0') {
+            copy_str(current->freq, sizeof(current->freq), norm_freq);
+        }
+    }
+    if (current->band[0] == '\0' && current->freq[0] != '\0') {
+        resolve_band_from_freq(current->freq, current->band, sizeof(current->band));
+    }
+    if (current->dxcc[0] == '\0') {
+        lookup_dxcc(current->call, current->dxcc, sizeof(current->dxcc));
+    }
+    qso_list_push(list, current);
+}
+
 /**
  * @brief Läser in samtliga QSO från en ADIF-fil till en dynamisk lista.
  * @param filename Sökvägen till ADIF-filen (t.ex. qsolog.adi).
@@ -538,22 +555,9 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
             last_status_update = now;
             int percent = (fsize > 0) ? (int)(((size_t)(p - content) * 100) / (size_t)fsize) : 0;
             if (percent > 100) percent = 100;
-            if (stdscr != NULL && !isendwin()) {
-                int box_w = 46;
-                int box_h = 5;
-                int box_y = (LINES - box_h) / 2;
-                int box_x = (COLS - box_w) / 2;
-                if (box_y < 0) box_y = 0;
-                if (box_x < 0) box_x = 0;
-                attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                draw_box_with_title(box_y, box_x, box_h, box_w, "Läser ADIF", 1);
-                char stat_str[64];
-                snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
-                int slen = utf8_display_width(stat_str);
-                mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-                attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-                refresh();
-            }
+            char stat_str[64];
+            snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (%d%%)", lines_processed, percent);
+            draw_progress_modal("Läser ADIF", stat_str);
         }
 
         const char *end_tag = strchr(p, '>');
@@ -567,20 +571,7 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
 
         if (strcasecmp(tag_buf, "EOR") == 0) {
             if (current.call[0] != '\0') {
-                if (current.freq[0] != '\0') {
-                    char norm_freq[32];
-                    parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
-                    if (norm_freq[0] != '\0') {
-                        copy_str(current.freq, sizeof(current.freq), norm_freq);
-                    }
-                }
-                if (current.band[0] == '\0' && current.freq[0] != '\0') {
-                    resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
-                }
-                if (current.dxcc[0] == '\0') {
-                    lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
-                }
-                qso_list_push(list, &current);
+                finalize_adif_loaded_qso(list, &current);
             }
             memset(&current, 0, sizeof(current));
             has_fields = 0;
@@ -607,20 +598,7 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
     }
 
     if (has_fields && current.call[0] != '\0') {
-        if (current.freq[0] != '\0') {
-            char norm_freq[32];
-            parse_and_normalize_freq_adif(current.freq, norm_freq, sizeof(norm_freq));
-            if (norm_freq[0] != '\0') {
-                copy_str(current.freq, sizeof(current.freq), norm_freq);
-            }
-        }
-        if (current.band[0] == '\0' && current.freq[0] != '\0') {
-            resolve_band_from_freq(current.freq, current.band, sizeof(current.band));
-        }
-        if (current.dxcc[0] == '\0') {
-            lookup_dxcc(current.call, current.dxcc, sizeof(current.dxcc));
-        }
-        qso_list_push(list, &current);
+        finalize_adif_loaded_qso(list, &current);
     }
 
     if (list->count > 1) {
@@ -631,21 +609,10 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
         if (*line_scan == '\n') lines_processed++;
         line_scan++;
     }
-    if (stdscr != NULL && !isendwin()) {
-        int box_w = 46;
-        int box_h = 5;
-        int box_y = (LINES - box_h) / 2;
-        int box_x = (COLS - box_w) / 2;
-        if (box_y < 0) box_y = 0;
-        if (box_x < 0) box_x = 0;
-        attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-        draw_box_with_title(box_y, box_x, box_h, box_w, "Läser ADIF", 1);
+    {
         char stat_str[64];
         snprintf(stat_str, sizeof(stat_str), "Processat: %d rader (100%%)", lines_processed);
-        int slen = utf8_display_width(stat_str);
-        mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
-        attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
-        refresh();
+        draw_progress_modal("Läser ADIF", stat_str);
     }
 
     free(content);

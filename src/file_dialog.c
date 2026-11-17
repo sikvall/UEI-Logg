@@ -457,17 +457,8 @@ int run_file_dialog(const char *title, const char *start_dir, const char *ext_fi
                 fname_buf[0] = '\0';
                 fname_cursor_pos = 0;
             } else if (input_res == OK && wch >= 32 && wch != 127) {
-                char u8[8] = {0};
-                mbstate_t ps;
-                memset(&ps, 0, sizeof(ps));
-                size_t u8_len = wcrtomb(u8, (wchar_t)wch, &ps);
-                if (u8_len == (size_t)-1 || u8_len == 0) {
-                    u8[0] = (char)wch;
-                    u8[1] = '\0';
-                    u8_len = 1;
-                } else {
-                    u8[u8_len] = '\0';
-                }
+                char u8[8];
+                size_t u8_len = utf8_encode_wchar((wchar_t)wch, u8, sizeof(u8));
                 utf8_insert_char_at(fname_buf, sizeof(fname_buf), &fname_cursor_pos, u8, u8_len);
             }
         } else {
