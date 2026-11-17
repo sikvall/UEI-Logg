@@ -2097,9 +2097,9 @@ static void run_log_row_features_tests(void) {
 static void run_qrz_sync_tests(void) {
     printf(ANSI_BLUE "\n=== [14] QRZ.COM Synkronisering & Minnes-ADIF-import ===" ANSI_RESET "\n");
 
-    /* 1. STATION_FIELD_COUNT är 20 */
-    record_result(STATION_FIELD_COUNT == 20,
-                  "STATION_FIELD_COUNT är 20 (inkl. Synka till QRZ och Synka från QRZ)", NULL);
+    /* 1. STATION_FIELD_COUNT är 21 */
+    record_result(STATION_FIELD_COUNT == 21,
+                  "STATION_FIELD_COUNT är 21 (inkl. Exportera CSV, Synka till QRZ och Synka från QRZ)", NULL);
 
     /* 2. qrz_logbook_fetch validerar API-nyckel */
     {
@@ -2251,6 +2251,131 @@ static void run_qrz_sync_tests(void) {
 }
 
 /* ========================================================================= */
+/* [15] CSV-Export (Excel, Google Docs, LibreOffice)                         */
+/* ========================================================================= */
+static void run_csv_export_tests(void) {
+    printf(ANSI_BLUE "\n=== [15] CSV-Export (Excel, Google Docs, LibreOffice) ===" ANSI_RESET "\n");
+
+    /* 1. build_default_export_csv_filename genererar giltiga tidsstämplade filnamn */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5/UEI");
+        copy_str(st.timezone, sizeof(st.timezone), "Europe/Stockholm");
+
+        char fname_all[128] = "";
+        char fname_nya[128] = "";
+        build_default_export_csv_filename(fname_all, sizeof(fname_all), &st, 0);
+        build_default_export_csv_filename(fname_nya, sizeof(fname_nya), &st, 1);
+
+        int ok = (strncmp(fname_all, "SM5-UEI_", 8) == 0) &&
+                 (strstr(fname_all, ".csv") != NULL) &&
+                 (strstr(fname_nya, "_nya.csv") != NULL);
+        record_result(ok, "build_default_export_csv_filename genererar giltiga filnamn med .csv och _nya.csv", NULL);
+    }
+
+    /* 2. export_qsos_csv skapar korrekt CSV med UTF-8 BOM, rubriker och fältordning */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+        copy_str(st.gridsquare, sizeof(st.gridsquare), "JO89we");
+        copy_str(st.qth, sizeof(st.qth), "Stockholm");
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        QSO q1;
+        memset(&q1, 0, sizeof(q1));
+        copy_str(q1.call, sizeof(q1.call), "SA0BQT");
+        copy_str(q1.date, sizeof(q1.date), "2026-11-17");
+        copy_str(q1.time_utc, sizeof(q1.time_utc), "13:45");
+        copy_str(q1.freq, sizeof(q1.freq), "14.200");
+        copy_str(q1.band, sizeof(q1.band), "20m");
+        copy_str(q1.mode, sizeof(q1.mode), "USB");
+        copy_str(q1.rst_sent, sizeof(q1.rst_sent), "59");
+        copy_str(q1.rst_rcvd, sizeof(q1.rst_rcvd), "59");
+        copy_str(q1.name, sizeof(q1.name), "Göran");
+        copy_str(q1.qth, sizeof(q1.qth), "Västerås, Sweden");
+        copy_str(q1.gridsquare, sizeof(q1.gridsquare), "JO89qm");
+        copy_str(q1.dxcc, sizeof(q1.dxcc), "Sweden");
+        copy_str(q1.comment, sizeof(q1.comment), "QRP 5W, test med \"citat\"");
+        copy_str(q1.distance, sizeof(q1.distance), "85");
+        q1.handled = 0;
+        q1.marked = 1;
+        qso_list_push(&list, &q1);
+
+        QSO q2;
+        memset(&q2, 0, sizeof(q2));
+        copy_str(q2.call, sizeof(q2.call), "OH2ABC");
+        copy_str(q2.date, sizeof(q2.date), "2026-11-17");
+        copy_str(q2.time_utc, sizeof(q2.time_utc), "14:10");
+        copy_str(q2.freq, sizeof(q2.freq), "7.100");
+        copy_str(q2.band, sizeof(q2.band), "40m");
+        copy_str(q2.mode, sizeof(q2.mode), "CW");
+        copy_str(q2.rst_sent, sizeof(q2.rst_sent), "599");
+        copy_str(q2.rst_rcvd, sizeof(q2.rst_rcvd), "579");
+        copy_str(q2.name, sizeof(q2.name), "Matti");
+        copy_str(q2.qth, sizeof(q2.qth), "Helsinki");
+        copy_str(q2.gridsquare, sizeof(q2.gridsquare), "KP20ab");
+        copy_str(q2.dxcc, sizeof(q2.dxcc), "Finland");
+        copy_str(q2.comment, sizeof(q2.comment), "Dipol");
+        copy_str(q2.distance, sizeof(q2.distance), "400");
+        q2.handled = 1;
+        q2.marked = 0;
+        qso_list_push(&list, &q2);
+
+        const char *test_csv = "/tmp/test_uei_export.csv";
+        unlink(test_csv);
+
+        int exported = export_qsos_csv(test_csv, &list, &st, EXPORT_MODE_ALL);
+        record_result(exported == 2, "export_qsos_csv exporterar alla poster (EXPORT_MODE_ALL)", NULL);
+
+        /* Kontrollera filens innehåll: BOM, rubriker, citerade fält och svenska tecken */
+        FILE *fp = fopen(test_csv, "rb");
+        int content_ok = 0;
+        if (fp != NULL) {
+            unsigned char bom[3] = {0};
+            size_t bom_read = fread(bom, 1, 3, fp);
+            int has_bom = (bom_read == 3 && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF);
+
+            char line1[512] = "";
+            char line2[1024] = "";
+            if (fgets(line1, sizeof(line1), fp) && fgets(line2, sizeof(line2), fp)) {
+                /* Första raden ska innehålla rubrikerna i samma ordning som loggraderna */
+                int h_ok = (strstr(line1, "#,Datum,Tid,Signal,Frekvens,Band,Mode,RST,Namn,QTH,QRB,QUJ,Lokator,DXCC,Notering") != NULL);
+
+                /* Andra raden ska innehålla SA0BQT med formaterade fält */
+                int d_ok = (strstr(line2, "1,") != NULL) &&
+                           (strstr(line2, "\"2026-11-17\"") != NULL) &&
+                           (strstr(line2, "\"13:45\"") != NULL) &&
+                           (strstr(line2, "\"SA0BQT\"") != NULL) &&
+                           (strstr(line2, "\"14.200\"") != NULL) &&
+                           (strstr(line2, "\"20m\"") != NULL) &&
+                           (strstr(line2, "\"USB\"") != NULL) &&
+                           (strstr(line2, "\"59/59\"") != NULL) &&
+                           (strstr(line2, "\"Göran\"") != NULL) &&
+                           (strstr(line2, "\"Västerås, Sweden\"") != NULL) &&
+                           (strstr(line2, "\"QRP 5W, test med \"\"citat\"\"\"") != NULL);
+
+                content_ok = has_bom && h_ok && d_ok;
+            }
+            fclose(fp);
+        }
+        record_result(content_ok, "export_qsos_csv skriver UTF-8 BOM, korrekta rubriker och säkert citerade celler", NULL);
+
+        /* 3. export_qsos_csv stöder EXPORT_MODE_MARKED och EXPORT_MODE_ONLY_NEW utan att ändra handled */
+        int exp_marked = export_qsos_csv(test_csv, &list, &st, EXPORT_MODE_MARKED);
+        int exp_new = export_qsos_csv(test_csv, &list, &st, EXPORT_MODE_ONLY_NEW);
+        int modes_ok = (exp_marked == 1) && (exp_new == 1) && (list.items[0].handled == 0);
+        record_result(modes_ok, "export_qsos_csv filtrerar på markerade/nya utan att modifiera handled-status", NULL);
+
+        unlink(test_csv);
+        free(list.items);
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -2277,6 +2402,7 @@ int main(int argc, char *argv[]) {
     run_qrz_direct_log_tests();
     run_log_row_features_tests();
     run_qrz_sync_tests();
+    run_csv_export_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

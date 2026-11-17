@@ -71,6 +71,17 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
 int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode);
 
 /**
+ * @brief Exporterar QSO:n till en extern CSV-fil (alla, markerade eller endast nya).
+ * Första raden innehåller fältnamn i samma ordning som loggraderna.
+ * @param filename Sökväg till målfilen.
+ * @param list Logglistan att exportera ifrån.
+ * @param st Min stations inställningar.
+ * @param export_mode Exportläge (EXPORT_MODE_ALL, EXPORT_MODE_MARKED, EXPORT_MODE_ONLY_NEW).
+ * @return Antal exporterade QSO:n, eller -1 vid fel.
+ */
+int export_qsos_csv(const char *filename, QSOList *list, const StationSettings *st, int export_mode);
+
+/**
  * @brief Synkroniserar alla ej hanterade QSO (handled == 0) direkt mot QRZ.COM Logbook API.
  * Lyckade poster markeras som hanterade (handled = 1) i minnet och SQLite/ADIF.
  * @param log_list Logglistan med QSO.
@@ -98,6 +109,15 @@ int clear_log_book(QSOList *log_list, const StationSettings *st);
  * @param only_new 1 om endast nya QSO:n exporteras, annars 0.
  */
 void build_default_export_filename(char *out, size_t out_sz, const StationSettings *st, int only_new);
+
+/**
+ * @brief Skapar ett standardiserat CSV-exportfilnamn i formatet <signal>_<YYMMDD>_<HHMMSS>[_nya].csv.
+ * @param out Buffer där filnamnet skrivs.
+ * @param out_sz Storlek på målbuffer.
+ * @param st Min stations inställningar.
+ * @param only_new 1 om endast nya QSO:n exporteras, annars 0.
+ */
+void build_default_export_csv_filename(char *out, size_t out_sz, const StationSettings *st, int only_new);
 
 /**
  * @brief Visar och hanterar inställningsdialogen (F12).

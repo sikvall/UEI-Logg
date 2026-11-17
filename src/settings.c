@@ -587,6 +587,128 @@ int export_qsos_adif(const char *filename, QSOList *list, const StationSettings 
     return count;
 }
 
+static void write_csv_cell(FILE *fp, const char *val, int is_first) {
+    if (!is_first) {
+        fputc(',', fp);
+    }
+    if (val == NULL || val[0] == '\0') {
+        return;
+    }
+    fputc('"', fp);
+    for (const char *p = val; *p != '\0'; ++p) {
+        if (*p == '"') {
+            fputc('"', fp);
+            fputc('"', fp);
+        } else {
+            fputc(*p, fp);
+        }
+    }
+    fputc('"', fp);
+}
+
+/**
+ * @brief Exporterar QSO till en extern CSV-fil (Excel, Google Docs, LibreOffice).
+ * Skriver UTF-8 BOM för korrekt å, ä, ö-visning i kalkylprogram och fältnamn på första raden.
+ * @param filename Sökvägen till målfilen.
+ * @param list Logglistan.
+ * @param st Stationsinställningar.
+ * @param export_mode Exportläge (EXPORT_MODE_ALL, EXPORT_MODE_MARKED, EXPORT_MODE_ONLY_NEW).
+ * @return Antal exporterade poster, eller -1 vid fel.
+ */
+int export_qsos_csv(const char *filename, QSOList *list, const StationSettings *st, int export_mode) {
+    if (filename == NULL || filename[0] == '\0' || list == NULL) return -1;
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) return -1;
+
+    /* Skriv UTF-8 BOM (\xEF\xBB\xBF) så att Excel, Google Docs och LibreOffice automatiskt läser UTF-8 */
+    fputs("\xEF\xBB\xBF", fp);
+
+    /* Första raden: Fältnamnen i samma ordning som de visas i loggraderna */
+    fputs("#,Datum,Tid,Signal,Frekvens,Band,Mode,RST,Namn,QTH,QRB,QUJ,Lokator,DXCC,Notering\r\n", fp);
+
+    int count = 0;
+    for (size_t i = 0; i < list->count; ++i) {
+        QSO *item = &list->items[i];
+        int should_export = 0;
+        if (export_mode == EXPORT_MODE_MARKED) {
+            should_export = item->marked;
+        } else if (export_mode == EXPORT_MODE_ONLY_NEW) {
+            should_export = (item->handled == 0);
+        } else {
+            should_export = 1;
+        }
+
+        if (!should_export) {
+            continue;
+        }
+
+        count++;
+
+        /* 1. # (Radnummer / QSO-nummer) */
+        fprintf(fp, "%d", count);
+
+        /* 2. Datum */
+        char d_buf[32] = "";
+        format_date_yyyy_mm_dd(item->date, d_buf, sizeof(d_buf));
+        write_csv_cell(fp, d_buf, 0);
+
+        /* 3. Tid */
+        char t_buf[32] = "";
+        format_time_hh_mm(item->time_utc, t_buf, sizeof(t_buf));
+        write_csv_cell(fp, t_buf, 0);
+
+        /* 4. Signal */
+        write_csv_cell(fp, item->call, 0);
+
+        /* 5. Frekvens */
+        write_csv_cell(fp, item->freq, 0);
+
+        /* 6. Band */
+        write_csv_cell(fp, item->band, 0);
+
+        /* 7. Mode */
+        write_csv_cell(fp, item->mode, 0);
+
+        /* 8. RST */
+        char rst_buf[32] = "";
+        format_rst_combined(item->rst_sent, item->rst_rcvd, rst_buf, sizeof(rst_buf));
+        write_csv_cell(fp, rst_buf, 0);
+
+        /* 9. Namn */
+        write_csv_cell(fp, item->name, 0);
+
+        /* 10. QTH */
+        write_csv_cell(fp, item->qth, 0);
+
+        /* 11. QRB */
+        if (item->distance[0] == '\0' || strcmp(item->distance, "-") == 0) {
+            update_qso_qrb(st, item);
+        }
+        char qrb_buf[32] = "";
+        format_qrb_display(item, qrb_buf, sizeof(qrb_buf));
+        write_csv_cell(fp, qrb_buf, 0);
+
+        /* 12. QUJ */
+        char quj_buf[32] = "";
+        format_quj_display(st, item, quj_buf, sizeof(quj_buf));
+        write_csv_cell(fp, quj_buf, 0);
+
+        /* 13. Lokator */
+        write_csv_cell(fp, item->gridsquare, 0);
+
+        /* 14. DXCC */
+        write_csv_cell(fp, item->dxcc, 0);
+
+        /* 15. Notering */
+        write_csv_cell(fp, item->comment, 0);
+
+        fputs("\r\n", fp);
+    }
+
+    fclose(fp);
+    return count;
+}
+
 /**
  * @brief Bygger standardiserat filnamn för export:
  * <stationssignal>_<YYMMDD>_<HHMMSS>[_nya].adi
@@ -638,6 +760,60 @@ void build_default_export_filename(char *out, size_t out_sz, const StationSettin
         snprintf(out, out_sz, "%s_%s_nya.adi", clean_call, dt_buf);
     } else {
         snprintf(out, out_sz, "%s_%s.adi", clean_call, dt_buf);
+    }
+}
+
+/**
+ * @brief Bygger standardiserat filnamn för CSV-export:
+ * <stationssignal>_<YYMMDD>_<HHMMSS>[_nya].csv
+ * @param out Buffer för filnamnet.
+ * @param out_sz Storlek på målbuffer.
+ * @param st Stationsinställningar.
+ * @param only_new 1 om endast nya rader exporteras (lägger till "_nya" före filändelsen).
+ */
+void build_default_export_csv_filename(char *out, size_t out_sz, const StationSettings *st, int only_new) {
+    if (out == NULL || out_sz == 0) return;
+
+    char clean_call[32];
+    if (st != NULL && st->call[0] != '\0') {
+        copy_str(clean_call, sizeof(clean_call), st->call);
+    } else {
+        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
+    }
+    to_upper_str(clean_call);
+    trim_str(clean_call);
+    if (clean_call[0] == '\0') {
+        copy_str(clean_call, sizeof(clean_call), "QSOLOG");
+    }
+
+    for (char *c = clean_call; *c; ++c) {
+        if (!isalnum((unsigned char)*c) && *c != '-') {
+            *c = '-';
+        }
+    }
+
+    time_t now = time(NULL);
+    struct tm exp_tm;
+    memset(&exp_tm, 0, sizeof(exp_tm));
+    long offset_sec = 0;
+    if (st != NULL && parse_tz_offset_seconds(st->timezone, &offset_sec)) {
+        time_t adj = now + offset_sec;
+        if (!gmtime_r(&adj, &exp_tm)) {
+            gmtime_r(&now, &exp_tm);
+        }
+    } else {
+        if (!localtime_r(&now, &exp_tm)) {
+            gmtime_r(&now, &exp_tm);
+        }
+    }
+
+    char dt_buf[32];
+    strftime(dt_buf, sizeof(dt_buf), "%y%m%d_%H%M%S", &exp_tm);
+
+    if (only_new) {
+        snprintf(out, out_sz, "%s_%s_nya.csv", clean_call, dt_buf);
+    } else {
+        snprintf(out, out_sz, "%s_%s.csv", clean_call, dt_buf);
     }
 }
 
@@ -765,7 +941,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     draw_top_bar(edit);
     draw_box_with_title(1, 0, LINES - 2, COLS, "Inställningar – Min Station (F12)", 1);
 
-    int start_y = (LINES >= 26) ? 3 : 2;
+    int start_y = (LINES >= 27) ? 3 : 2;
     int colon_col = 22;
     int fw = COLS - colon_col - 5;
     if (fw > 32) fw = 32;
@@ -798,18 +974,19 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     }
     draw_field_aligned(start_y + 7, colon_col, "QRZ API-nyckel", key_display, fw, active == 7, cursor_pos, cur_y, cur_x);
 
-    int r_qrz_auto = start_y + 8;
-    int r_qrz_log  = start_y + 9;
-    int r_theme    = start_y + 10;
-    int r_rst      = start_y + 11;
-    int r_flt      = start_y + 12;
-    int r_stats    = start_y + 13;
-    int r_sw       = start_y + 14;
-    int r_import   = start_y + 15;
-    int r_export   = start_y + 16;
-    int r_sync_up  = start_y + 17;
-    int r_sync     = start_y + 18;
-    int r_clear    = start_y + 19;
+    int r_qrz_auto   = start_y + 8;
+    int r_qrz_log    = start_y + 9;
+    int r_theme      = start_y + 10;
+    int r_rst        = start_y + 11;
+    int r_flt        = start_y + 12;
+    int r_stats      = start_y + 13;
+    int r_sw         = start_y + 14;
+    int r_import     = start_y + 15;
+    int r_export     = start_y + 16;
+    int r_export_csv = start_y + 17;
+    int r_sync_up    = start_y + 18;
+    int r_sync       = start_y + 19;
+    int r_clear      = start_y + 20;
 
     int fcol = colon_col + 2;
 
@@ -1025,7 +1202,34 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 17: Synka ej hanterade QSO mot QRZ.COM */
+    /* Fält 17: Exportera som CSV */
+    const char *lbl_export_csv = "Exportera som CSV";
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    mvprintw(r_export_csv, colon_col - utf8_display_width(lbl_export_csv), "%s:", lbl_export_csv);
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+    char csv_export_hint[128];
+    if (marked_count > 0) {
+        snprintf(csv_export_hint, sizeof(csv_export_hint), "[ Enter: Exportera %d markerade QSO till CSV ]", marked_count);
+    } else if (log_list != NULL && log_list->count > 0) {
+        snprintf(csv_export_hint, sizeof(csv_export_hint), "[ Enter: Exportera alla (%zu QSO) till CSV ]", log_list->count);
+    } else {
+        snprintf(csv_export_hint, sizeof(csv_export_hint), "[ Enter: Exportera alla (0 QSO) till CSV ]");
+    }
+
+    if (active == 17) {
+        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        mvprintw(r_export_csv, fcol, "%-s", csv_export_hint);
+        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        *cur_y = r_export_csv;
+        *cur_x = fcol + 2;
+    } else {
+        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+        mvprintw(r_export_csv, fcol, "%-s", csv_export_hint);
+        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    }
+
+    /* Fält 18: Synka ej hanterade QSO mot QRZ.COM */
     int unhandled_count = 0;
     if (log_list != NULL) {
         for (size_t i = 0; i < log_list->count; ++i) {
@@ -1045,7 +1249,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         snprintf(sync_up_hint, sizeof(sync_up_hint), "[ Enter: Synka ej hanterade QSO till QRZ.COM (0 nya) ]");
     }
 
-    if (active == 17) {
+    if (active == 18) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_sync_up, fcol, "%-s", sync_up_hint);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1057,14 +1261,14 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 18: Synka nya QSO från QRZ.COM (F8) */
+    /* Fält 19: Synka nya QSO från QRZ.COM (F8) */
     const char *lbl_sync = "Synka från QRZ (F8)";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_sync, colon_col - utf8_display_width(lbl_sync), "%s:", lbl_sync);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *sync_hint = "[ F8 / Enter: Hämta nya QSO från QRZ.COM ]";
-    if (active == 18) {
+    if (active == 19) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_sync, fcol, "%-s", sync_hint);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -1076,13 +1280,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 19: Töm loggbok och börja på nytt */
+    /* Fält 20: Töm loggbok och börja på nytt */
     const char *lbl_clear = "Töm loggbok";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 19) {
+    if (active == 20) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -1094,7 +1298,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    if (LINES >= 25) {
+    if (LINES >= 26) {
         if (status_msg != NULL && status_msg[0] != '\0') {
             attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
             mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
@@ -1139,7 +1343,7 @@ static int run_theme_dropdown(StationSettings *edit, const QSOList *log_list, co
     }
     int sel_idx = orig_theme;
 
-    int start_y = (LINES >= 26) ? 3 : 2;
+    int start_y = (LINES >= 27) ? 3 : 2;
     int colon_col = 22;
     int fcol = colon_col + 2;
     int r_theme = start_y + 10;
@@ -1502,13 +1706,126 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             apply_color_theme(edit.theme);
             continue;
         } else if (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+            if (log_list == NULL || log_list->count == 0) {
+                copy_str(status_msg, status_sz, "Loggen är tom – inget att exportera.");
+                apply_color_theme(edit.theme);
+                continue;
+            }
+
+            int m_cnt = 0;
+            int m_new_cnt = 0;
+            int new_cnt = 0;
+            int handled_cnt = 0;
+            for (size_t i = 0; i < log_list->count; ++i) {
+                if (log_list->items[i].marked) {
+                    m_cnt++;
+                    if (log_list->items[i].handled == 0) m_new_cnt++;
+                }
+                if (log_list->items[i].handled == 0) new_cnt++;
+                else handled_cnt++;
+            }
+
+            int exp_mode = EXPORT_MODE_ALL;
+            int only_new = 0;
+            char diag_title[128];
+
+            if (m_cnt > 0) {
+                exp_mode = EXPORT_MODE_MARKED;
+                only_new = (m_new_cnt == m_cnt);
+                snprintf(diag_title, sizeof(diag_title), "Exportera %d markerade QSO till CSV", m_cnt);
+            } else if (new_cnt > 0 && handled_cnt > 0) {
+                int choice = 0;
+                while (1) {
+                    int box_h = 8, box_w = 48;
+                    int by = (LINES - box_h) / 2;
+                    int bx = (COLS - box_w) / 2;
+                    attron(COLOR_PAIR(CP_MAIN_BG) | A_BOLD);
+                    for (int r = 0; r < box_h; ++r) {
+                        mvhline(by + r, bx, ' ', box_w);
+                    }
+                    draw_box_with_title(by, bx, box_h, box_w, "Exportera till CSV", 1);
+                    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+                    mvprintw(by + 2, bx + 4, "[N] Exportera endast nya  (%d QSO)", new_cnt);
+                    mvprintw(by + 3, bx + 4, "[A] Exportera hela loggen (%zu QSO)", log_list->count);
+                    mvprintw(by + 5, bx + 4, "[Esc] Avbryt");
+                    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+                    refresh();
+
+                    int k = getch();
+                    if (k == 'n' || k == 'N' || k == '\n' || k == '\r' || k == KEY_ENTER) {
+                        choice = 1;
+                        break;
+                    } else if (k == 'a' || k == 'A' || k == 'h' || k == 'H') {
+                        choice = 2;
+                        break;
+                    } else if (k == 27 || k == KEY_F(10) || k == KEY_F(12)) {
+                        choice = 0;
+                        break;
+                    }
+                }
+                if (choice == 0) {
+                    copy_str(status_msg, status_sz, "CSV-export avbröts.");
+                    apply_color_theme(edit.theme);
+                    continue;
+                }
+                if (choice == 1) {
+                    exp_mode = EXPORT_MODE_ONLY_NEW;
+                    only_new = 1;
+                    snprintf(diag_title, sizeof(diag_title), "Exportera %d nya QSO till CSV", new_cnt);
+                } else {
+                    exp_mode = EXPORT_MODE_ALL;
+                    only_new = 0;
+                    snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till CSV", log_list->count);
+                }
+            } else if (new_cnt > 0) {
+                exp_mode = EXPORT_MODE_ALL;
+                only_new = 1;
+                snprintf(diag_title, sizeof(diag_title), "Exportera alla (%zu nya QSO) till CSV", log_list->count);
+            } else {
+                exp_mode = EXPORT_MODE_ALL;
+                only_new = 0;
+                snprintf(diag_title, sizeof(diag_title), "Exportera hela loggen (%zu QSO) till CSV", log_list->count);
+            }
+
+            char def_name[PATH_MAX];
+            build_default_export_csv_filename(def_name, sizeof(def_name), &edit, only_new);
+
+            char chosen_path[PATH_MAX] = {0};
+            int chosen = run_file_dialog(diag_title, ".", ".csv", chosen_path, sizeof(chosen_path), 1, def_name);
+            if (chosen && chosen_path[0] != '\0') {
+                char final_path[PATH_MAX];
+                copy_str(final_path, sizeof(final_path), chosen_path);
+                const char *ext = strrchr(final_path, '.');
+                if (!ext || strcasecmp(ext, ".csv") != 0) {
+                    if (strlen(final_path) + 4 < sizeof(final_path)) {
+                        strcat(final_path, ".csv");
+                    }
+                }
+                int exported = export_qsos_csv(final_path, log_list, &edit, exp_mode);
+                if (exported < 0) {
+                    snprintf(status_msg, status_sz, "Kunde inte spara till filen: %s", get_path_basename(final_path));
+                } else {
+                    if (exp_mode == EXPORT_MODE_ONLY_NEW) {
+                        snprintf(status_msg, status_sz, "Exporterade %d nya QSO till %s!", exported, get_path_basename(final_path));
+                    } else if (exp_mode == EXPORT_MODE_MARKED) {
+                        snprintf(status_msg, status_sz, "Exporterade %d markerade QSO till %s!", exported, get_path_basename(final_path));
+                    } else {
+                        snprintf(status_msg, status_sz, "Exporterade %d QSO till %s!", exported, get_path_basename(final_path));
+                    }
+                }
+            } else {
+                copy_str(status_msg, status_sz, "CSV-export avbröts.");
+            }
+            apply_color_theme(edit.theme);
+            continue;
+        } else if (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             sync_unhandled_qsos_to_qrz(log_list, &edit, status_msg, status_sz);
             if (qso && editing_index && *editing_index >= 0 && log_list && (size_t)*editing_index < log_list->count) {
                 qso->handled = log_list->items[*editing_index].handled;
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(8) || (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (ch == KEY_F(8) || (active == 19 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             if (edit.qrz_api_key[0] == '\0') {
                 copy_str(status_msg, status_sz, "QRZ API-nyckel saknas i inställningar.");
                 apply_color_theme(edit.theme);
@@ -1577,7 +1894,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             if (adif_data) free(adif_data);
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 19 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (active == 20 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;

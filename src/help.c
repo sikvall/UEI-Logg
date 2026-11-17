@@ -176,6 +176,11 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Exportera alla rader, endast markerade rader, eller endast nya (ohanterade).",
             "  * Skapar standardiserade ADIF-filer med automatiska tidsstämplade namn.",
             "",
+            "Exportera CSV (i inställningar):",
+            "  * Exporterar loggen till standard CSV för Excel, Google Docs och LibreOffice.",
+            "  * Första raden innehåller kolumnnamn i samma ordning som loggraderna.",
+            "  * Skriver UTF-8 BOM för automatisk och korrekt teckentolkning (Å, Ä, Ö).",
+            "",
             "Synka till QRZ.COM (i inställningar):",
             "  * Skickar alla ohanterade QSO direkt till QRZ.COM Logbook via dess API.",
             "  * Lyckade sändningar markeras automatiskt som hanterade (✓).",
@@ -193,7 +198,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        30
+        35
     },
     {
         "[6] Rymdväder",
