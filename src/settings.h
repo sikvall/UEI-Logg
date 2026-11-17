@@ -71,6 +71,18 @@ int import_qsos_from_adif(const char *filename, QSOList *list, const StationSett
 int export_qsos_adif(const char *filename, QSOList *list, const StationSettings *st, int export_mode);
 
 /**
+ * @brief Synkroniserar alla ej hanterade QSO (handled == 0) direkt mot QRZ.COM Logbook API.
+ * Lyckade poster markeras som hanterade (handled = 1) i minnet och SQLite/ADIF.
+ * @param log_list Logglistan med QSO.
+ * @param st Stationsinställningar (innehåller QRZ API-nyckel).
+ * @param status_msg Buffer för statusmeddelande.
+ * @param status_sz Storlek på statusmeddelandebuffert.
+ * @return Antal framgångsrikt synkade QSO, 0 om inga behövde synkas, eller negativt vid fel/saknad nyckel.
+ */
+int sync_unhandled_qsos_to_qrz(QSOList *log_list, const StationSettings *st,
+                               char *status_msg, size_t status_sz);
+
+/**
  * @brief Tömmer hela loggboken på disk och i minnet.
  * @param log_list Logglistan som rensas.
  * @param st Min stations inställningar.

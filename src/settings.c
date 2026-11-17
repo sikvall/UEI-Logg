@@ -641,6 +641,108 @@ void build_default_export_filename(char *out, size_t out_sz, const StationSettin
     }
 }
 
+/**
+ * @brief Synkroniserar alla ej hanterade QSO (handled == 0) direkt mot QRZ.COM Logbook API.
+ * Lyckade poster markeras som hanterade (handled = 1) i minnet och SQLite/ADIF.
+ * @param log_list Logglistan med QSO.
+ * @param st Stationsinställningar (innehåller QRZ API-nyckel).
+ * @param status_msg Buffer för statusmeddelande.
+ * @param status_sz Storlek på statusmeddelandebuffert.
+ * @return Antal framgångsrikt synkade QSO, 0 om inga behövde synkas, eller negativt vid fel/saknad nyckel.
+ */
+int sync_unhandled_qsos_to_qrz(QSOList *log_list, const StationSettings *st,
+                               char *status_msg, size_t status_sz) {
+    if (st == NULL || st->qrz_api_key[0] == '\0') {
+        if (status_msg && status_sz > 0) {
+            copy_str(status_msg, status_sz, "QRZ API-nyckel saknas i inställningar.");
+        }
+        return -1;
+    }
+
+    if (log_list == NULL || log_list->count == 0) {
+        if (status_msg && status_sz > 0) {
+            copy_str(status_msg, status_sz, "Loggen är tom.");
+        }
+        return 0;
+    }
+
+    int unhandled_count = 0;
+    for (size_t i = 0; i < log_list->count; ++i) {
+        if (log_list->items[i].handled == 0) {
+            unhandled_count++;
+        }
+    }
+
+    if (unhandled_count == 0) {
+        if (status_msg && status_sz > 0) {
+            copy_str(status_msg, status_sz, "Inga ohanterade QSO att synka mot QRZ.COM.");
+        }
+        return 0;
+    }
+
+    int ok_cnt = 0;
+    int fail_cnt = 0;
+    int step = 0;
+    char last_err[192] = "";
+
+    for (size_t i = 0; i < log_list->count; ++i) {
+        if (log_list->items[i].handled != 0) continue;
+        step++;
+
+        if (stdscr != NULL && !isendwin()) {
+            int box_w = 46;
+            int box_h = 5;
+            int box_y = (LINES - box_h) / 2;
+            int box_x = (COLS - box_w) / 2;
+            if (box_y < 0) box_y = 0;
+            if (box_x < 0) box_x = 0;
+            attron(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+            draw_box_with_title(box_y, box_x, box_h, box_w, "QRZ.COM Synk", 1);
+            char stat_str[128];
+            snprintf(stat_str, sizeof(stat_str), "Skickar %d/%d (%s)...",
+                     step, unhandled_count, log_list->items[i].call);
+            int slen = utf8_display_width(stat_str);
+            mvprintw(box_y + 2, box_x + (box_w - slen) / 2, "%s", stat_str);
+            attroff(COLOR_PAIR(CP_BORDER_ACTIVE) | A_BOLD);
+            refresh();
+        }
+
+        char err_buf[192] = "";
+        int ok = qrz_logbook_insert(st->qrz_api_key, &log_list->items[i], st,
+                                    err_buf, sizeof(err_buf));
+        if (ok) {
+            log_list->items[i].handled = 1;
+            if (db_is_open() && log_list->items[i].id > 0) {
+                db_set_handled(log_list->items[i].id, 1);
+            }
+            ok_cnt++;
+        } else {
+            fail_cnt++;
+            if (last_err[0] == '\0' && err_buf[0] != '\0') {
+                copy_str(last_err, sizeof(last_err), err_buf);
+            }
+        }
+    }
+
+    if (!db_is_open()) {
+        save_all_qsos_adif(LOG_FILE, log_list, st);
+    }
+
+    if (status_msg && status_sz > 0) {
+        if (fail_cnt == 0) {
+            snprintf(status_msg, status_sz, "Synkade %d QSO till QRZ.COM (✓)!", ok_cnt);
+        } else if (ok_cnt > 0) {
+            snprintf(status_msg, status_sz, "Synkade %d QSO till QRZ.COM, %d misslyckades: %s",
+                     ok_cnt, fail_cnt, last_err[0] ? last_err : "Fel");
+        } else {
+            snprintf(status_msg, status_sz, "QRZ-synk misslyckades: %s",
+                     last_err[0] ? last_err : "Okänt fel");
+        }
+    }
+
+    return ok_cnt;
+}
+
 /* Fildialogen är utbruten till file_dialog.c / file_dialog.h */
 
 /**
@@ -705,8 +807,9 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
     int r_sw       = start_y + 14;
     int r_import   = start_y + 15;
     int r_export   = start_y + 16;
-    int r_sync     = start_y + 17;
-    int r_clear    = start_y + 18;
+    int r_sync_up  = start_y + 17;
+    int r_sync     = start_y + 18;
+    int r_clear    = start_y + 19;
 
     int fcol = colon_col + 2;
 
@@ -922,14 +1025,46 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 17: Synka nya QSO från QRZ.COM (F8) */
-    const char *lbl_sync = "Synka QRZ.COM (F8)";
+    /* Fält 17: Synka ej hanterade QSO mot QRZ.COM */
+    int unhandled_count = 0;
+    if (log_list != NULL) {
+        for (size_t i = 0; i < log_list->count; ++i) {
+            if (log_list->items[i].handled == 0) unhandled_count++;
+        }
+    }
+
+    const char *lbl_sync_up = "Synka till QRZ.COM";
+    attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
+    mvprintw(r_sync_up, colon_col - utf8_display_width(lbl_sync_up), "%s:", lbl_sync_up);
+    attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
+
+    char sync_up_hint[128];
+    if (unhandled_count > 0) {
+        snprintf(sync_up_hint, sizeof(sync_up_hint), "[ Enter: Synka %d ej hanterade QSO till QRZ.COM ]", unhandled_count);
+    } else {
+        snprintf(sync_up_hint, sizeof(sync_up_hint), "[ Enter: Synka ej hanterade QSO till QRZ.COM (0 nya) ]");
+    }
+
+    if (active == 17) {
+        attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        mvprintw(r_sync_up, fcol, "%-s", sync_up_hint);
+        attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
+        *cur_y = r_sync_up;
+        *cur_x = fcol + 2;
+    } else {
+        attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+        mvprintw(r_sync_up, fcol, "%-s", sync_up_hint);
+        attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
+    }
+
+    /* Fält 18: Synka nya QSO från QRZ.COM (F8) */
+    const char *lbl_sync = "Synka från QRZ (F8)";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_sync, colon_col - utf8_display_width(lbl_sync), "%s:", lbl_sync);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
     const char *sync_hint = "[ F8 / Enter: Hämta nya QSO från QRZ.COM ]";
-    if (active == 17) {
+    if (active == 18) {
         attron(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
         mvprintw(r_sync, fcol, "%-s", sync_hint);
         attroff(COLOR_PAIR(CP_FIELD_ACTIVE) | A_BOLD);
@@ -941,13 +1076,13 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    /* Fält 18: Töm loggbok och börja på nytt */
+    /* Fält 19: Töm loggbok och börja på nytt */
     const char *lbl_clear = "Töm loggbok";
     attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
     mvprintw(r_clear, colon_col - utf8_display_width(lbl_clear), "%s:", lbl_clear);
     attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
-    if (active == 18) {
+    if (active == 19) {
         attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
         mvprintw(r_clear, fcol, "[ Tryck Enter för att tömma ]");
         attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
@@ -959,17 +1094,28 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
     }
 
-    if (status_msg != NULL && status_msg[0] != '\0' && LINES >= 20) {
-        attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-        mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
-        attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
-    }
-
-    if (LINES >= 17) {
+    if (LINES >= 25) {
+        if (status_msg != NULL && status_msg[0] != '\0') {
+            attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+            mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
+            attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+        }
         if (active == 10) {
             mvprintw(LINES - 2, 3, "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara.");
         } else {
             mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F5=Import, F6=Export, F8=QRZ-synk. F2/F12: Spara.");
+        }
+    } else {
+        if (status_msg != NULL && status_msg[0] != '\0') {
+            attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+            mvprintw(LINES - 2, 3, "Status: %-s", status_msg);
+            attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+        } else if (LINES >= 17) {
+            if (active == 10) {
+                mvprintw(LINES - 2, 3, "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara.");
+            } else {
+                mvprintw(LINES - 2, 3, "Tab/Pilar: Byt fält. F5=Import, F6=Export, F8=QRZ-synk. F2/F12: Spara.");
+            }
         }
     }
 
@@ -1355,7 +1501,14 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             }
             apply_color_theme(edit.theme);
             continue;
-        } else if (ch == KEY_F(8) || (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
+        } else if (active == 17 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+            sync_unhandled_qsos_to_qrz(log_list, &edit, status_msg, status_sz);
+            if (qso && editing_index && *editing_index >= 0 && log_list && (size_t)*editing_index < log_list->count) {
+                qso->handled = log_list->items[*editing_index].handled;
+            }
+            apply_color_theme(edit.theme);
+            continue;
+        } else if (ch == KEY_F(8) || (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' '))) {
             if (edit.qrz_api_key[0] == '\0') {
                 copy_str(status_msg, status_sz, "QRZ API-nyckel saknas i inställningar.");
                 apply_color_theme(edit.theme);
@@ -1424,7 +1577,7 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
             if (adif_data) free(adif_data);
             apply_color_theme(edit.theme);
             continue;
-        } else if (active == 18 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
+        } else if (active == 19 && (ch == '\n' || ch == '\r' || ch == KEY_ENTER || ch == ' ')) {
             int confirm = 0;
             while (1) {
                 int box_h = 7, box_w = 46;

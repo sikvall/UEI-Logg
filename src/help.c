@@ -176,7 +176,11 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Exportera alla rader, endast markerade rader, eller endast nya (ohanterade).",
             "  * Skapar standardiserade ADIF-filer med automatiska tidsstämplade namn.",
             "",
-            "Synka QRZ.COM (F8 i inställningar):",
+            "Synka till QRZ.COM (i inställningar):",
+            "  * Skickar alla ohanterade QSO direkt till QRZ.COM Logbook via dess API.",
+            "  * Lyckade sändningar markeras automatiskt som hanterade (✓).",
+            "",
+            "Synka från QRZ.COM (F8 i inställningar):",
             "  * Hämtar och slår samman QSO:n från QRZ.COM till den lokala loggboken.",
             "  * Avkodar XML/HTML-entiteter och ignorerar automatiskt dubbletter.",
             "",
@@ -189,7 +193,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        26
+        30
     },
     {
         "[6] Rymdväder",

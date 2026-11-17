@@ -2097,9 +2097,9 @@ static void run_log_row_features_tests(void) {
 static void run_qrz_sync_tests(void) {
     printf(ANSI_BLUE "\n=== [14] QRZ.COM Synkronisering & Minnes-ADIF-import ===" ANSI_RESET "\n");
 
-    /* 1. STATION_FIELD_COUNT är 19 */
-    record_result(STATION_FIELD_COUNT == 19,
-                  "STATION_FIELD_COUNT är 19 (inkl. Synka QRZ.COM som fält 17)", NULL);
+    /* 1. STATION_FIELD_COUNT är 20 */
+    record_result(STATION_FIELD_COUNT == 20,
+                  "STATION_FIELD_COUNT är 20 (inkl. Synka till QRZ och Synka från QRZ)", NULL);
 
     /* 2. qrz_logbook_fetch validerar API-nyckel */
     {
@@ -2215,6 +2215,38 @@ static void run_qrz_sync_tests(void) {
         }
         record_result(ok, "import_qsos_from_memory hanterar HTML/XML-entitetskodad ADIF (&lt; och &gt;) från QRZ API", NULL);
         if (list.items) free(list.items);
+    }
+
+    /* 8. sync_unhandled_qsos_to_qrz validerar API-nyckel och ohanterade poster */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        char msg[128] = "";
+
+        /* Saknad nyckel ger fel */
+        int r1 = sync_unhandled_qsos_to_qrz(NULL, &st, msg, sizeof(msg));
+        int no_key_ok = (r1 < 0) && (strstr(msg, "API-nyckel saknas") != NULL);
+
+        copy_str(st.qrz_api_key, sizeof(st.qrz_api_key), "TEST-API-KEY");
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        /* Tom logg */
+        int r2 = sync_unhandled_qsos_to_qrz(&list, &st, msg, sizeof(msg));
+        int empty_ok = (r2 == 0) && (strstr(msg, "Loggen är tom") != NULL);
+
+        /* Inga ohanterade poster */
+        QSO q;
+        memset(&q, 0, sizeof(q));
+        copy_str(q.call, sizeof(q.call), "SM5UEI");
+        q.handled = 1;
+        qso_list_push(&list, &q);
+        int r3 = sync_unhandled_qsos_to_qrz(&list, &st, msg, sizeof(msg));
+        int no_unhandled_ok = (r3 == 0) && (strstr(msg, "Inga ohanterade QSO") != NULL);
+
+        free(list.items);
+        record_result(no_key_ok && empty_ok && no_unhandled_ok,
+                      "sync_unhandled_qsos_to_qrz validerar API-nyckel, tom logg och ohanterade poster", NULL);
     }
 }
 
