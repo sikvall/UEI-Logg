@@ -1027,6 +1027,20 @@ void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz) {
     char buf2[512];
     size_t b2_idx = 0;
     for (size_t i = 0; i < slen && b2_idx + 4 < sizeof(buf2);) {
+        /* Generell avkodning av dubbelkodad UTF-8 (Latin-1 U+0080..U+00FF):
+           0xC3 0x83 0xC2 [0x80..0xBF] -> 0xC3 [0x80..0xBF]
+           0xC3 0x82 0xC2 [0x80..0xBF] -> 0xC2 [0x80..0xBF] */
+        if (i + 4 <= slen &&
+            (unsigned char)temp[i] == 0xC3 &&
+            ((unsigned char)temp[i + 1] == 0x83 || (unsigned char)temp[i + 1] == 0x82) &&
+            (unsigned char)temp[i + 2] == 0xC2 &&
+            ((unsigned char)temp[i + 3] & 0xC0) == 0x80) {
+            buf2[b2_idx++] = ((unsigned char)temp[i + 1] == 0x83) ? (char)0xC3 : (char)0xC2;
+            buf2[b2_idx++] = temp[i + 3];
+            i += 4;
+            continue;
+        }
+
         int matched = 0;
         for (int m = 0; s_mojibake_map[m].bad != NULL; ++m) {
             if (i + s_mojibake_map[m].bad_len <= slen &&
@@ -1109,6 +1123,90 @@ void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz) {
         }
     }
     dest[d_idx] = '\0';
+}
+
+static int only_ws_before_next_tag(const char *s) {
+    while (*s != '\0' && *s != '<' && *s != '\r' && *s != '\n') {
+        if (*s != ' ' && *s != '\t') {
+            return 0;
+        }
+        s++;
+    }
+    return 1;
+}
+
+static size_t utf8_char_byte_len(const char *s) {
+    unsigned char b0 = (unsigned char)s[0];
+    if ((b0 & 0x80) == 0) return 1;
+    if ((b0 & 0xE0) == 0xC0 && ((unsigned char)s[1] & 0xC0) == 0x80) return 2;
+    if ((b0 & 0xF0) == 0xE0 &&
+        ((unsigned char)s[1] & 0xC0) == 0x80 &&
+        ((unsigned char)s[2] & 0xC0) == 0x80) return 3;
+    if ((b0 & 0xF8) == 0xF0 &&
+        ((unsigned char)s[1] & 0xC0) == 0x80 &&
+        ((unsigned char)s[2] & 0xC0) == 0x80 &&
+        ((unsigned char)s[3] & 0xC0) == 0x80) return 4;
+    return 1;
+}
+
+static size_t scan_adif_char_len(const char *val_start, int declared_len, size_t byte_len, int merge_mojibake) {
+    size_t pos = 0;
+    for (int c = 0; c < declared_len && val_start[pos] != '\0'; ++c) {
+        if (pos >= byte_len &&
+            (val_start[pos] == '<' || val_start[pos] == '\r' || val_start[pos] == '\n')) {
+            break;
+        }
+        if (merge_mojibake) {
+            unsigned char b0 = (unsigned char)val_start[pos];
+            unsigned char b1 = (unsigned char)val_start[pos + 1];
+            if (b0 == 0xC3 && (b1 == 0x83 || b1 == 0x82) &&
+                (unsigned char)val_start[pos + 2] == 0xC2 &&
+                ((unsigned char)val_start[pos + 3] & 0xC0) == 0x80) {
+                pos += 4;
+                continue;
+            }
+        }
+        pos += utf8_char_byte_len(val_start + pos);
+    }
+    return pos;
+}
+
+size_t adif_extract_field_value(const char *val_start, int declared_len, char *out_buf, size_t out_buf_sz) {
+    if (out_buf != NULL && out_buf_sz > 0) {
+        out_buf[0] = '\0';
+    }
+    if (val_start == NULL || declared_len <= 0 || val_start[0] == '\0') {
+        return 0;
+    }
+
+    size_t avail = strlen(val_start);
+    size_t byte_len = (size_t)declared_len <= avail ? (size_t)declared_len : avail;
+
+    /* Beräkna längd om fältlängden räknades i UTF-8-tecken (vanligt i QRZ.COM ADIF)
+       samt om dubbelkodad UTF-8 (4 bytes per tecken) räknades som 1 logiskt tecken. */
+    size_t u8_pos = scan_adif_char_len(val_start, declared_len, byte_len, 0);
+    size_t moji_pos = scan_adif_char_len(val_start, declared_len, byte_len, 1);
+
+    size_t actual_len = byte_len;
+    if (u8_pos > byte_len) {
+        int byte_splits_utf8 = (((unsigned char)val_start[byte_len] & 0xC0) == 0x80);
+        if (byte_splits_utf8 || !only_ws_before_next_tag(val_start + byte_len)) {
+            if (moji_pos > u8_pos && !only_ws_before_next_tag(val_start + u8_pos) &&
+                only_ws_before_next_tag(val_start + moji_pos)) {
+                actual_len = moji_pos;
+            } else {
+                actual_len = u8_pos;
+            }
+        }
+    }
+
+    if (out_buf != NULL && out_buf_sz > 0) {
+        size_t copy_len = actual_len < (out_buf_sz - 1) ? actual_len : (out_buf_sz - 1);
+        memcpy(out_buf, val_start, copy_len);
+        out_buf[copy_len] = '\0';
+    }
+
+    return actual_len;
 }
 
 void utf8_pad_or_clip(char *dest, size_t dest_sz, const char *src, int target_width, int align_right) {

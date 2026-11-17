@@ -594,17 +594,13 @@ void load_qsos_from_adif(const char *filename, QSOList *list) {
             int val_len = atoi(colon + 1);
             if (val_len < 0) val_len = 0;
             const char *val_start = end_tag + 1;
-            size_t avail = strlen(val_start);
-            if ((size_t)val_len > avail) val_len = (int)avail;
 
             char val_buf[512];
-            size_t copy_len = (size_t)val_len < sizeof(val_buf) - 1 ? (size_t)val_len : sizeof(val_buf) - 1;
-            memcpy(val_buf, val_start, copy_len);
-            val_buf[copy_len] = '\0';
+            size_t consumed = adif_extract_field_value(val_start, val_len, val_buf, sizeof(val_buf));
 
             assign_adif_field(&current, tag_buf, val_buf);
             has_fields = 1;
-            p = val_start + val_len;
+            p = val_start + consumed;
         } else {
             p = end_tag + 1;
         }

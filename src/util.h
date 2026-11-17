@@ -282,6 +282,17 @@ void get_utc_strings(char *date_buf, size_t date_sz,
 void sanitize_to_utf8(const char *src, char *dest, size_t dest_sz);
 
 /**
+ * @brief Extraherar ett ADIF-fältvärde med stöd för både räknade UTF-8-tecken (t.ex. från QRZ.COM)
+ * och räknade bytes, så att svenska/internationella tecken (å, ä, ö m.fl.) inte klipper slutet av fältet.
+ * @param val_start Pekare direkt efter '>' i en ADIF-tagg (<TAG:N>...).
+ * @param declared_len Längdvärdet N angivet i ADIF-taggen.
+ * @param out_buf Målbuffer för det extraherade råvärdet.
+ * @param out_buf_sz Storlek på out_buf i bytes.
+ * @return Antalet förbrukade bytes i val_start.
+ */
+size_t adif_extract_field_value(const char *val_start, int declared_len, char *out_buf, size_t out_buf_sz);
+
+/**
  * @brief Klipper eller fyller ut en UTF-8-sträng så att den tar exakt target_width skärmkolumner.
  * Klipper ALDRIG mitt i ett flerbytes UTF-8-tecken.
  * @param dest Målbuffer.

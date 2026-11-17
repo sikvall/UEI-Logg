@@ -268,7 +268,7 @@ static void clean_qrz_qth(const char *in, char *out, size_t out_sz) {
     }
 
     char tmp[64];
-    copy_str(tmp, sizeof(tmp), p);
+    sanitize_to_utf8(p, tmp, sizeof(tmp));
     trim_str(tmp);
 
     int has_lower = 0;
@@ -495,7 +495,7 @@ static int qrz_query_call(const char *session_key, const char *call,
         return 1;
     }
 
-    char raw_fname[64] = "", raw_name[64] = "", raw_addr2[64] = "", raw_grid[16] = "";
+    char raw_fname[128] = "", raw_name[128] = "", raw_addr2[256] = "", raw_grid[16] = "";
     extract_xml_tag(resp.data, "fname", raw_fname, sizeof(raw_fname));
     extract_xml_tag(resp.data, "name", raw_name, sizeof(raw_name));
     extract_xml_tag(resp.data, "addr2", raw_addr2, sizeof(raw_addr2));

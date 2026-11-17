@@ -2248,6 +2248,63 @@ static void run_qrz_sync_tests(void) {
         record_result(no_key_ok && empty_ok && no_unhandled_ok,
                       "sync_unhandled_qsos_to_qrz validerar API-nyckel, tom logg och ohanterade poster", NULL);
     }
+
+    /* 9. QRZ.COM ADIF med UTF-8-teckenlängd (å, ä, ö m.fl.) och dubbelkodad UTF-8 hugger inte av QTH/Namn */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5UEI");
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        /* Simulerar QRZ.COM ADIF-svar där längden i <qth:N>/<name:N> är angiven i antal tecken istället för bytes:
+           Västerås (8 tkn, 10 bytes), Vällingby (9 tkn, 10 bytes), Bergsjö (7 tkn, 8 bytes),
+           Fréderic (8 tkn, 9 bytes), samt dubbelkodad VÃ¤llingby (10 codepoints, 12 bytes) och KrakÃ³w (7 tkn, 9 bytes) */
+        const char *qrz_utf8_adif =
+            "&lt;call:6&gt;SM5XHB&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0751&lt;band:3&gt;80m&lt;mode:3&gt;SSB&lt;name:5&gt;Bernt&lt;qth:8&gt;Västerås&lt;eor&gt;\n"
+            "&lt;call:6&gt;SA0PAL&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0752&lt;band:3&gt;80m&lt;mode:3&gt;SSB&lt;name:8&gt;Christer&lt;qth:9&gt;Vällingby&lt;eor&gt;\n"
+            "&lt;call:6&gt;SA3XYZ&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0753&lt;band:3&gt;80m&lt;mode:3&gt;SSB&lt;name:5&gt;Peter&lt;qth:7&gt;Bergsjö&lt;eor&gt;\n"
+            "&lt;call:5&gt;F4MZV&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0754&lt;band:3&gt;12m&lt;mode:3&gt;SSB&lt;name:8&gt;Fréderic&lt;qth:8&gt;Frouzins&lt;eor&gt;\n"
+            "&lt;call:6&gt;SA0PAL&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0755&lt;band:3&gt;40m&lt;mode:3&gt;SSB&lt;name:8&gt;Christer&lt;qth:10&gt;VÃ¤llingby&lt;eor&gt;\n"
+            "&lt;call:5&gt;SP9RS&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0756&lt;band:3&gt;20m&lt;mode:3&gt;SSB&lt;name:6&gt;Robert&lt;qth:7&gt;KrakÃ³w&lt;eor&gt;\n"
+            "&lt;call:6&gt;SA3CJF&lt;qso_date:8&gt;20261117&lt;time_on:4&gt;0757&lt;band:3&gt;80m&lt;mode:3&gt;SSB&lt;name:6&gt;Marina&lt;qth:8&gt;Bollnäs &lt;eor&gt;\n";
+
+        int imported = import_qsos_from_memory(qrz_utf8_adif, strlen(qrz_utf8_adif), &list, &st, 1, NULL);
+        int ok = (imported == 7 && list.count == 7);
+        if (ok) {
+            ok = ok && (strcmp(list.items[0].qth, "Västerås") == 0);
+            ok = ok && (strcmp(list.items[1].qth, "Vällingby") == 0);
+            ok = ok && (strcmp(list.items[2].qth, "Bergsjö") == 0);
+            ok = ok && (strcmp(list.items[3].name, "Fréderic") == 0);
+            ok = ok && (strcmp(list.items[4].qth, "Vällingby") == 0);
+            ok = ok && (strcmp(list.items[5].qth, "Kraków") == 0);
+            ok = ok && (strcmp(list.items[6].qth, "Bollnäs") == 0);
+        }
+        record_result(ok, "import_qsos_from_memory klipper ej QTH/Namn med UTF-8-teckenlängd (t.ex. Västerås, Vällingby, Kraków)", NULL);
+
+        /* Verifiera även filbaserad load_qsos_from_adif med samma fall */
+        const char *tmp_qth_adi = "/tmp/test_qrz_qth_utf8.adi";
+        FILE *fp = fopen(tmp_qth_adi, "w");
+        if (fp) {
+            fputs("<ADIF_VER:5>3.1.4\n<EOH>\n"
+                  "<CALL:6>SM6ANK<QSO_DATE:8>20261117<TIME_ON:4>0800<BAND:3>80m<MODE:3>SSB<NAME:7>Lennart<QTH:8>Göteborg<EOR>\n"
+                  "<CALL:6>SA4BUK<QSO_DATE:8>20261117<TIME_ON:4>0805<BAND:3>80m<MODE:3>SSB<NAME:4>Mats<QTH:10>Siljansnäs<EOR>\n",
+                  fp);
+            fclose(fp);
+        }
+        QSOList adif_loaded;
+        memset(&adif_loaded, 0, sizeof(adif_loaded));
+        load_qsos_from_adif(tmp_qth_adi, &adif_loaded);
+        int file_ok = (adif_loaded.count == 2) &&
+                      (strcmp(adif_loaded.items[0].qth, "Göteborg") == 0) &&
+                      (strcmp(adif_loaded.items[1].qth, "Siljansnäs") == 0);
+        unlink(tmp_qth_adi);
+        if (adif_loaded.items) free(adif_loaded.items);
+        record_result(file_ok, "load_qsos_from_adif bevarar fullständigt QTH vid teckenräknad UTF-8 (Göteborg, Siljansnäs)", NULL);
+
+        if (list.items) free(list.items);
+    }
 }
 
 /* ========================================================================= */
