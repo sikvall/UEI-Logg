@@ -1,6 +1,6 @@
 # UEI-Logg
 
-**UEI-Logg** (UEI-log v1.0.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
+**UEI-Logg** (v1.0.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
 
 ---
 
@@ -21,26 +21,26 @@
 
 ## Funktioner
 
-- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). Flexibel tidsinmatning som accepterar både `HH:MM` (t.ex. 21:58) och `HHMM` (2158). Tangenten F2 startar UTC-klockan igen så att den rullar live även om inmatning påbörjats. F7 i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
-- **Titelrad med stationsinfo**: Översta listen presenterar egen anropssignal, QTH och lokator centrerat (`Anropssignal QTH Lokator` utan parenteser runt QTH) tillsammans med lokal tid och UTC.
-- **SQLite3 Databas med WAL-läge**: Persistent, kraschsäker och blixtsnabb databaslagring i `qsolog.sq3`. Automatisk migrering från tidigare `qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
-- **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler, unika DXCC, unika lokatorrutor, körda bandland samt QSO-takt per timme (Rate). Kan stängas av via inställningsmenyn (F12).
-- **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (SFI, SSN, A-index, K-index, DX/NVIS bästa band t.ex. `15m/80m`, solflares, geomagnetiska stormar och HF-konditioner per band).
+- **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). Tomma RST-fält sparas blanka när `Auto RST 59/59` är avstängt (default) eller när inget fyllts i. Flexibel tidsinmatning som accepterar både `HH:MM` (t.ex. `21:58`) och `HHMM` (`2158`). Tangenten `F2` startar UTC-klockan igen så att den rullar live även om inmatning påbörjats. `F7` i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
+- **Titelrad med namn, version, byggdatum och stationsinfo**: Översta listen visar applikationens namn, versionsnummer och byggdatum från `src/version.h` (`UEI-Logg v1.0.0 (2026-11-18)`), centrerad stationsinfo (`Anropssignal QTH Lokator` utan parenteser runt QTH) samt aktuell UTC-tid (`YYYY-MM-DD HH:MM UTC`).
+- **SQLite3 Databas i `~/.ueilogg/` med WAL-läge**: Persistent och kraschsäker databaslagring i `~/.ueilogg/qsolog.sq3` (default). På inställningssidan (`F12`) går det att byta eller skapa en ny databas med valfritt namn (eller välja befintlig `.sq3` med `F3`). Loggrutan visar alltid aktiv databas (`Tidigare QSO (<databas>)`). Automatisk engångsmigrering från `~/.ueilogg/qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
+- **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler (`Stationer`), unika `DXCC`, unika 4-teckens `Lokatorer`, körda `Bandland` samt QSO-takt per timme (`Rate`). Kan stängas av via inställningsmenyn (`F12`).
+- **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (`hf.avitec.se`: K/Kp, MUF, LUF, CME, Solfackla, Solvind, Norrsken samt DX/NVIS bästa band t.ex. `15m/80m`).
 - **Automatiska och manuella uppslag**:
-  - DXCC-land slås automatiskt upp i realtid direkt ur `dxcc.txt` när anropssignalen skrivs in.
-  - **Auto QRZ.COM**: Tre valbara lägen i inställningarna (F12) – `Av`, `Auto` och `Manuell`. Vid `Auto` görs uppslag automatiskt i bakgrunden vid inmatning och paus; vid `Manuell` sker uppslag endast när operatören trycker **F5** i loggrutan; vid `Av` är QRZ-uppslag helt och hållet avslaget.
+  - DXCC-land slås automatiskt upp i realtid direkt ur `~/.ueilogg/dxcc.txt` när anropssignalen skrivs in.
+  - **Auto QRZ.COM**: Tre valbara lägen i inställningarna (`F12`) – `Av`, `Auto` och `Manuell`. Vid `Auto` görs uppslag automatiskt i bakgrunden vid inmatning och paus; vid `Manuell` sker uppslag endast när operatören trycker **F5** i inmatningsformuläret; vid `Av` är QRZ-uppslag helt avslaget.
   - Automatisk detektering av Silent Keys (visas med `-SK-` och `SILENT KEY`).
 - **QRZ.COM Direktloggning & Synkronisering**:
-  - **Direktloggning i realtid**: Direktlogga till ditt QRZ Logbook-konto via HTTPS API (`Av`, `Automatisk` vid sparning med Enter, eller `Manuell` via tangenten **Ctrl+L**).
-  - **Tvåvägssynkronisering**: Synka hem nya QSO:n från QRZ.COM till den lokala databasen via F12-menyn (tangenten F8). Avkodar automatiskt XML/HTML-entiteter och filtrerar bort dubbletter.
-  - **Säker API-nyckel**: QRZ API-nyckeln maskeras som `**********` vid visning i inställningarna och visas i klartext först vid redigering.
-- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som siffra i loggraderna) och bäring (QUJ i grader, t.ex. 145°) via Maidenhead-lokatorer eller OpenStreetMap.
-- **ADIF 3.1.8-stöd**: Fullt stöd för import och export med inbyggd fildialog. Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
-- **Högerställd frekvenskolumn med fixerad decimalpunkt**: Frekvenskolumnen i loggtabellen är högerställd och decimalpunkten `.` är låst till exakt samma kolumnposition för perfekt visuell överblick.
-- **Responsiv och flexibel logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer automatiskt bort för att ge maximal plats åt signal och ort.
-- **Interaktiv loggradshantering**: Flytta loggrader uppåt med **w** och nedåt med **s**, cykla bakgrundsfärgen med **c** (Standard $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd), och återgå automatiskt till loggraderna när en redigering sparats med Enter.
-- **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på exakt en rad.
-- **16 Färgscheman och egen färgprofilseditor**: Standardtemat är det eleganta **UEI-tema** (marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus). Välj mellan 16 färdiga teman (inkl. Borland Turbo Pascal, Midnight Commander, Monokrom, Amber Retro, Grön CRT, Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en helt egen anpassad färgprofil via den inbyggda färgprofilseditorn (F7 i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med F12.
+  - **Direktloggning i realtid**: Direktlogga till ditt QRZ Logbook-konto via HTTPS API (`Av`, `Automatisk` vid sparning med Enter, eller `Manuell` via **Ctrl+L**).
+  - **Tvåvägssynkronisering**: Synka upp ohanterade QSO:n eller hämta nya QSO:n från QRZ.COM (`F8`) via inställningsmenyn (`F12`). Avkodar automatiskt XML/HTML-entiteter och filtrerar bort dubbletter.
+  - **Säker API-nyckel**: QRZ API-nyckeln och lösenordet maskeras som `**********` vid visning i inställningarna och visas i klartext först vid redigering.
+- **Geografiska beräkningar**: Automatisk beräkning av avstånd (QRB i kilometer som ren siffra i loggraderna) och bäring (QUJ i grader, t.ex. `145°`) via Maidenhead-lokatorer eller OpenStreetMap.
+- **ADIF 3.1.8- och CSV-stöd**: Fullt stöd för ADIF-import (`F5` i `F12`), ADIF-export (`F6` i `F12`) samt CSV-export för Excel, Google Kalkylark/Docs och LibreOffice (med UTF-8 BOM och kolumnordning enligt loggraderna). Export kan ske av hela loggen, markerade rader eller endast nya/ohanterade kontakter.
+- **Högerställd frekvenskolumn med fixerad decimalpunkt**: Frekvenskolumnen i loggtabellen är högerställd och decimalpunkten `.` är låst till samma kolumnposition.
+- **Responsiv och flexibel logglayout**: Vid smalare terminalfönster döljs kolumner automatiskt (först DXCC, därefter Lokator, därefter QRB och QUJ samtidigt). QTH kvarstår ända ned till 80 kolumner (minst 10 tecken, max 30 tecken). Vid fönsterbredd under 90 kolumner tas kolumnen med QSO-nummer (`#`) automatiskt bort för att ge plats åt signal och ort.
+- **Interaktiv loggradshantering**: Flytta loggrader uppåt med **w** och nedåt med **s**, cykla bakgrundsfärgen med **c** (`Standard` $\rightarrow$ `Grön` $\rightarrow$ `Gul` $\rightarrow$ `Röd`), och återgå automatiskt till loggraderna när en redigering sparats med Enter.
+- **Kompakt tabellvy med F6**: Snabbväxling av extra noteringsrader på/av i loggraderna så att varje QSO ryms på en rad.
+- **16 Färgscheman och egen färgprofilseditor**: Standardtemat är **UEI-tema** (marinblå bas, solgula accenter, skogsgröna ramar och bärnstensfokus). Välj mellan 16 färdiga teman (inkl. Borland Turbo Pascal, Midnight Commander, Monokrom, **Ambra** i varm orange/bärnsten på svart botten, Grön CRT/Matrix, Arktisk Natt, Field Day, Mörkerläge, Solarized Dark, Dracula, Militärradio m.fl.) eller skapa en egen anpassad färgprofil via den inbyggda färgprofilseditorn (`F7` i inställningar) med realtidsförhandsgranskning. Spara och avsluta smidigt med `F12`.
 
 ---
 
@@ -92,7 +92,7 @@ För att kompilera och köra UEI-Logg krävs följande:
 4. **Externa bibliotek**:
    - **ncursesw** (ncurses med bredteckenstöd / UTF-8): Terminalgränssnitt och fönsterhantering (`libncursesw5-dev` eller `libncurses-dev`).
    - **libcurl**: HTTP- och HTTPS-förfrågningar för rymdväder, QRZ.COM och DXCC-uppdateringar (`libcurl4-openssl-dev`).
-   - **sqlite3**: Databasmotorn för lokal lagring i `qsolog.sq3` (`libsqlite3-dev`).
+   - **sqlite3**: Databasmotorn för lokal lagring i `~/.ueilogg/qsolog.sq3` (`libsqlite3-dev`).
    - **libm**: Standard C matematikbibliotek för QRB- och storcirkelberäkningar.
    - **pthread**: POSIX-trådar för bakgrundshämtning utan att frysa terminalgränssnittet.
    - **pdfLaTeX (valfritt)**: TeX Live för att kompilera användarmanualen till PDF (`make manual`).
@@ -125,7 +125,7 @@ Kör följande exakta kommandon för att installera allt som krävs:
 # 1. Uppdatera paketlistorna
 sudo apt update
 
-# 2. Installera nödvändiga utvecklingspaket för att bygga ueilog, dxcc och testing
+# 2. Installera nödvändiga utvecklingspaket för att bygga ueilogg, dxcc och testing
 sudo apt install -y build-essential libncursesw5-dev libcurl4-openssl-dev libsqlite3-dev
 
 # 3. (Valfritt) Installera LaTeX-paket för att kunna bygga användarmanualen (manual/manual.pdf)
@@ -166,16 +166,16 @@ make all
 ```
 
 Detta skapar följande i projektkatalogen:
-- **`ueilog`**: Det huvudsakliga TUI-loggboksprogrammet.
-- **`dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`dxcc.txt`).
-- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (96 tester).
+- **`ueilogg`**: Det huvudsakliga TUI-loggboksprogrammet.
+- **`dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`~/.ueilogg/dxcc.txt`).
+- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (114 tester).
 - **`manual/manual.pdf`**: Komplett användarmanual i PDF-format.
 
 ### Bygg enskilda mål
 
 ```bash
 # Bygg endast UEI-Logg
-make ueilog
+make ueilogg
 
 # Bygg endast DXCC-verktyget
 make dxcc
@@ -201,33 +201,33 @@ make clean
 
 ### Starta loggboken
 
-Starta programmet i din terminal:
+Starta programmet i din terminal (konfiguration och databaser skapas automatiskt i `~/.ueilogg/`):
 
 ```bash
-./ueilog
+./ueilogg
 ```
 
 ### Kommandoradsflaggor
 
-UEI-Logg stöder valfri loggfil via kommandoraden:
+UEI-Logg stöder valfri databasfil via kommandoraden:
 
 ```bash
-# Använd en specifik ADIF-fil (skapas automatiskt med giltig header om den saknas)
-./ueilog -l contest2026.adi
-./ueilog --logfile=/path/to/my_log.adi
+# Använd en specifik databas i ~/.ueilogg/ (skapas automatiskt om den saknas)
+./ueilogg -l contest2026.sq3
+./ueilogg --logfile=/path/to/my_log.sq3
 
 # Visa hjälpinformation
-./ueilog --help
+./ueilogg --help
 
 # Visa programversion
-./ueilog --version
+./ueilogg --version
 ```
 
 ---
 
 ## Hjälpprogrammet dxcc
 
-Projektet inkluderar det fristående verktyget `dxcc` för hantering av [dxcc.txt](file:///home/anders/Documents/UEI-Logg/dxcc.txt):
+Projektet inkluderar det fristående verktyget `dxcc` för hantering av `~/.ueilogg/dxcc.txt` (kopieras vid behov från [dxcc.txt](file:///home/anders/Documents/UEI-Logg/dxcc.txt)):
 
 ```bash
 # Visa hjälp och tillgängliga kommandon
@@ -236,7 +236,7 @@ Projektet inkluderar det fristående verktyget `dxcc` för hantering av [dxcc.tx
 # Visa version
 ./dxcc version
 
-# Uppdatera dxcc.txt från Jim Reisert AD1C:s Country Files online
+# Uppdatera ~/.ueilogg/dxcc.txt från Jim Reisert AD1C:s Country Files online
 ./dxcc update
 
 # Presentera detaljerad statistik och formaterade tabeller över databasen
@@ -251,25 +251,26 @@ Projektet inkluderar det fristående verktyget `dxcc` för hantering av [dxcc.tx
 
 ## Kortkommandon
 
-När `ueilog` körs är följande tangenter tillgängliga:
+När `ueilogg` körs är följande tangenter tillgängliga:
 
 | Tangent | Beskrivning |
 |---|---|
 | **F1** | Rensa inmatningsformuläret och starta UTC-klockan |
+| **Esc** | Återställ aktiv sökning, återgå från loggläge till formulär eller rensa inmatningsformuläret |
 | **F2** | I inmatningsläge: Starta UTC-klockan igen så att den kör live även om inmatning påbörjats |
-| **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till SQLite-databasen och ADIF (samt QRZ.COM vid Automatisk).<br>I loggläge: Ladda markerat QSO till formuläret för redigering (sparas med Enter i formuläret, återgår därefter till loggraderna) |
+| **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till aktiv SQLite-databas (samt QRZ.COM vid Automatisk).<br>I loggläge: Ladda markerat QSO till formuläret för redigering (sparas med Enter i formuläret, återgår därefter till loggraderna) |
 | **Ctrl+L** | Direktlogga mot QRZ.COM (i inmatningsformuläret eller vald/markerade loggrader) |
 | **w** / **s** | I loggläge: Ändra ordning på loggraderna (flytta vald rad uppåt med **w** eller nedåt med **s**) |
 | **c** | I loggläge: Cykla bakgrundsfärg på aktuell loggrad (Standard -> Grön -> Gul -> Röd -> Standard) |
-| **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext |
+| **F3** / **Ctrl+F** | Sök och filtrera i logghistoriken på signal eller fritext (`F3` i inställningar väljer databas i `~/.ueilogg/`) |
 | **F4** / **Ctrl+O** | Växla fokus mellan inmatningsformulär och loggrader |
 | **F5** | I inmatningsläge: Manuellt uppslag mot QRZ.COM (vid Auto eller Manuell)<br>I loggläge: Växla status mellan Hanterad (✓) och Ny (✗) |
 | **F6** | Växla visning av noteringar i loggraderna (på/av för kompakt tabell) |
 | **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | I loggläge: Radera vald eller markerade rader ur loggen (med bekräftelse)<br>I inställningar: Synka nya QSO från QRZ.COM |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
-| **F12** | Öppna och spara inställningar (Min Station, QRZ, direktlogg, synkronisering [F8], färgteman, egen färgprofilseditor [F7], ADIF import/export, reglage m.m.) |
-| **Ctrl+Q** / **Ctrl+C** | Avsluta programmet |
+| **F12** | Öppna och spara inställningar (Min Station, Databas i `~/.ueilogg/`, QRZ, direktlogg, synkronisering [F8], färgteman, egen färgprofilseditor [F7], ADIF/CSV-export, ADIF-import, reglage m.m.) |
+| **F10** / **Ctrl+Q** | Avsluta programmet |
 | **Tab** / **Skift+Tab** | Stega framåt / bakåt mellan inmatningsfälten |
 | **Pilar Upp/Ned/Vänster/Höger** | Navigera i formulär, fält och menyer |
 | **Insert (INS)** | Markera / avmarkera enskild rad i loggen för gruppåtgärder |

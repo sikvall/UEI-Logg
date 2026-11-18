@@ -59,7 +59,7 @@ Programmets styrkor:
     \item \textbf{QRZ.com-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen, bakgrundsuppslag mot QRZ.com XML Data Service, direktloggning av QSO i realtid samt dubbelriktad synkronisering från QRZ.com Logbook API.
     \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata, HF-konditioner samt bästa band för DX och NVIS från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
     \item \textbf{Flexibel logghantering:} Sortera och flytta loggrader direkt med \texttt{w}/\texttt{s}, cykla radfärger med \texttt{c} och återgå automatiskt till logglistan efter sparad redigering.
-    \item \textbf{Statistikruta:} Visar totalt antal QSO, oexporterade kontakter, dagens QSO, unika DXCC samt aktiva band.
+    \item \textbf{Titelrad och statistikruta:} Visar \texttt{UEI-Logg}, versionsnummer och byggdatum samt centrerad stationsinfo; statistikpanelen visar antal QSO, unika stationer, DXCC, lokatorer, bandland och QSO-takt (Rate).
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
     \item \textbf{DXCC-hjälpverktyg:} Fristående terminalprogram (\texttt{dxcc}) för databasuppdatering och statistik.
 \end{itemize}
@@ -111,13 +111,13 @@ sudo apt install -y texlive-latex-base texlive-latex-extra \
 Projektet levereras med en färdig \texttt{Makefile}:
 
 \begin{verbatim}
-# Bygg samtliga mål (ueilog, dxcc, testing och manual)
+# Bygg samtliga mål (ueilogg, dxcc, testing och manual)
 make
 # eller
 make all
 
-# Bygg endast huvudprogrammet (ueilog)
-make ueilog
+# Bygg endast huvudprogrammet (ueilogg)
+make ueilogg
 
 # Bygg endast hjälpprogrammet dxcc
 make dxcc
@@ -133,9 +133,9 @@ make clean
 \end{verbatim}
 
 \subsection{Starta Programmet}
-Kör programmet direkt från terminalen:
+Kör programmet direkt från terminalen (konfiguration, databas och \texttt{dxcc.txt} hanteras automatiskt i \texttt{\textasciitilde/.ueilogg/}):
 \begin{verbatim}
-./ueilog
+./ueilogg
 \end{verbatim}
 
 \textbf{Tips för terminalstorlek:} Minsta rekommenderade terminalstorlek är $80 \times 25$ tecken. Har terminalen minst 30 rader visas även statistikrutan högst upp. I mindre fönster anpassas layouten automatiskt så att inmatning och loggrutor alltid förblir läsbara.
@@ -146,17 +146,17 @@ Kör programmet direkt från terminalen:
 Huvudskärmen i UEI-Logg är indelad i fem tydliga komponenter uppifrån och ned:
 
 \subsection{Titelrad (Topbar)}
-Visar applikationens namn och version (\texttt{UEI-log}), lokal tid, aktuell UTC-tid, operatörens stationssignal samt stationens hemort (QTH) och Maidenhead-lokator. Fälten presenteras i ordningen stationssignal, QTH och lokator (t.ex.\ \texttt{SM5UEI Linköping JO88fk}), utan parenteser kring QTH.
+Visar applikationens namn, versionsnummer och byggdatum hämtade från \texttt{src/version.h} (\texttt{UEI-Logg v1.0.0 (2026-11-18)}), operatörens stationssignal, hemort (QTH) och Maidenhead-lokator centrerat (t.ex.\ \texttt{SM5UEI Linköping JO88fk}, utan parenteser kring QTH) samt aktuell UTC-tid längst till höger (\texttt{YYYY-MM-DD HH:MM UTC}).
 
 \subsection{Statistikruta (Realtidsstatistik)}
 När terminalen har minst 30 rader och funktionen är påslagen i inställningarna visas en kompakt statuspanel:
 \begin{itemize}
-    \item \textbf{Totalt:} Totalt antal sparade QSO i loggboken.
-    \item \textbf{Nya:} Antal QSO som ännu inte har exporterats till ADIF.
-    \item \textbf{Idag:} Antal genomförda kontakter under innevarande dygn (UTC).
+    \item \textbf{QSO:} Totalt antal loggade kontakter i aktiv loggbok.
+    \item \textbf{Stationer:} Antal unika anropssignaler som körts.
     \item \textbf{DXCC:} Antal unika DXCC-länder i loggen.
-    \item \textbf{Band:} Sammanfattning av alla aktiva band i loggen.
-    \item \textbf{Senaste:} Anropssignal och tid för senast loggade kontakt.
+    \item \textbf{Lokatorer:} Antal unika 4-teckens Maidenhead-rutor (t.ex.\ \texttt{JO89}).
+    \item \textbf{Bandland:} Antal unika kombinationer av DXCC-land och amatörband.
+    \item \textbf{Rate:} Genomsnittlig QSO-takt (antal loggade kontakter senaste 60 minuterna).
 \end{itemize}
 
 \subsection{Inmatningsruta (QSO-registrering)}
@@ -165,8 +165,8 @@ Inmatningsfältet är ordnat på fyra rader:
     \item \textbf{Rad 1:}
     \begin{itemize}
         \item \texttt{Signal}: Motstationens signal (omvandlas automatiskt till versaler).
-        \item \texttt{RST T}: Sänd signalrapport (standard \texttt{59} vid telefoni, \texttt{599} vid telegrafi/digitalt).
-        \item \texttt{RST R}: Mottagen rapport.
+        \item \texttt{RST T}: Sänd signalrapport (lämnas tomt som standard om \emph{Auto RST 59/59} är avstängt; sparas blankt om inget fylls i).
+        \item \texttt{RST R}: Mottagen rapport (sparas likaså blankt om inget fylls i).
         \item \texttt{Namn}: Operatörens namn (hämtas automatiskt vid träff i loggen eller QRZ.com).
     \end{itemize}
     \item \textbf{Rad 2:}
@@ -256,9 +256,10 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Insert (INS)} & Loggläge & Växla urval/markering (\texttt{*}) på aktiv rad \\
 \texttt{Page Up / Down} & Loggläge & Rulla loggraderna en sida i taget \\
 \texttt{Home / End} & Loggläge & Hoppa längst upp (senaste) / längst ned (äldsta) i logglistan \\
-\texttt{F9} & Allmänt & Information om UEI-Logg och version \\
-\texttt{F10} / \texttt{Esc} & Allmänt & Avsluta programmet \\
-\texttt{F12} & Allmänt & Öppna inställningsmenyn \\
+\texttt{F9} & Allmänt & Information om UEI-Logg, version och inbyggd handbok \\
+\texttt{F10} / \texttt{Ctrl+Q} & Allmänt & Avsluta programmet \\
+\texttt{Esc} & Allmänt & Återställ aktiv sökning, återgå från loggläge till formuläret eller rensa formuläret \\
+\texttt{F12} & Allmänt & Öppna inställningsmenyn (\texttt{F3} i menyn väljer databas i \texttt{\textasciitilde/.ueilogg/}) \\
 \bottomrule
 \end{tabularx}
 \caption{Kortkommandon i UEI-Logg.}
@@ -310,7 +311,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{MC Matrix:} Retro fosforgrön terminalstil på svart botten.
         \item \emph{Ljust tema:} Modern ljusgrå och blå design med orange accenter.
         \item \emph{Monokrom gråskala:} Perfekt för enkla terminaler och seriekonsoler.
-        \item \emph{Ambra:} Varm bärnstensgul CRT-retrokänsla på svart botten.
+        \item \emph{Ambra:} Varm orange/bärnstensfärgad CRT-retrokänsla på svart botten.
         \item \emph{Arktisk Natt (Nord Frost):} Svalt och vilsamt tema inspirerat av Nord-paletten med polarnattsblå bas, frostcyan och norrskensgrönt; minimerar ögontrötthet vid sena pass.
         \item \emph{Field Day (Vintage Radio):} Varm, analog transceiver-atmosfär inspirerad av Gruvbox, mörk antracitbotten, ockragul/bärnsten och läderbrunt.
         \item \emph{Mörkerläge (Crimson Night):} Djupröd och svart mörkeranpassad skärm som bevarar det skotopiska mörkerseendet vid nattliga contester i nedsläckta schack.
@@ -319,7 +320,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
         \item \emph{Militärradio (Fältgrön):} Taktisk militär känsla i stil med bärbara fältradiostationer, djup olivdrab botten med khaki canvastypografi och mässingsdetaljer.
         \item \emph{Egen profil (Anpassad):} Användarens egna skräddarsydda färgprofil som skapas och redigeras via den inbyggda färgprofilseditorn (\texttt{F7}).
     \end{itemize}
-    \item \textbf{Auto RST 59/599:} \texttt{< På >} / \texttt{< Av >}. Fyller automatiskt i signalrapporter.
+    \item \textbf{Auto RST 59/59:} \texttt{< På >} / \texttt{< Av >}. När den är påslagen förifylls signalrapporter (\texttt{59}/\texttt{599}); när den är avstängd (default) eller när RST-fälten lämnas tomma loggas och importeras de blanka.
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
     \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
     \item \textbf{Rymdväderruta:} \texttt{< På (hf.avitec.se) >} / \texttt{< Av >}. Slår på eller av rymdväderspanelen. När den är avstängd ges 4 extra rader till loggradstabellen.
@@ -338,7 +339,7 @@ UEI-Logg erbjuder en komplett och sömlös integration mot QRZ.com på tre nivå
 \begin{itemize}
     \item \textbf{Signaluppslag (XML Data Service):} När du matar in en motstations anropssignal slås data upp i bakgrunden utan att blockera gränssnittet. Namn, QTH och Maidenhead-lokator fylls i automatiskt, och avstånd samt bäring (QRB/QUJ) beräknas direkt.
     \item \textbf{Direktloggning i realtid (ACTION=INSERT):} Varje genomfört QSO kan skickas direkt till din online-loggbok på QRZ.com via dess HTTPS API. I läget \emph{Automatisk} sker detta omedelbart när du trycker \texttt{Enter} för att logga; i läget \emph{Manuell} trycker du \texttt{Ctrl+L}. Statusraden ger direkt återkoppling på anropet.
-    \item \textbf{Tvåvägssynkronisering (ACTION=FETCH):} Med tangenten \texttt{F8} i inställningsmenyn hämtas hela din online-loggbok. Programmet avkodar det HTML-entitetskodade ADIF-svaret från QRZ.com, filtrerar bort QSO:n som redan finns lokalt, och sparar alla nya kontakter direkt till SQLite3-databasen \texttt{qsolog.sq3}.
+    \item \textbf{Tvåvägssynkronisering (ACTION=FETCH):} Med tangenten \texttt{F8} i inställningsmenyn hämtas hela din online-loggbok. Programmet avkodar det HTML-entitetskodade ADIF-svaret från QRZ.com, filtrerar bort QSO:n som redan finns lokalt, och sparar alla nya kontakter direkt till den aktiva SQLite3-databasen i \texttt{\textasciitilde/.ueilogg/}.
 \end{itemize}
 
 \subsection{Egen Färgprofilseditor (F7 i inställningar)}
@@ -349,39 +350,39 @@ UEI-Logg erbjuder en komplett inbyggd färgprofilseditor där operatören själv
     \item \textbf{Realtidsförhandsgranskning (Live Preview):} Till höger om inställningslistan visas en interaktiv miniatyr av loggfönstret som omedelbart uppdateras vid varje ändring så att du ser exakt hur färgkombinationerna fungerar i praktiken.
     \item \textbf{Färgpalett:} Bläddra bland 22 noggrant anpassade färger med piltangenterna \texttt{Vänster} och \texttt{Höger}.
     \item \textbf{Ladda förinställd mall (P):} Tryck \texttt{P} för att kopiera färgerna från ett befintligt tema (t.ex.\ Borland, Solarized, Dracula, Militärradio m.fl.) som grund och finjustera sedan detaljerna.
-    \item \textbf{Spara och aktivera:} Bekräfta med \texttt{Enter} eller \texttt{F2}. Profilen sparas i \texttt{station.conf} under parametern \texttt{CUSTOM\_THEME} och aktiveras omedelbart i programmet.
+    \item \textbf{Spara och aktivera:} Bekräfta med \texttt{Enter} eller \texttt{F2}. Profilen sparas i \texttt{\textasciitilde/.ueilogg/station.conf} under parametern \texttt{CUSTOM\_THEME} och aktiveras omedelbart i programmet.
 \end{itemize}
 
-\section{Lokal Databas (SQLite3) samt ADIF Import och Export}
+\section{Lokal Databas (SQLite3), ADIF och CSV Export}
 \label{sec:adif}
 
-UEI-Logg använder en lokal relationsdatabas med **SQLite3** (\texttt{qsolog.sq3}) för all persistent lagring, samtidigt som programmet behåller fullt stöd för standarden **ADIF 3** (Amateur Data Interchange Format) vid utbyte av loggdata.
+UEI-Logg använder en lokal relationsdatabas med \textbf{SQLite3} (standardfil \texttt{\textasciitilde/.ueilogg/qsolog.sq3}) för all persistent lagring, samtidigt som programmet behåller fullt stöd för standarden \textbf{ADIF 3} (Amateur Data Interchange Format) samt \textbf{CSV} vid utbyte av loggdata.
 
-\subsection{Lokal databas: qsolog.sq3}
-All loggdata lagras lokalt i SQLite3-databasen \texttt{qsolog.sq3}. Detta ger:
+\subsection{Lokal databas i \textasciitilde/.ueilogg/ (default: qsolog.sq3)}
+All loggdata lagras lokalt i användarens katalog \texttt{\textasciitilde/.ueilogg/}, med \texttt{qsolog.sq3} som standarddatabas. Via fältet \textbf{Databas} i inställningarna (\texttt{F12}) kan du när som helst skapa och byta till en ny databas eller välja bland befintliga \texttt{.sq3}-filer med \texttt{F3}. Detta ger:
 \begin{itemize}
     \item \textbf{ACID-säkerhet:} Transaktioner och Write-Ahead Logging (WAL) förhindrar korruption vid plötsliga strömavbrott eller krascher.
     \item \textbf{Prestanda i realtid:} Tangenttryckningar (F5/F7 för att ändra hanteringsstatus eller F8 för radering) uppdaterar databasen omedelbart via SQL utan att skriva om tiotusentals rader på disk.
     \item \textbf{Kompakt visning med F6:} Med tangenten \texttt{F6} kan visningen av noteringar i loggraderna snabbt växlas på eller av. När noteringar är avstängda komprimeras tabellen så att varje QSO tar exakt en rad, vilket maximerar antalet synliga kontakter.
-    \item \textbf{Sömlös migrering:} Om \texttt{qsolog.sq3} saknas men en tidigare \texttt{qsolog.adi} finns i katalogen, migreras alla kontakter automatiskt vid första start.
+    \item \textbf{Sömlös migrering:} Om standarddatabasen \texttt{\textasciitilde/.ueilogg/qsolog.sq3} saknas men \texttt{\textasciitilde/.ueilogg/qsolog.adi} finns, migreras alla kontakter automatiskt vid första start.
 \end{itemize}
 
-\subsection{Export av loggboken (ADIF)}
-Export startas med \texttt{F6} (eller via inställningsmenyn). Du kan välja mellan tre exportlägen:
+\subsection{Export av loggboken (ADIF och CSV)}
+Export startas med \texttt{F6} i inställningsmenyn (ADIF) eller via valet \textbf{Exportera som CSV}. Du kan välja mellan tre exportlägen:
 \begin{itemize}
-    \item \textbf{Endast nya (oexporterade) QSO:} Exporterar de kontakter som ännu inte exporterats tidigare. Efter export sätts posternas status till hanterade (✓).
+    \item \textbf{Endast nya (oexporterade) QSO:} Exporterar de kontakter som ännu inte exporterats tidigare. Efter ADIF-export sätts posternas status till hanterade (✓).
     \item \textbf{Endast markerade QSO:} Exporterar de poster du manuellt markerat i loggtabellen med \texttt{Insert}-tangenten.
     \item \textbf{Hela loggboken:} Exporterar samtliga QSO till en komplett säkerhetskopia.
 \end{itemize}
-Den inbyggda filväljaren föreslår automatiskt ett standardfilnamn baserat på signal och datum, till exempel \texttt{SM0XYZ\_20261114.adi}, och låter dig bläddra fritt bland kataloger.
+Den inbyggda filväljaren föreslår automatiskt ett standardfilnamn baserat på signal och datum, till exempel \texttt{SM0XYZ\_20261114\_120000.adi} eller \texttt{.csv}, och låter dig bläddra fritt bland kataloger.
 
 \subsection{Import av ADIF}
-Via \texttt{F5} i inställningsmenyn kan du läsa in externa ADIF-filer från WSJT-X, N1MM, Log4OM, MacLoggerDX eller andra loggprogram. Fält som signal, frekvens, band, mode, datum, tid, rapporter, namn, QTH och lokator importeras, kontrolleras mot dubbletter och sparas direkt i \texttt{qsolog.sq3}.
+Via \texttt{F5} i inställningsmenyn kan du läsa in externa ADIF-filer från WSJT-X, N1MM, Log4OM, MacLoggerDX eller andra loggprogram. Fält som signal, frekvens, band, mode, datum, tid, rapporter, namn, QTH och lokator importeras, kontrolleras mot dubbletter och sparas direkt i den aktiva SQLite3-databasen.
 
 \section{Hjälpprogrammet dxcc}
 \label{sec:dxcc}
 
-Tillsammans med UEI-Logg medföljer hjälpbinären \texttt{dxcc}. Den används i terminalen för att hantera och inspektera den lokala prefixdatabasen \texttt{dxcc.txt}.
+Tillsammans med UEI-Logg medföljer hjälpbinären \texttt{dxcc}. Den används i terminalen för att hantera och inspektera den lokala prefixdatabasen \texttt{\textasciitilde/.ueilogg/dxcc.txt} (som skapas automatiskt från projektets levererade \texttt{dxcc.txt} vid första körning).
 
 \subsection{Kommandoöversikt}
 Programmet anropas med syntaxen:
@@ -390,42 +391,23 @@ Programmet anropas med syntaxen:
 \end{verbatim}
 
 \subsubsection{dxcc update}
-Laddar ner den senaste officiella DXCC- och prefixdatabasen från ClubLog och AD1C:s Country Files via HTTPS och sparar den till \texttt{dxcc.txt}.
+Laddar ner den senaste officiella DXCC- och prefixdatabasen från AD1C:s Country Files (\texttt{cty.csv}) via HTTPS och sparar den till \texttt{\textasciitilde/.ueilogg/dxcc.txt} (efter säkerhetskopiering till \texttt{dxcc.txt.bak}):
 \begin{verbatim}
 $ ./dxcc update
-[+] Laddar ner senaste DXCC-databasen via HTTPS...
-[+] Sparade uppdaterad databas till dxcc.txt (340 länder, 4120 prefix).
+DXCC-uppdatering startar...
+  Sparad fil:        /home/user/.ueilogg/dxcc.txt
 \end{verbatim}
 
 \subsubsection{dxcc stat}
-Analyserar \texttt{dxcc.txt} och presenterar en överskådlig tabell med antal länder, prefix, kontinenter, CQ-zoner och ITU-zoner:
-\begin{verbatim}
-$ ./dxcc stat
-+-------------------------------------------------------+
-|              DXCC Databas Statistik                   |
-+-------------------------------------------------------+
-| Totalt antal DXCC-entiteter:                      340 |
-| Totalt antal definierade prefix:                 4120 |
-| Kontinenter representerade:                         6 |
-|   - Europa (EU):                                   68 |
-|   - Asien (AS):                                    52 |
-|   - Nordamerika (NA):                              44 |
-|   - Sydamerika (SA):                               16 |
-|   - Afrika (AF):                                   58 |
-|   - Oceanien (OC):                                 60 |
-|   - Antarktis (AN):                                 8 |
-+-------------------------------------------------------+
-\end{verbatim}
+Analyserar \texttt{\textasciitilde/.ueilogg/dxcc.txt} och presenterar en överskådlig tabell med antal länder, prefix, kontinenter, CQ-zoner och ITU-zoner.
 
-\subsubsection{dxcc lookup <signal/prefix>}
-Slår upp ett anrop eller ett prefix och visar entitetsnamn, kontinent, CQ-zon, ITU-zon och geografisk position:
+\subsubsection{dxcc lookup <signal>}
+Slår upp en anropssignal och visar svenskt DXCC-land och matchande regel:
 \begin{verbatim}
 $ ./dxcc lookup SM5UEI
-Signal/Prefix: SM5UEI
-Land:          Sweden (SM)
-Kontinent:     Europa (EU)
-CQ-Zon:        14
-ITU-Zon:       18
+Signal:        SM5UEI
+DXCC-land:     Sverige
+Matchning:     Prefixmatch (SM)
 \end{verbatim}
 
 \subsubsection{dxcc version och dxcc help}
@@ -459,20 +441,23 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \toprule
 \textbf{Fil / Katalog} & \textbf{Beskrivning} \\
 \midrule
+\texttt{src/version.h} & Central definition av programnamn, versionsnummer och byggdatum. \\
 \texttt{src/main.c} & Huvudloop, händelselyssnare och tangentbordsstyrning. \\
-\texttt{src/db.c} / \texttt{db.h} & SQLite3-databaslager för \texttt{qsolog.sq3} (schema, CRUD, WAL). \\
+\texttt{src/db.c} / \texttt{db.h} & SQLite3-databaslager för databaserna i \texttt{\textasciitilde/.ueilogg/} (schema, CRUD, WAL). \\
 \texttt{src/tui.c} / \texttt{tui.h} & Terminalgränssnitt i ncurses, färgteman och rutfördelning. \\
+\texttt{src/theme\_editor.c} & Inbyggd editor för egen färgprofil (\texttt{F7} i inställningar). \\
 \texttt{src/logg.c} / \texttt{logg.h} & QSO-datastrukturer, filsparning och ADIF import/export. \\
-\texttt{src/settings.c} & Inställningsmodal (F12) och konfiguration. \\
+\texttt{src/settings.c} & Inställningsmodal (F12), databasbyte och konfiguration. \\
+\texttt{src/util.c} / \texttt{util.h} & UTF-8, strängverktyg, frekvens/band-logik samt sökvägar i \texttt{\textasciitilde/.ueilogg/}. \\
 \texttt{src/space\_weather.c} & Asynkron HTTP-hämtning av rymdväder och DX/NVIS från \texttt{hf.avitec.se}. \\
-\texttt{src/dxcc.c} / \texttt{dxcc.h} & Prefixsökning och prefixprefixregler för länder. \\
+\texttt{src/dxcc.c} / \texttt{dxcc.h} & Prefixsökning och regler för DXCC-länder. \\
 \texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
 \texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
 \texttt{src/qrz.c} & Klient för QRZ.com XML Logbook Service (uppslag, direktlogg och synk). \\
 \texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
-\texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF. \\
+\texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF/CSV. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
-\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (96 tester). \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (114 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{\textasciitilde/.ueilogg/qsolog.sq3} & Standard SQLite3-databas för loggboken (eller annan vald \texttt{.sq3}). \\
@@ -486,26 +471,29 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \subsection{Beräkning och Lagring av QRB och QUJ}
 Programmet omvandlar Maidenhead-lokatorer (4 eller 6 tecken) till longitud och latitud. Därefter beräknas storcirkelavstånd ($d$) och kompassbäring ($\theta$) till motstationen med sfärisk trigonometri baserat på jordens medelradie ($R \approx 6371\,\text{km}$).
 
-Resultatet sparas permanent i SQLite3-databasen \texttt{qsolog.sq3} under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält \texttt{QRB} och bäring \texttt{QUJ} vid registrering, dels i loggradstabellens dedikerade kolumner \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) och \texttt{QUJ} (i grader, t.ex.\ \texttt{145°}) mellan \texttt{QTH} och \texttt{Lokator}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
+Resultatet sparas permanent i aktiv SQLite3-databas under fältet \texttt{distance} så snart det har beräknats. I användargränssnittet visas avståndet dels i inmatningsrutans fält \texttt{QRB} och bäring \texttt{QUJ} vid registrering, dels i loggradstabellens dedikerade kolumner \texttt{QRB} (som ren siffra utan enhetsändelse, t.ex.\ \texttt{344}) och \texttt{QUJ} (i grader, t.ex.\ \texttt{145°}) mellan \texttt{QTH} och \texttt{Lokator}. Saknade avstånd beräknas och sparas automatiskt vid uppstart och vid ändring av stationsinställningar.
 
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
 
-Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 96 omfattande verifieringstester mot programmets samtliga kärnfunktioner:
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 114 omfattande verifieringstester i 17 avsnitt mot programmets samtliga kärnfunktioner:
 \begin{itemize}
     \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
     \item \textbf{ADIF-import och minnestolkning:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz, att felaktiga skalningar återställs och att minnesbaserad ADIF-import hanterar poster korrekt.
     \item \textbf{Logghantering och F7:} Verifierar att F7 sätter alla loggrader till hanterade (\texttt{handled = 1}), att statistikcachen invalideras och att flaggan bevaras vid ADIF-sparning.
     \item \textbf{Navigering och filtrering:} Test av \texttt{HOME} (index 0 / nyast) och \texttt{END} (sista index / äldst) samt realtidssökning och bandfiltrering.
     \item \textbf{QRB, QUJ och lokatorer:} Validering av Maidenhead-lokatorer, avstånds- och bäringsberäkning samt formatering.
-    \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{dxcc.txt}.
-    \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{station.conf} inkl. dolda lösenord och maskerad QRZ API-nyckel.
+    \item \textbf{DXCC-uppslag:} Kontroll mot prefixdatabasen \texttt{\textasciitilde/.ueilogg/dxcc.txt}.
+    \item \textbf{Stationskonfiguration:} Spara och ladda \texttt{\textasciitilde/.ueilogg/station.conf} inkl. dolda lösenord och maskerad QRZ API-nyckel.
     \item \textbf{Sträng- och tidsverktyg:} Trimning, versalisering, beräkning av UTF-8-teckenbredd samt flexibel tidsinmatning för både \texttt{21:58} och \texttt{2158}.
     \item \textbf{SQLite3-databaslagring:} Omfattande backend-tester som verifierar schemainitiering, WAL-läge, tabellindex, autoincrement-ID:n, kronologisk ordning, SQL-injektionsskydd med specialtecken, hantering av tomma fält, uppdatering, selektiv status, F7 i databasen, radering, tömning, batch-inläggning inom transaktion, diskpersistens över omstart, felhantering vid stängd databas samt ADIF-migrering och import/export.
     \item \textbf{Svenska tecken (ÅÄÖ):} Fullständig verifiering av å, ä, ö, Å, Ä, Ö i fälten Namn, QTH och Notering inklusive direkt SQLite3-persistens, uppdatering, automatisk Latin-1-sanering, ADIF-export/import, exakt UTF-8-markörpositionering (1 steg per tecken istället för byte-längd), säker teckenklippning i TUI samt skiftlägesokänslig loggfiltrering.
     \item \textbf{Direktloggning mot QRZ.COM:} Verifiering av driftlägen (Av, Automatisk, Manuell med \texttt{Ctrl+L}), API-nyckelkrav, ADIF-postbygge och tolkning av svarskoder från QRZ API.
     \item \textbf{Loggradshantering:} Flyttning och omordning av rader med \texttt{w} och \texttt{s}, cykling av bakgrundsfärger med \texttt{c} (Standard $\rightarrow$ Grön $\rightarrow$ Gul $\rightarrow$ Röd), persistens i SQLite3 och ADIF samt automatisk återgång till loggläget efter sparad redigering.
-    \item \textbf{QRZ.COM-synkronisering:} Validering av stationsfält, hämtning från API, avkodning av HTML-entiteter (\texttt{\&lt;} och \texttt{\&gt;}), filtrering av dubbletter och kronologisk sammanfogning.
+    \item \textbf{QRZ.COM-synkronisering:} Validering av stationsfält, hämtning från API, avkodning av HTML-entiteter (\texttt{\&lt;} och \texttt{\&gt;}), UTF-8 teckenräknade fält som QTH, filtrering av dubbletter och kronologisk sammanfogning.
+    \item \textbf{CSV-export:} Kontroll av filnamnsgenerering, UTF-8 BOM, rubrikordning och korrekt citatteckenhantering.
+    \item \textbf{Version och blank RST:} Validering av makron i \texttt{src/version.h} samt att tomma RST-fält sparas och importeras blanka.
+    \item \textbf{Användarkatalog (\textasciitilde/.ueilogg/) och databasbyte:} Verifiering av sökvägar, automatisk DXCC-kopiering, databasnamn i \texttt{station.conf} samt isolerat byte mellan databaser.
 \end{itemize}
 
 Testsviten körs från kommandoraden med:
