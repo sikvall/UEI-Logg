@@ -134,6 +134,23 @@ void run_settings_modal(StationSettings *st, QSO *qso, int *editing_index,
                         QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
                         char *status_msg, size_t status_sz);
 
+/**
+ * @brief Byter aktiv SQLite-databas i ~/.ueilogg/ till angivet databasnamn, laddar om QSO-listan och nollställer markör/redigering.
+ * @param st Stationsinställningar (uppdaterar st->db_name vid framgång).
+ * @param qso Aktuellt QSO-formulär (nollställer eventuellt gammalt DB-ID).
+ * @param editing_index Pekare till pågående redigeringsindex (sätts till -1).
+ * @param log_list Logglistan som laddas om från den nya databasen.
+ * @param selected_log_pos Pekare till vald loggrad (sätts till 0).
+ * @param log_scroll_offset Pekare till loggens rullningsposition (sätts till 0).
+ * @param new_db_name Önskat databasnamn (t.ex. "contest" eller "qsolog.sq3").
+ * @param status_msg Buffer för statusmeddelande.
+ * @param status_sz Storlek på statusbufferten.
+ * @return 0 vid framgång, -1 om nya databasen inte kunde öppnas.
+ */
+int switch_station_database(StationSettings *st, QSO *qso, int *editing_index,
+                            QSOList *log_list, int *selected_log_pos, int *log_scroll_offset,
+                            const char *new_db_name, char *status_msg, size_t status_sz);
+
 #ifdef __cplusplus
 }
 #endif

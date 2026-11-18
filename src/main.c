@@ -115,29 +115,35 @@ static void update_qso_derived_after_removal(QSO *qso, int active_field,
  * @return 0 vid normal avslutning.
  */
 int main(int argc, char *argv[]) {
+    int cli_logfile_set = 0;
+    const char *cli_logfile_arg = NULL;
+
     /* Behandla kommandoradsargument */
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--logfile") == 0) {
             if (i + 1 < argc) {
-                copy_str(g_log_filename, sizeof(g_log_filename), argv[++i]);
+                cli_logfile_arg = argv[++i];
+                cli_logfile_set = 1;
             } else {
                 fprintf(stderr, "Fel: %s kräver ett filnamn som argument.\n", argv[i]);
                 return 1;
             }
         } else if (strncmp(argv[i], "--logfile=", 10) == 0) {
-            copy_str(g_log_filename, sizeof(g_log_filename), argv[i] + 10);
+            cli_logfile_arg = argv[i] + 10;
+            cli_logfile_set = 1;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-            printf("Användning: ueilog [alternativ]\n\n"
+            printf("Användning: ueilogg [alternativ]\n\n"
                    "Alternativ:\n"
-                   "  -l, --logfile <filnamn>  Använd angiven databasfil som loggbok (default: qsolog.sq3)\n"
+                   "  -l, --logfile <filnamn>  Använd angiven databasfil som loggbok (default: ~/.ueilogg/%s)\n"
                    "  -h, --help               Visa denna hjälpinformation\n"
-                   "  -v, --version            Visa versionsinformation\n");
+                   "  -v, --version            Visa versionsinformation\n",
+                   DEFAULT_LOG_NAME);
             return 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             printf("%s (byggd %s)\n", APP_TITLE_STRING, APP_BUILD_DATE);
             return 0;
         } else {
-            fprintf(stderr, "Okänt argument: %s\nKör 'ueilog --help' för information om tillåtna argument.\n", argv[i]);
+            fprintf(stderr, "Okänt argument: %s\nKör 'ueilogg --help' för information om tillåtna argument.\n", argv[i]);
             return 1;
         }
     }
@@ -145,22 +151,33 @@ int main(int argc, char *argv[]) {
     /* Sätt UTF-8 locale för korrekt teckenbredd och teckenuppsättning */
     setlocale(LC_ALL, "");
 
+    /* Säkerställ att ~/.ueilogg finns och seed:a dxcc.txt vid första start */
+    ensure_app_data_dir();
+    ensure_dxcc_file_seeded();
+
     /* Initiera globala nätverksresurser (libcurl) */
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    /* Läs in DXCC-tabellen från dxcc.txt vid programstart */
+    /* Läs in DXCC-tabellen från ~/.ueilogg/dxcc.txt vid programstart */
     load_dxcc_file(DXCC_FILE);
 
-    /* Läs in min stations inställningar från station.conf */
+    /* Läs in min stations inställningar från ~/.ueilogg/station.conf */
     StationSettings station;
     load_station_settings(CONFIG_FILE, &station);
+
+    /* Välj databas (kommandoradsflagga har företräde före inställningen i station.conf) */
+    if (cli_logfile_set && cli_logfile_arg != NULL && cli_logfile_arg[0] != '\0') {
+        resolve_db_path(cli_logfile_arg, g_log_filename, sizeof(g_log_filename));
+    } else {
+        resolve_db_path(station.db_name, g_log_filename, sizeof(g_log_filename));
+    }
 
     /* Öppna eller skapa SQLite3-databasen för lokal lagring */
     db_open(g_log_filename);
 
-    /* Om databasen är tom och qsolog.adi finns, migrera automatiskt från tidigare ADIF-logg */
+    /* Om standarddatabasen är tom och ~/.ueilogg/qsolog.adi finns, migrera automatiskt */
     if (strcmp(g_log_filename, DEFAULT_LOG_FILE) == 0) {
-        db_migrate_from_adif("qsolog.adi", &station);
+        db_migrate_from_adif(get_default_adif_file_path(), &station);
     }
 
     /* Läs in loggboken från databasen (eller ADIF som fallback om DB inte öppnades) */
@@ -208,8 +225,8 @@ int main(int argc, char *argv[]) {
     char last_smcb_call[32] = "";
     char status_msg[256] = "";
     if (strcmp(g_log_filename, DEFAULT_LOG_FILE) != 0) {
-        snprintf(status_msg, sizeof(status_msg), "Loggfil: %.*s (%zu QSO inlästa).",
-                 120, g_log_filename, log_list.count);
+        snprintf(status_msg, sizeof(status_msg), "Databas: %.*s (%zu QSO inlästa).",
+                 120, get_path_basename(g_log_filename), log_list.count);
     }
 
     reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);

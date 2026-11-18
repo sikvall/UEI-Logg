@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #define DEFAULT_CTY_URL "https://www.country-files.com/cty/cty.csv"
-#define DEFAULT_DXCC_FILE "dxcc.txt"
+#define DEFAULT_DXCC_FILE get_dxcc_file_path()
 #define USER_AGENT APP_FULL_NAME "-dxcc/" APP_VERSION " (amateur radio log tool; contact: sm5uei@avitec.se)"
 
 /* Svensk översättningstabell som fallback för entiteter vars namn skiljer sig från engelska */
@@ -384,14 +384,16 @@ static void clean_token(char *token) {
  */
 static int cmd_update(const char *source_url) {
     const char *url = (source_url && source_url[0]) ? source_url : DEFAULT_CTY_URL;
+    ensure_dxcc_file_seeded();
+    const char *dxcc_file = DEFAULT_DXCC_FILE;
     printf("DXCC-uppdatering startar...\n");
     printf("Källa: %s\n", url);
 
     /* 1. Läs in existerande dxcc.txt för att bevara svenska landsnamn */
     RuleList existing_dict;
     rule_list_init(&existing_dict);
-    load_existing_swedish_names(DEFAULT_DXCC_FILE, &existing_dict);
-    printf("Inläst existerande namnminne: %zu nycklar från %s\n", existing_dict.count, DEFAULT_DXCC_FILE);
+    load_existing_swedish_names(dxcc_file, &existing_dict);
+    printf("Inläst existerande namnminne: %zu nycklar från %s\n", existing_dict.count, dxcc_file);
 
     /* 2. Hämta cty-data från källa */
     size_t raw_sz = 0;
@@ -558,19 +560,19 @@ static int cmd_update(const char *source_url) {
 
     /* 4. Skapa backup av befintlig dxcc.txt */
     struct stat st;
-    if (stat(DEFAULT_DXCC_FILE, &st) == 0) {
-        char bak_name[64];
-        snprintf(bak_name, sizeof(bak_name), "%s.bak", DEFAULT_DXCC_FILE);
+    if (stat(dxcc_file, &st) == 0) {
+        char bak_name[PATH_MAX];
+        snprintf(bak_name, sizeof(bak_name), "%s.bak", dxcc_file);
         unlink(bak_name);
-        if (rename(DEFAULT_DXCC_FILE, bak_name) == 0) {
-            printf("Skapade backup: %s -> %s\n", DEFAULT_DXCC_FILE, bak_name);
+        if (rename(dxcc_file, bak_name) == 0) {
+            printf("Skapade backup: %s -> %s\n", dxcc_file, bak_name);
         }
     }
 
     /* 5. Skriv ny dxcc.txt */
-    FILE *fp = fopen(DEFAULT_DXCC_FILE, "w");
+    FILE *fp = fopen(dxcc_file, "w");
     if (!fp) {
-        fprintf(stderr, "Fel: Kunde inte öppna '%s' för skrivning: %s\n", DEFAULT_DXCC_FILE, strerror(errno));
+        fprintf(stderr, "Fel: Kunde inte öppna '%s' för skrivning: %s\n", dxcc_file, strerror(errno));
         rule_list_free(&prefixes);
         rule_list_free(&exacts);
         return 1;
@@ -636,7 +638,7 @@ static int cmd_update(const char *source_url) {
     rule_list_free(&exacts);
 
     printf("\n\033[1;32m✓ DXCC-uppdatering slutförd framgångsrikt!\033[0m\n");
-    printf("  Sparad fil:        %s\n", DEFAULT_DXCC_FILE);
+    printf("  Sparad fil:        %s\n", dxcc_file);
     printf("  DXCC-entiteter:    %d\n", entity_count);
     printf("  Prefixregler:      %zu\n", written_pfx);
     printf("  Signalundantag:    %zu\n", written_exact);
@@ -670,6 +672,9 @@ static void format_thousands(size_t val, char *buf, size_t buf_sz) {
  * Läser dxcc.txt och presenterar en snygg översiktstabell.
  */
 static int cmd_stat(const char *target_file) {
+    if (!target_file || !target_file[0]) {
+        ensure_dxcc_file_seeded();
+    }
     const char *file_path = (target_file && target_file[0]) ? target_file : DEFAULT_DXCC_FILE;
 
     struct stat st;
@@ -1018,6 +1023,9 @@ static int cmd_lookup(const char *target_file, const char *call_in) {
         return 1;
     }
 
+    if (!target_file || !target_file[0]) {
+        ensure_dxcc_file_seeded();
+    }
     const char *file_path = (target_file && target_file[0]) ? target_file : DEFAULT_DXCC_FILE;
     FILE *fp = fopen(file_path, "r");
     if (!fp) {
@@ -1176,7 +1184,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Ange signal att slå upp, t.ex.: %s lookup SM5UEI\n", argv[0]);
             ret = 1;
         } else {
-            ret = cmd_lookup(DEFAULT_DXCC_FILE, argv[2]);
+            ret = cmd_lookup(NULL, argv[2]);
         }
     } else {
         fprintf(stderr, "Okänt kommando: '%s'\n\n", argv[1]);

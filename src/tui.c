@@ -1494,11 +1494,12 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     int log_h = LINES - log_top - 1 - sw_reserved;
     if (log_h < 3) log_h = 3;
 
-    char log_title[64];
+    char log_title[128];
+    const char *db_base = get_path_basename(LOG_FILE);
     if (search_filter != NULL && search_filter[0] != '\0') {
-        snprintf(log_title, sizeof(log_title), "Loggrader [Filter: %s]", search_filter);
+        snprintf(log_title, sizeof(log_title), "Tidigare QSO (%s) [Filter: %s]", db_base, search_filter);
     } else {
-        snprintf(log_title, sizeof(log_title), "Tidigare QSO (Loggrader)");
+        snprintf(log_title, sizeof(log_title), "Tidigare QSO (%s)", db_base);
     }
     draw_box_with_title(log_top, 0, log_h, COLS, log_title, (focus_mode == FOCUS_LOG));
 

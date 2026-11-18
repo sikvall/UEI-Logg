@@ -46,6 +46,10 @@ int db_open(const char *path) {
     if (path == NULL || path[0] == '\0') {
         path = DEFAULT_LOG_FILE;
     }
+    const char *app_dir = get_app_data_dir();
+    if (strncmp(path, app_dir, strlen(app_dir)) == 0) {
+        ensure_app_data_dir();
+    }
 
     int rc = sqlite3_open(path, &s_db);
     if (rc != SQLITE_OK) {

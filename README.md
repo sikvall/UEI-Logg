@@ -282,11 +282,13 @@ När `ueilog` körs är följande tangenter tillgängliga:
 
 ## Filer och konfiguration
 
-- **`station.conf`**: Konfigurationsfil för stationen (anropssignal, operatörsnamn, QTH, lokator, tidszon, QRZ-inloggning, färgtema, reglage för noteringar, statistikruta m.m.).
-- **`qsolog.sq3`**: Primär lokal SQLite3-databas (med Write-Ahead Logging) där alla genomförda kontakter lagras säkert.
-- **`qsolog.adi`**: Standardfil i ADIF-format för import och export.
-- **`dxcc.txt`**: DXCC-prefix- och undantagsdatabas med över 3 900 regler och svenska översättningar.
-- **`dxcc.txt.bak`**: Automatisk säkerhetskopia som skapas vid körning av `./dxcc update`.
+Alla användarspecifika konfigurations-, databas- och DXCC-filer sparas i användarens katalog `~/.ueilogg/` (oavsett vilken katalog programmet startas ifrån):
+
+- **`~/.ueilogg/station.conf`**: Konfigurationsfil för stationen (anropssignal, operatörsnamn, QTH, lokator, tidszon, QRZ-inloggning, färgtema, vald databas, reglage för noteringar, statistikruta m.m.).
+- **`~/.ueilogg/qsolog.sq3`**: Primär standarddatabas i SQLite3 (med Write-Ahead Logging). Via inställningsmenyn (`F12`) går det att byta databas eller skapa en ny databas med valfritt namn i `~/.ueilogg/`.
+- **`~/.ueilogg/qsolog.adi`**: Standardfil i ADIF-format för automatisk engångsmigrering om standarddatabasen saknas.
+- **`~/.ueilogg/dxcc.txt`**: DXCC-prefix- och undantagsdatabas (kopieras automatiskt från levererad `dxcc.txt` vid första start och uppdateras via `dxcc update`).
+- **`~/.ueilogg/dxcc.txt.bak`**: Automatisk säkerhetskopia som skapas vid körning av `./dxcc update`.
 
 ---
 

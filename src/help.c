@@ -159,7 +159,7 @@ static const HelpTopic HELP_TOPICS[] = {
         "[5] Inställningar",
         "Konfiguration, Fildialog & ADIF (F12)",
         {
-            "Stationsinställningar (station.conf):",
+            "Stationsinställningar (~/.ueilogg/station.conf):",
             "  * Min signal, Operatörsnamn, QTH och Lokator (6 tecken, t.ex. JO89VJ).",
             "  * Lokal tidszon (t.ex. Europe/Stockholm) för korrekt tidsvisning i listen.",
             "  * Inloggningsuppgifter för QRZ.COM samt QRZ Logbook API-nyckel.",
@@ -167,6 +167,8 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Direktlogg QRZ.COM: Av, Automatisk (vid Enter) eller Manuell (via Ctrl+L).",
             "    Default är Manuell om användarnamn och lösenord för QRZ.COM är ifyllda.",
             "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
+            "  * Databas (~/.ueilogg/): Byt eller skapa en ny loggdatabas (default: qsolog.sq3).",
+            "    Skriv ett nytt namn och tryck Enter/F2 eller tryck F3 för att välja befintlig.",
             "",
             "ADIF Import (F5 i inställningar):",
             "  * Interaktiv katalogbläddrare med filter för .adi och .adif-filer.",
@@ -193,12 +195,12 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Möjlighet att rensa loggboken inför nya tävlingar eller tester (med bekräftelse).",
             "",
             "DXCC-verktyg och kommandorad:",
-            "  * ueilog --logfile <filnamn> : Välj specifik ADIF-loggfil vid start.",
-            "  * dxcc update : Uppdatera dxcc.txt från cty.csv online.",
+            "  * ueilogg --logfile <filnamn> : Välj specifik databasfil i ~/.ueilogg/ vid start.",
+            "  * dxcc update : Uppdatera ~/.ueilogg/dxcc.txt från cty.csv online.",
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        35
+        37
     },
     {
         "[6] Rymdväder",

@@ -55,23 +55,28 @@ static int cmp_dxcc_prefix_desc(const void *a, const void *b) {
 void load_dxcc_file(const char *filename) {
     free_dxcc_db();
 
-    FILE *fp = fopen(filename, "r");
+    const char *target = (filename && filename[0]) ? filename : get_dxcc_file_path();
+    FILE *fp = fopen(target, "r");
     if (fp == NULL) {
         /* Försök hitta filen i samma katalog som den körbara filen */
-        char exe_dir_path[1024];
+        char exe_dir_path[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", exe_dir_path, sizeof(exe_dir_path) - 1);
         if (len > 0) {
             exe_dir_path[len] = '\0';
             char *slash = strrchr(exe_dir_path, '/');
             if (slash != NULL) {
                 *(slash + 1) = '\0';
-                strncat(exe_dir_path, filename, sizeof(exe_dir_path) - strlen(exe_dir_path) - 1);
+                strncat(exe_dir_path, get_path_basename(target),
+                        sizeof(exe_dir_path) - strlen(exe_dir_path) - 1);
                 fp = fopen(exe_dir_path, "r");
             }
         }
     }
     if (fp == NULL) {
-        /* Fallback till standardkataloger */
+        /* Fallback till aktuell katalog och standardkatalog */
+        fp = fopen(get_path_basename(target), "r");
+    }
+    if (fp == NULL) {
         fp = fopen("/home/anders/Documents/UEI-Logg/dxcc.txt", "r");
     }
     if (fp == NULL) return;

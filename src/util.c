@@ -5,9 +5,13 @@
 
 #include "util.h"
 #include <ctype.h>
+#include <errno.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <wchar.h>
 #include <wctype.h>
 
@@ -1332,4 +1336,211 @@ void format_rst_combined(const char *rst_sent, const char *rst_rcvd, char *out, 
     const char *s = (rst_sent && rst_sent[0] != '\0') ? rst_sent : "-";
     const char *r = (rst_rcvd && rst_rcvd[0] != '\0') ? rst_rcvd : "-";
     snprintf(out, out_sz, "%s/%s", s, r);
+}
+
+static const char *resolve_home_dir(void) {
+    static char s_home_buf[PATH_MAX];
+    const char *env_home = getenv("HOME");
+    if (env_home != NULL && env_home[0] != '\0') {
+        copy_str(s_home_buf, sizeof(s_home_buf), env_home);
+        return s_home_buf;
+    }
+
+    struct passwd pwd;
+    struct passwd *res = NULL;
+    char pwbuf[4096];
+    if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &res) == 0 &&
+        res != NULL && res->pw_dir != NULL && res->pw_dir[0] != '\0') {
+        copy_str(s_home_buf, sizeof(s_home_buf), res->pw_dir);
+        return s_home_buf;
+    }
+    copy_str(s_home_buf, sizeof(s_home_buf), ".");
+    return s_home_buf;
+}
+
+static int mkdir_p(const char *path, mode_t mode) {
+    if (path == NULL || path[0] == '\0') return -1;
+    char tmp[PATH_MAX];
+    copy_str(tmp, sizeof(tmp), path);
+    size_t len = strlen(tmp);
+    while (len > 1 && tmp[len - 1] == '/') {
+        tmp[--len] = '\0';
+    }
+    for (char *p = tmp + 1; *p != '\0'; ++p) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+                return -1;
+            }
+            *p = '/';
+        }
+    }
+    if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+        return -1;
+    }
+    struct stat st;
+    if (stat(tmp, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        return -1;
+    }
+    return 0;
+}
+
+const char *get_app_data_dir(void) {
+    static char s_dir[PATH_MAX];
+    char home[PATH_MAX];
+    copy_str(home, sizeof(home), resolve_home_dir());
+    size_t hlen = strlen(home);
+    while (hlen > 1 && home[hlen - 1] == '/') {
+        home[--hlen] = '\0';
+    }
+    if (strcmp(home, "/") == 0) {
+        snprintf(s_dir, sizeof(s_dir), "/%s", APP_DATA_DIR_NAME);
+    } else {
+        snprintf(s_dir, sizeof(s_dir), "%s/%s", home, APP_DATA_DIR_NAME);
+    }
+    return s_dir;
+}
+
+int ensure_app_data_dir(void) {
+    return mkdir_p(get_app_data_dir(), 0755);
+}
+
+void build_app_data_path(const char *filename, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    if (filename == NULL || filename[0] == '\0') {
+        copy_str(out, out_sz, get_app_data_dir());
+        return;
+    }
+    snprintf(out, out_sz, "%s/%s", get_app_data_dir(), filename);
+}
+
+const char *get_default_log_file_path(void) {
+    static char s_path[PATH_MAX];
+    build_app_data_path(DEFAULT_LOG_NAME, s_path, sizeof(s_path));
+    return s_path;
+}
+
+const char *get_default_adif_file_path(void) {
+    static char s_path[PATH_MAX];
+    build_app_data_path(DEFAULT_ADIF_NAME, s_path, sizeof(s_path));
+    return s_path;
+}
+
+const char *get_config_file_path(void) {
+    static char s_path[PATH_MAX];
+    build_app_data_path(CONFIG_FILE_NAME, s_path, sizeof(s_path));
+    return s_path;
+}
+
+const char *get_dxcc_file_path(void) {
+    static char s_path[PATH_MAX];
+    build_app_data_path(DXCC_FILE_NAME, s_path, sizeof(s_path));
+    return s_path;
+}
+
+void normalize_db_name(const char *input, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    char buf[128] = "";
+    if (input != NULL) {
+        copy_str(buf, sizeof(buf), input);
+        trim_str(buf);
+    }
+    const char *base = get_path_basename(buf);
+    if (base == NULL || base[0] == '\0' || strcmp(base, ".") == 0 || strcmp(base, "..") == 0) {
+        copy_str(out, out_sz, DEFAULT_LOG_NAME);
+        return;
+    }
+    char clean[128];
+    copy_str(clean, sizeof(clean), base);
+    if (strchr(clean, '.') == NULL && strlen(clean) + 4 < sizeof(clean)) {
+        strcat(clean, ".sq3");
+    }
+    copy_str(out, out_sz, clean);
+}
+
+void resolve_db_path(const char *name_or_path, char *out, size_t out_sz) {
+    if (out == NULL || out_sz == 0) return;
+    if (name_or_path == NULL || name_or_path[0] == '\0') {
+        copy_str(out, out_sz, get_default_log_file_path());
+        return;
+    }
+    if (strncmp(name_or_path, "~/", 2) == 0) {
+        snprintf(out, out_sz, "%s/%s", resolve_home_dir(), name_or_path + 2);
+        return;
+    }
+    if (strchr(name_or_path, '/') != NULL) {
+        copy_str(out, out_sz, name_or_path);
+        return;
+    }
+    char norm[128];
+    normalize_db_name(name_or_path, norm, sizeof(norm));
+    build_app_data_path(norm, out, out_sz);
+}
+
+static int copy_file_contents(const char *src, const char *dst) {
+    FILE *in = fopen(src, "rb");
+    if (!in) return -1;
+    char tmp_dst[PATH_MAX + 8];
+    snprintf(tmp_dst, sizeof(tmp_dst), "%s.tmp", dst);
+    FILE *out = fopen(tmp_dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+    char buf[8192];
+    size_t n;
+    int err = 0;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            err = 1;
+            break;
+        }
+    }
+    if (ferror(in)) err = 1;
+    fclose(in);
+    if (fclose(out) != 0) err = 1;
+    if (err) {
+        unlink(tmp_dst);
+        return -1;
+    }
+    if (rename(tmp_dst, dst) != 0) {
+        unlink(tmp_dst);
+        return -1;
+    }
+    return 0;
+}
+
+int ensure_dxcc_file_seeded(void) {
+    ensure_app_data_dir();
+    const char *dst = get_dxcc_file_path();
+    if (access(dst, F_OK) == 0) {
+        return 1;
+    }
+
+    char exe_dxcc[PATH_MAX] = "";
+    ssize_t len = readlink("/proc/self/exe", exe_dxcc, sizeof(exe_dxcc) - 1);
+    if (len > 0) {
+        exe_dxcc[len] = '\0';
+        char *slash = strrchr(exe_dxcc, '/');
+        if (slash != NULL) {
+            *(slash + 1) = '\0';
+            strncat(exe_dxcc, DXCC_FILE_NAME, sizeof(exe_dxcc) - strlen(exe_dxcc) - 1);
+        } else {
+            exe_dxcc[0] = '\0';
+        }
+    }
+
+    const char *candidates[3] = {
+        exe_dxcc[0] ? exe_dxcc : NULL,
+        DXCC_FILE_NAME,
+        "/home/anders/Documents/UEI-Logg/dxcc.txt"
+    };
+    for (int i = 0; i < 3; ++i) {
+        if (candidates[i] != NULL && access(candidates[i], R_OK) == 0) {
+            if (copy_file_contents(candidates[i], dst) == 0) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }

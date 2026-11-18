@@ -280,7 +280,7 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \section{Inställningar (F12)}
 \label{sec:settings}
 
-Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras stationen, anslutningar och visningslägen. Alla inställningar sparas automatiskt till \texttt{station.conf} i projektkatalogen med \texttt{Enter}, \texttt{F2} eller genom att avsluta med \texttt{F12}. För att avbryta utan att spara trycker du på \texttt{Esc}.
+Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras stationen, aktiv databas, anslutningar och visningslägen. Alla inställningar sparas automatiskt till \texttt{\textasciitilde/.ueilogg/station.conf} med \texttt{Enter}, \texttt{F2} eller genom att avsluta med \texttt{F12}. För att avbryta utan att spara trycker du på \texttt{Esc}.
 
 \subsection{Konfigurationsfält}
 \begin{enumerate}
@@ -323,6 +323,7 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Filtrera logg:} \texttt{< På >} / \texttt{< Av >}. Visar endast kontakter från det aktiva bandet i loggradstabellen.
     \item \textbf{Statistikruta:} \texttt{< På >} / \texttt{< Av >}. Slår på eller av statistikpanelen i överkant.
     \item \textbf{Rymdväderruta:} \texttt{< På (hf.avitec.se) >} / \texttt{< Av >}. Slår på eller av rymdväderspanelen. När den är avstängd ges 4 extra rader till loggradstabellen.
+    \item \textbf{Databas (\textasciitilde/.ueilogg):} Anger vilken SQLite3-databas i \texttt{\textasciitilde/.ueilogg/} som används (default är \texttt{qsolog.sq3}). Skriv ett nytt namn och tryck \texttt{Enter}/\texttt{F2} för att skapa och byta till en ny databas, eller tryck \texttt{F3} för att välja bland befintliga \texttt{.sq3}-databaser.
     \item \textbf{Importera ADIF (F5):} Öppnar filväljare för att läsa in externa ADIF-filer.
     \item \textbf{Exportera ADIF (F6):} Öppnar dialog för att exportera loggen.
     \item \textbf{Exportera som CSV:} Öppnar fildialog med standardändelsen \texttt{.csv} för att exportera loggen till kalkylblad (Microsoft Excel, Google Kalkylark/Docs, LibreOffice Calc). Första raden i filen innehåller fältnamnen i exakt samma ordning som de visas i loggraderna (\#, Datum, Tid, Signal, Frekvens, Band, Mode, RST, Namn, QTH, QRB, QUJ, Lokator, DXCC, Notering). Filen sparas med UTF-8 BOM vilket garanterar att svenska tecken (Å, Ä, Ö) tolkas direkt och korrekt i samtliga program.
@@ -474,9 +475,9 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (96 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
-\texttt{qsolog.sq3} & Lokal SQLite3-databas för loggboken. \\
-\texttt{station.conf} & Sparad stations- och applikationskonfiguration. \\
-\texttt{dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
+\texttt{\textasciitilde/.ueilogg/qsolog.sq3} & Standard SQLite3-databas för loggboken (eller annan vald \texttt{.sq3}). \\
+\texttt{\textasciitilde/.ueilogg/station.conf} & Sparad stations- och applikationskonfiguration. \\
+\texttt{\textasciitilde/.ueilogg/dxcc.txt} & Databas över DXCC-entiteter och prefix. \\
 \bottomrule
 \end{tabularx}
 \caption{Projektets filstruktur.}

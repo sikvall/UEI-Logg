@@ -2097,9 +2097,9 @@ static void run_log_row_features_tests(void) {
 static void run_qrz_sync_tests(void) {
     printf(ANSI_BLUE "\n=== [14] QRZ.COM Synkronisering & Minnes-ADIF-import ===" ANSI_RESET "\n");
 
-    /* 1. STATION_FIELD_COUNT är 21 */
-    record_result(STATION_FIELD_COUNT == 21,
-                  "STATION_FIELD_COUNT är 21 (inkl. Exportera CSV, Synka till QRZ och Synka från QRZ)", NULL);
+    /* 1. STATION_FIELD_COUNT är 22 */
+    record_result(STATION_FIELD_COUNT == 22,
+                  "STATION_FIELD_COUNT är 22 (inkl. Databas, Exportera CSV, Synka till QRZ och Synka från QRZ)", NULL);
 
     /* 2. qrz_logbook_fetch validerar API-nyckel */
     {
@@ -2595,6 +2595,152 @@ static void run_version_and_blank_rst_tests(void) {
 }
 
 /* ========================================================================= */
+/* 17. TESTER FÖR ~/.ueilogg OCH DATABASBYTE I INSTÄLLNINGAR                 */
+/* ========================================================================= */
+static void run_ueilogg_dir_and_db_switch_tests(void) {
+    printf("\n[17] Tester för ~/.ueilogg & databasbyte i inställningar:\n");
+
+    const char *orig_home_ptr = getenv("HOME");
+    char orig_home[PATH_MAX] = "";
+    int had_orig_home = (orig_home_ptr != NULL && orig_home_ptr[0] != '\0');
+    if (had_orig_home) {
+        copy_str(orig_home, sizeof(orig_home), orig_home_ptr);
+    }
+
+    char tmp_home[256];
+    snprintf(tmp_home, sizeof(tmp_home), "/tmp/test_ueilogg_home_%ld", (long)getpid());
+    setenv("HOME", tmp_home, 1);
+
+    /* 1. Alla standardsökvägar pekar på <HOME>/.ueilogg/ med qsolog.sq3 som default */
+    {
+        char expected_dir[512];
+        snprintf(expected_dir, sizeof(expected_dir), "%s/.ueilogg", tmp_home);
+        int paths_ok = (strcmp(get_app_data_dir(), expected_dir) == 0) &&
+                       (strncmp(get_config_file_path(), expected_dir, strlen(expected_dir)) == 0) &&
+                       (strcmp(get_path_basename(get_config_file_path()), "station.conf") == 0) &&
+                       (strncmp(get_dxcc_file_path(), expected_dir, strlen(expected_dir)) == 0) &&
+                       (strcmp(get_path_basename(get_dxcc_file_path()), "dxcc.txt") == 0) &&
+                       (strncmp(get_default_log_file_path(), expected_dir, strlen(expected_dir)) == 0) &&
+                       (strcmp(get_path_basename(get_default_log_file_path()), "qsolog.sq3") == 0);
+        record_result(paths_ok, "Alla config-, dxcc- och databassökvägar pekar på ~/.ueilogg/ (default qsolog.sq3)", NULL);
+    }
+
+    /* 2. ensure_app_data_dir och ensure_dxcc_file_seeded skapar ~/.ueilogg/dxcc.txt och slår upp DXCC */
+    {
+        int seeded = ensure_dxcc_file_seeded();
+        int exists = (access(get_dxcc_file_path(), R_OK) == 0);
+        load_dxcc_file(get_dxcc_file_path());
+        char country[64] = "";
+        lookup_dxcc("SM5UEI", country, sizeof(country));
+        int dxcc_ok = seeded && exists &&
+                      (strcmp(country, "Sverige") == 0 || strcmp(country, "Sweden") == 0);
+        record_result(dxcc_ok, "ensure_dxcc_file_seeded kopierar dxcc.txt till ~/.ueilogg/ och möjliggör uppslag", NULL);
+        free_dxcc_db();
+    }
+
+    /* 3. normalize_db_name och save/load DB_FILE i ~/.ueilogg/station.conf */
+    {
+        char n1[64] = "", n2[64] = "", n3[64] = "", n4[64] = "";
+        normalize_db_name("contest", n1, sizeof(n1));
+        normalize_db_name("fieldday.sq3", n2, sizeof(n2));
+        normalize_db_name("", n3, sizeof(n3));
+        normalize_db_name("/tmp/other/minlogg", n4, sizeof(n4));
+
+        int norm_ok = (strcmp(n1, "contest.sq3") == 0) &&
+                      (strcmp(n2, "fieldday.sq3") == 0) &&
+                      (strcmp(n3, "qsolog.sq3") == 0) &&
+                      (strcmp(n4, "minlogg.sq3") == 0);
+
+        StationSettings st_def;
+        load_station_settings(get_config_file_path(), &st_def);
+        int def_ok = (strcmp(st_def.db_name, "qsolog.sq3") == 0);
+
+        copy_str(st_def.call, sizeof(st_def.call), "SM5TEST");
+        copy_str(st_def.db_name, sizeof(st_def.db_name), "contest.sq3");
+        int saved_ok = (save_station_settings(get_config_file_path(), &st_def) == 0);
+
+        StationSettings st_reloaded;
+        load_station_settings(get_config_file_path(), &st_reloaded);
+        int reload_ok = (strcmp(st_reloaded.db_name, "contest.sq3") == 0);
+
+        record_result(norm_ok && def_ok && saved_ok && reload_ok,
+                      "normalize_db_name och DB_FILE i ~/.ueilogg/station.conf fungerar med qsolog.sq3 som default", NULL);
+    }
+
+    /* 4. switch_station_database byter mellan databaser i ~/.ueilogg och isolerar loggarna */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM5TEST");
+        copy_str(st.db_name, sizeof(st.db_name), "qsolog.sq3");
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+        QSO form_qso;
+        memset(&form_qso, 0, sizeof(form_qso));
+        int editing_idx = 2, sel_pos = 1, scroll_off = 1;
+        char status[128] = "";
+
+        /* Öppna default qsolog.sq3 och lägg in ett QSO */
+        db_close();
+        copy_str(g_log_filename, sizeof(g_log_filename), get_default_log_file_path());
+        int open_def_ok = (db_open(g_log_filename) == 0);
+
+        QSO q_orig;
+        memset(&q_orig, 0, sizeof(q_orig));
+        copy_str(q_orig.call, sizeof(q_orig.call), "SM0AAA");
+        copy_str(q_orig.date, sizeof(q_orig.date), "2026-11-18");
+        copy_str(q_orig.time_utc, sizeof(q_orig.time_utc), "11:00");
+        copy_str(q_orig.band, sizeof(q_orig.band), "20 m");
+        copy_str(q_orig.mode, sizeof(q_orig.mode), "USB");
+        db_insert_qso(&q_orig);
+
+        /* Byt till ny databas 'contest' (ska skapa contest.sq3 i ~/.ueilogg och ladda tom lista) */
+        int sw1 = switch_station_database(&st, &form_qso, &editing_idx, &list,
+                                          &sel_pos, &scroll_off, "contest",
+                                          status, sizeof(status));
+        int sw1_ok = (sw1 == 0) && (strcmp(st.db_name, "contest.sq3") == 0) &&
+                     (list.count == 0) && (editing_idx == -1) && (sel_pos == 0) &&
+                     (strcmp(get_path_basename(g_log_filename), "contest.sq3") == 0);
+
+        /* Logga ett QSO i contest.sq3 */
+        QSO q_new;
+        memset(&q_new, 0, sizeof(q_new));
+        copy_str(q_new.call, sizeof(q_new.call), "OH2BBB");
+        copy_str(q_new.date, sizeof(q_new.date), "2026-11-18");
+        copy_str(q_new.time_utc, sizeof(q_new.time_utc), "11:05");
+        copy_str(q_new.band, sizeof(q_new.band), "40 m");
+        copy_str(q_new.mode, sizeof(q_new.mode), "CW");
+        db_insert_qso(&q_new);
+
+        /* Byt tillbaka till qsolog.sq3 */
+        int sw2 = switch_station_database(&st, &form_qso, &editing_idx, &list,
+                                          &sel_pos, &scroll_off, "qsolog.sq3",
+                                          status, sizeof(status));
+        int sw2_ok = (sw2 == 0) && (strcmp(st.db_name, "qsolog.sq3") == 0) &&
+                     (list.count == 1) && (strcmp(list.items[0].call, "SM0AAA") == 0);
+
+        record_result(open_def_ok && sw1_ok && sw2_ok,
+                      "switch_station_database skapar/byter databas i ~/.ueilogg/ och isolerar QSO per databas", NULL);
+
+        db_close();
+        free(list.items);
+        g_log_filename[0] = '\0';
+    }
+
+    /* Städa upp temporär testkatalog och återställ HOME */
+    char rm_cmd[512];
+    snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf \"%s\"", tmp_home);
+    if (system(rm_cmd) != 0) { /* ignore */ }
+
+    if (had_orig_home) {
+        setenv("HOME", orig_home, 1);
+    } else {
+        unsetenv("HOME");
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -2623,6 +2769,7 @@ int main(int argc, char *argv[]) {
     run_qrz_sync_tests();
     run_csv_export_tests();
     run_version_and_blank_rst_tests();
+    run_ueilogg_dir_and_db_switch_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

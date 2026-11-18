@@ -29,25 +29,42 @@
 #define PATH_MAX 4096
 #endif
 
+#define APP_DATA_DIR_NAME ".ueilogg"
+#define DEFAULT_LOG_NAME  "qsolog.sq3"
+#define DEFAULT_ADIF_NAME "qsolog.adi"
+#define CONFIG_FILE_NAME  "station.conf"
+#define DXCC_FILE_NAME    "dxcc.txt"
+
+const char *get_app_data_dir(void);
+int ensure_app_data_dir(void);
+void build_app_data_path(const char *filename, char *out, size_t out_sz);
+const char *get_default_log_file_path(void);
+const char *get_default_adif_file_path(void);
+const char *get_config_file_path(void);
+const char *get_dxcc_file_path(void);
+void normalize_db_name(const char *input, char *out, size_t out_sz);
+void resolve_db_path(const char *name_or_path, char *out, size_t out_sz);
+int ensure_dxcc_file_seeded(void);
+
 #ifndef DEFAULT_LOG_FILE
-#define DEFAULT_LOG_FILE "qsolog.sq3"
+#define DEFAULT_LOG_FILE get_default_log_file_path()
 #endif
 
-extern char g_log_filename[256];
+extern char g_log_filename[PATH_MAX];
 #ifndef LOG_FILE
-#define LOG_FILE g_log_filename
+#define LOG_FILE (g_log_filename[0] ? g_log_filename : get_default_log_file_path())
 #endif
 #ifndef CONFIG_FILE
-#define CONFIG_FILE "station.conf"
+#define CONFIG_FILE get_config_file_path()
 #endif
 #ifndef DXCC_FILE
-#define DXCC_FILE "dxcc.txt"
+#define DXCC_FILE get_dxcc_file_path()
 #endif
 
 #define MIN_COLS 60
 #define MIN_LINES 24
 #define QSO_FIELD_COUNT 13
-#define STATION_FIELD_COUNT 21
+#define STATION_FIELD_COUNT 22
 
 #ifndef KEY_CTRL_HOME
 #define KEY_CTRL_HOME 2001
@@ -178,6 +195,7 @@ typedef struct {
     char last_freq[32];    /**< Senast använda frekvens */
     char last_band[16];    /**< Senast använda band */
     char last_mode[16];    /**< Senast använda mode */
+    char db_name[128];     /**< Filnamn för aktiv SQLite-databas i ~/.ueilogg/ (default: qsolog.sq3) */
 } StationSettings;
 
 /**

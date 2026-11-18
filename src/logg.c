@@ -24,7 +24,7 @@ static size_t s_cached_count = (size_t)-1;
 static time_t s_cached_minute = 0;
 static const QSOList *s_cached_ptr = NULL;
 
-char g_log_filename[256] = DEFAULT_LOG_FILE;
+char g_log_filename[PATH_MAX] = "";
 
 void invalidate_log_stats_cache(void) {
     s_cached_count = (size_t)-1;
