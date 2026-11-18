@@ -9,11 +9,11 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-/** Applikationens korta visningsnamn i namnlist, fönstertitel och CLI */
-#define APP_NAME         "UEI-log"
+/** Applikationens visningsnamn i titelrad, fönstertitel, hjälptext och CLI */
+#define APP_NAME         "UEI-Logg"
 
-/** Applikationens fullständiga namn */
-#define APP_FULL_NAME    "UEI-Logg"
+/** Applikationens fullständiga namn (alias till APP_NAME) */
+#define APP_FULL_NAME    APP_NAME
 
 /** Program-ID i ADIF-filer och HTTP User-Agent */
 #define APP_PROGRAM_ID   "qsolog"
@@ -24,7 +24,7 @@
 /** Byggdatum (ISO YYYY-MM-DD; kan även sättas till __DATE__ vid behov) */
 #define APP_BUILD_DATE   "2026-11-18"
 
-/** Sammansatt namn och version (t.ex. "UEI-log v1.0.0") */
+/** Sammansatt namn och version (t.ex. "UEI-Logg v1.0.0") */
 #define APP_TITLE_STRING APP_NAME " v" APP_VERSION
 
 #endif /* VERSION_H */

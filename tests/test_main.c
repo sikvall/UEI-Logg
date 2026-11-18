@@ -2440,8 +2440,8 @@ static void run_version_and_blank_rst_tests(void) {
 
     /* 1. Makron i src/version.h ska vara definierade och icke-tomma */
     {
-        int macros_ok = (strlen(APP_NAME) > 0) &&
-                        (strlen(APP_FULL_NAME) > 0) &&
+        int macros_ok = (strcmp(APP_NAME, "UEI-Logg") == 0) &&
+                        (strcmp(APP_FULL_NAME, APP_NAME) == 0) &&
                         (strlen(APP_PROGRAM_ID) > 0) &&
                         (strlen(APP_VERSION) > 0) &&
                         (strlen(APP_BUILD_DATE) > 0) &&

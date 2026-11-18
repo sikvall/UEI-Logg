@@ -86,7 +86,7 @@ void tui_init(void) {
     timeout(250);
 
     /* Sätt terminalens fönstertitel om terminalemulatorn stöder OSC */
-    printf("\033]0;%s\007", APP_TITLE_STRING);
+    printf("\033]0;%s (%s)\007", APP_TITLE_STRING, APP_BUILD_DATE);
     fflush(stdout);
 }
 
@@ -812,6 +812,11 @@ void draw_top_bar(const StationSettings *st) {
     mvprintw(0, ver_col, "v%s", APP_VERSION);
     attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
+    char build_str[64];
+    snprintf(build_str, sizeof(build_str), "(%s)", APP_BUILD_DATE);
+    int build_col = ver_col + 1 + utf8_display_width(APP_VERSION) + 1;
+    int build_w = utf8_display_width(build_str);
+
     char station_info[128];
     char clean_call[32] = "";
     if (st != NULL && st->call[0] != '\0') {
@@ -831,19 +836,40 @@ void draw_top_bar(const StationSettings *st) {
         snprintf(station_info, sizeof(station_info), "%s", my_call);
     }
 
-    int info_w = utf8_display_width(station_info);
-    int info_col = (COLS - info_w) / 2;
-    int min_info_col = 1 + utf8_display_width(APP_NAME) + 1 + 1 + utf8_display_width(APP_VERSION) + 1;
-    if (info_col < min_info_col) info_col = min_info_col;
-
     char time_str[64];
     get_utc_strings(NULL, 0, NULL, 0, time_str, sizeof(time_str));
     int time_col = COLS - utf8_display_width(time_str) - 2;
-    if (time_col > info_col + info_w) {
-        attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
-        mvprintw(0, info_col, "%s", station_info);
-        attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+
+    int info_w = utf8_display_width(station_info);
+    int info_col = (COLS - info_w) / 2;
+    int min_info_col_with_build = build_col + build_w + 1;
+    int min_info_col_no_build = build_col;
+
+    int show_build = (build_col + build_w + 1 < time_col);
+    if (show_build) {
+        int test_col = (info_col < min_info_col_with_build) ? min_info_col_with_build : info_col;
+        if (test_col + info_w >= time_col && min_info_col_no_build + info_w < time_col) {
+            show_build = 0;
+        }
+    }
+
+    int min_info_col = show_build ? min_info_col_with_build : min_info_col_no_build;
+    if (show_build) {
+        attron(COLOR_PAIR(CP_TOPBAR));
+        mvprintw(0, build_col, "%s", build_str);
+        attroff(COLOR_PAIR(CP_TOPBAR));
+    }
+
+    if (info_col < min_info_col) info_col = min_info_col;
+    if (time_col > min_info_col) {
+        if (info_col + info_w < time_col) {
+            attron(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+            mvprintw(0, info_col, "%s", station_info);
+            attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
+        }
+        attron(COLOR_PAIR(CP_TOPBAR));
         mvprintw(0, time_col, "%s", time_str);
+        attroff(COLOR_PAIR(CP_TOPBAR));
     }
 }
 
