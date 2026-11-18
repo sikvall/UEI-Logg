@@ -168,7 +168,7 @@ make all
 Detta skapar följande i projektkatalogen:
 - **`ueilogg`**: Det huvudsakliga TUI-loggboksprogrammet.
 - **`dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`~/.ueilogg/dxcc.txt`).
-- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (114 tester).
+- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (115 tester).
 - **`manual/manual.pdf`**: Komplett användarmanual i PDF-format.
 
 ### Bygg enskilda mål
@@ -185,11 +185,19 @@ make test
 
 # Bygg användarmanualen
 make manual
+
+# Installera / avinstallera lokalt (standard: /usr/local)
+sudo make install
+sudo make uninstall
+
+# Skapa Debian/Ubuntu-paket (.deb) i dist/
+make deb
+sudo apt install ./dist/ueilogg_<version>_<arkitektur>.deb
 ```
 
 ### Rensa byggfiler
 
-För att ta bort kompilerade objektfiler (`*.o`), binärer och temporära LaTeX-filer:
+För att ta bort kompilerade objektfiler (`*.o`), binärer, `build/`, `dist/` och temporära LaTeX-filer:
 
 ```bash
 make clean

@@ -128,7 +128,15 @@ make test
 # Bygg användarmanualen till PDF via pdflatex
 make manual
 
-# Rensa kompilerade filer och byggda binärer
+# Installera / avinstallera lokalt i /usr/local
+sudo make install
+sudo make uninstall
+
+# Skapa Debian/Ubuntu-paket (.deb) i dist/
+make deb
+sudo apt install ./dist/ueilogg_<version>_<arkitektur>.deb
+
+# Rensa kompilerade filer, build/, dist/ och byggda binärer
 make clean
 \end{verbatim}
 
@@ -457,7 +465,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF/CSV. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
-\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (114 tester). \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (115 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{\textasciitilde/.ueilogg/qsolog.sq3} & Standard SQLite3-databas för loggboken (eller annan vald \texttt{.sq3}). \\
@@ -476,7 +484,7 @@ Resultatet sparas permanent i aktiv SQLite3-databas under fältet \texttt{distan
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
 
-Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 114 omfattande verifieringstester i 17 avsnitt mot programmets samtliga kärnfunktioner:
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 115 omfattande verifieringstester i 17 avsnitt mot programmets samtliga kärnfunktioner:
 \begin{itemize}
     \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
     \item \textbf{ADIF-import och minnestolkning:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz, att felaktiga skalningar återställs och att minnesbaserad ADIF-import hanterar poster korrekt.

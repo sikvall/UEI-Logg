@@ -14,3 +14,6 @@ manual/*.log
 manual/*.out
 manual/*.toc
 manual/manual.pdf
+build/
+dist/
+*.deb

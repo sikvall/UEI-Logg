@@ -73,8 +73,14 @@ void load_dxcc_file(const char *filename) {
         }
     }
     if (fp == NULL) {
-        /* Fallback till aktuell katalog och standardkatalog */
+        /* Fallback till aktuell katalog och systemkataloger */
         fp = fopen(get_path_basename(target), "r");
+    }
+    if (fp == NULL) {
+        fp = fopen(SYSTEM_DXCC_FILE, "r");
+    }
+    if (fp == NULL) {
+        fp = fopen(LOCAL_SYSTEM_DXCC_FILE, "r");
     }
     if (fp == NULL) {
         fp = fopen("/home/anders/Documents/UEI-Logg/dxcc.txt", "r");

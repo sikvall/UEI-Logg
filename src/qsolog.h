@@ -35,6 +35,12 @@
 #define CONFIG_FILE_NAME  "station.conf"
 #define DXCC_FILE_NAME    "dxcc.txt"
 
+#ifndef SYSTEM_DATA_DIR
+#define SYSTEM_DATA_DIR "/usr/share/ueilogg"
+#endif
+#define SYSTEM_DXCC_FILE SYSTEM_DATA_DIR "/" DXCC_FILE_NAME
+#define LOCAL_SYSTEM_DXCC_FILE "/usr/local/share/ueilogg/" DXCC_FILE_NAME
+
 const char *get_app_data_dir(void);
 int ensure_app_data_dir(void);
 void build_app_data_path(const char *filename, char *out, size_t out_sz);

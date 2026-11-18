@@ -1530,12 +1530,14 @@ int ensure_dxcc_file_seeded(void) {
         }
     }
 
-    const char *candidates[3] = {
+    const char *candidates[5] = {
         exe_dxcc[0] ? exe_dxcc : NULL,
         DXCC_FILE_NAME,
+        SYSTEM_DXCC_FILE,
+        LOCAL_SYSTEM_DXCC_FILE,
         "/home/anders/Documents/UEI-Logg/dxcc.txt"
     };
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 5; ++i) {
         if (candidates[i] != NULL && access(candidates[i], R_OK) == 0) {
             if (copy_file_contents(candidates[i], dst) == 0) {
                 return 1;

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=UEI-Logg
+GenericName=Amateur Radio Logbook
+Comment=Snabbt textbaserat loggboksprogram (TUI) för radioamatörer
+Exec=ueilogg
+Terminal=true
+Type=Application
+Categories=Network;HamRadio;Utility;
+Keywords=ham;radio;qso;log;adif;dxcc;qrz;

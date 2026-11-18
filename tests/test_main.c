@@ -2636,6 +2636,10 @@ static void run_ueilogg_dir_and_db_switch_tests(void) {
                       (strcmp(country, "Sverige") == 0 || strcmp(country, "Sweden") == 0);
         record_result(dxcc_ok, "ensure_dxcc_file_seeded kopierar dxcc.txt till ~/.ueilogg/ och möjliggör uppslag", NULL);
         free_dxcc_db();
+
+        int sys_macros_ok = (strcmp(SYSTEM_DXCC_FILE, "/usr/share/ueilogg/dxcc.txt") == 0) &&
+                            (strcmp(LOCAL_SYSTEM_DXCC_FILE, "/usr/local/share/ueilogg/dxcc.txt") == 0);
+        record_result(sys_macros_ok, "Systemkataloger för paketerad dxcc.txt (/usr/share/ueilogg & /usr/local/share/ueilogg) är definierade", NULL);
     }
 
     /* 3. normalize_db_name och save/load DB_FILE i ~/.ueilogg/station.conf */

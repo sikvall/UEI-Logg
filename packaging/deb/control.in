@@ -1,0 +1,11 @@
+Package: ueilogg
+Version: @VERSION@
+Section: hamradio
+Priority: optional
+Architecture: @ARCH@
+Maintainer: Anders Sikvall <sm5uei@avitec.se>
+Installed-Size: @INSTALLED_SIZE@
+Description: Textbaserat loggboksprogram (TUI) för radioamatörer
+ UEI-Logg är ett snabbt, tangentbordsstyrt loggboksprogram i terminalen
+ med SQLite3-lagring i ~/.ueilogg/, DXCC-uppslag (dxcc), QRZ.COM-integration,
+ ADIF/CSV-stöd, QRB/QUJ-beräkning och rymdväder från hf.avitec.se.
