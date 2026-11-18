@@ -148,7 +148,7 @@ static int fetch_sm_callbook_once(const char *query_call,
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_REFERER, "https://www.ssa.se/ssa/smcb/");
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) qsolog/1.0");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) " APP_PROGRAM_ID "/" APP_VERSION);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 4L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);

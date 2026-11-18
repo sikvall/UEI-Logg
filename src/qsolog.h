@@ -11,6 +11,7 @@
 #endif
 #define _POSIX_C_SOURCE 200809L
 
+#include "version.h"
 #include <ctype.h>
 #include <limits.h>
 #include <locale.h>

@@ -1,0 +1,30 @@
+/**
+ * @file version.h
+ * @brief Centrala definitioner för applikationens namn, versionsnummer och byggdatum.
+ *
+ * Uppdatera dessa makron på ett enda ställe för att ändra applikationsnamn,
+ * versionsnummer eller byggdatum i hela programmet.
+ */
+
+#ifndef VERSION_H
+#define VERSION_H
+
+/** Applikationens korta visningsnamn i namnlist, fönstertitel och CLI */
+#define APP_NAME         "UEI-log"
+
+/** Applikationens fullständiga namn */
+#define APP_FULL_NAME    "UEI-Logg"
+
+/** Program-ID i ADIF-filer och HTTP User-Agent */
+#define APP_PROGRAM_ID   "qsolog"
+
+/** Applikationens versionsnummer */
+#define APP_VERSION      "1.0.0"
+
+/** Byggdatum (ISO YYYY-MM-DD; kan även sättas till __DATE__ vid behov) */
+#define APP_BUILD_DATE   "2026-11-18"
+
+/** Sammansatt namn och version (t.ex. "UEI-log v1.0.0") */
+#define APP_TITLE_STRING APP_NAME " v" APP_VERSION
+
+#endif /* VERSION_H */

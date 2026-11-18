@@ -272,14 +272,6 @@ void finalize_imported_qso(QSO *current, const StationSettings *st) {
     }
     to_upper_str(current->mode);
 
-    /* RST */
-    if (current->rst_sent[0] == '\0') {
-        copy_str(current->rst_sent, sizeof(current->rst_sent), strcmp(current->mode, "CW") == 0 ? "599" : "59");
-    }
-    if (current->rst_rcvd[0] == '\0') {
-        copy_str(current->rst_rcvd, sizeof(current->rst_rcvd), strcmp(current->mode, "CW") == 0 ? "599" : "59");
-    }
-
     /* DXCC */
     if (current->dxcc[0] == '\0' && current->call[0] != '\0') {
         lookup_dxcc(current->call, current->dxcc, sizeof(current->dxcc));

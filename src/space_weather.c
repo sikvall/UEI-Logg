@@ -337,7 +337,7 @@ static int fetch_space_weather_online(SpaceWeatherData *out) {
     CurlBuf buf = {NULL, 0};
     curl_easy_setopt(curl, CURLOPT_URL, SW_URL);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "qsolog-uei/1.0 (amateur radio log; space weather reader)");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_PROGRAM_ID "-uei/" APP_VERSION " (amateur radio log; space weather reader)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
     curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");

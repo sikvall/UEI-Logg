@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
                    "  -v, --version            Visa versionsinformation\n");
             return 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("UEI-log v1.0.0\n");
+            printf("%s (byggd %s)\n", APP_TITLE_STRING, APP_BUILD_DATE);
             return 0;
         } else {
             fprintf(stderr, "Okänt argument: %s\nKör 'ueilog --help' för information om tillåtna argument.\n", argv[i]);

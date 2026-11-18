@@ -270,8 +270,15 @@ void run_help_modal(const StationSettings *st) {
         }
         attroff(COLOR_PAIR(CP_MAIN_BG));
 
-        /* Fönsterram med rubrik */
-        draw_box_with_title(top_y, left_x, dialog_h, dialog_w, "Hjälp & Dokumentation (F9)", 1);
+        /* Fönsterram med rubrik (inklusive version och byggdatum) */
+        char help_title[128];
+        snprintf(help_title, sizeof(help_title),
+                 "Hjälp & Dokumentation (F9) – %s (%s)", APP_TITLE_STRING, APP_BUILD_DATE);
+        if (utf8_display_width(help_title) + 4 > dialog_w) {
+            snprintf(help_title, sizeof(help_title),
+                     "Hjälp (F9) – %s (%s)", APP_TITLE_STRING, APP_BUILD_DATE);
+        }
+        draw_box_with_title(top_y, left_x, dialog_h, dialog_w, help_title, 1);
 
         /* Flikrad högst upp */
         int tab_y = top_y + 1;

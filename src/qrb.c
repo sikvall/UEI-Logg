@@ -238,7 +238,7 @@ int geocode_qth_osm(const char *qth, double *lat_out, double *lon_out) {
     CurlBuf buf = {NULL, 0};
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "qsolog-uei/1.0 (amateur radio log; contact: sm5uei@avitec.se)");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_PROGRAM_ID "-uei/" APP_VERSION " (amateur radio log; contact: sm5uei@avitec.se)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2L);

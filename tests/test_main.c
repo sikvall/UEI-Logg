@@ -2433,6 +2433,168 @@ static void run_csv_export_tests(void) {
 }
 
 /* ========================================================================= */
+/* 16. TESTER FÖR version.h OCH BLANK RST VID LOGGNING / IMPORT              */
+/* ========================================================================= */
+static void run_version_and_blank_rst_tests(void) {
+    printf("\n[16] Tester för version.h & blank RST vid loggning/import:\n");
+
+    /* 1. Makron i src/version.h ska vara definierade och icke-tomma */
+    {
+        int macros_ok = (strlen(APP_NAME) > 0) &&
+                        (strlen(APP_FULL_NAME) > 0) &&
+                        (strlen(APP_PROGRAM_ID) > 0) &&
+                        (strlen(APP_VERSION) > 0) &&
+                        (strlen(APP_BUILD_DATE) > 0) &&
+                        (strstr(APP_TITLE_STRING, APP_NAME) != NULL) &&
+                        (strstr(APP_TITLE_STRING, APP_VERSION) != NULL);
+        record_result(macros_ok, "version.h definierar namn, versionsnummer och byggdatum", NULL);
+    }
+
+    /* 2. reset_qso_form med auto_rst_59 == 0 lämnar rst_sent och rst_rcvd tomma */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        st.auto_rst_59 = 0;
+
+        QSO q;
+        int time_frozen = 0, active_field = 0, cursor_pos = 0, editing_index = 0;
+        char last_smcb[32] = "SM0XYZ";
+        char qrb[32] = "100 km", quj[32] = "180°";
+
+        reset_qso_form(&q, &st, &time_frozen, &active_field, &cursor_pos,
+                       &editing_index, last_smcb, qrb, quj);
+
+        int blank_ok = (q.rst_sent[0] == '\0') && (q.rst_rcvd[0] == '\0');
+        record_result(blank_ok, "reset_qso_form lämnar RST tomt när auto_rst_59 == 0", NULL);
+    }
+
+    /* 3. try_save_current_qso loggar blank RST om inget fyllts i (auto_rst_59 == 0 och == 1) */
+    {
+        /* Säkerhetskopiera befintlig station.conf innan try_save_current_qso skriver dit */
+        int had_conf = 0;
+        char *conf_backup = NULL;
+        size_t conf_len = 0;
+        FILE *cf = fopen(CONFIG_FILE, "rb");
+        if (cf != NULL) {
+            had_conf = 1;
+            fseek(cf, 0, SEEK_END);
+            long sz = ftell(cf);
+            fseek(cf, 0, SEEK_SET);
+            if (sz > 0) {
+                conf_backup = (char *)malloc((size_t)sz);
+                if (conf_backup) {
+                    conf_len = fread(conf_backup, 1, (size_t)sz, cf);
+                }
+            }
+            fclose(cf);
+        }
+
+        const char *tmp_db = "/tmp/test_blank_rst.sq3";
+        unlink(tmp_db);
+        db_close();
+        int db_rc = db_open(tmp_db);
+
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        copy_str(st.call, sizeof(st.call), "SM0AAA");
+        st.auto_rst_59 = 0;
+
+        QSOList list;
+        memset(&list, 0, sizeof(list));
+
+        QSO q1;
+        memset(&q1, 0, sizeof(q1));
+        copy_str(q1.date, sizeof(q1.date), "2026-11-18");
+        copy_str(q1.time_utc, sizeof(q1.time_utc), "10:15");
+        copy_str(q1.call, sizeof(q1.call), "SM0BBB");
+        copy_str(q1.freq, sizeof(q1.freq), "14.200");
+        copy_str(q1.band, sizeof(q1.band), "20m");
+        copy_str(q1.mode, sizeof(q1.mode), "USB");
+        q1.rst_sent[0] = '\0';
+        q1.rst_rcvd[0] = '\0';
+
+        int time_frozen = 0, active_field = 0, cursor_pos = 0, editing_index = -1;
+        char last_smcb[32] = "";
+        char status_msg[128] = "";
+        char qrb[32] = "", quj[32] = "";
+
+        try_save_current_qso(&q1, &time_frozen, &active_field, &cursor_pos, &editing_index,
+                             &st, &list, last_smcb, status_msg, sizeof(status_msg), qrb, quj);
+
+        /* Testa även med auto_rst_59 == 1 om användaren manuellt lämnat RST tomt */
+        st.auto_rst_59 = 1;
+        QSO q2;
+        memset(&q2, 0, sizeof(q2));
+        copy_str(q2.date, sizeof(q2.date), "2026-11-18");
+        copy_str(q2.time_utc, sizeof(q2.time_utc), "10:20");
+        copy_str(q2.call, sizeof(q2.call), "SM0CCC");
+        copy_str(q2.freq, sizeof(q2.freq), "7.030");
+        copy_str(q2.band, sizeof(q2.band), "40m");
+        copy_str(q2.mode, sizeof(q2.mode), "CW");
+        q2.rst_sent[0] = '\0';
+        q2.rst_rcvd[0] = '\0';
+
+        try_save_current_qso(&q2, &time_frozen, &active_field, &cursor_pos, &editing_index,
+                             &st, &list, last_smcb, status_msg, sizeof(status_msg), qrb, quj);
+
+        int mem_ok = (list.count == 2) &&
+                     (list.items[0].rst_sent[0] == '\0') &&
+                     (list.items[0].rst_rcvd[0] == '\0') &&
+                     (list.items[1].rst_sent[0] == '\0') &&
+                     (list.items[1].rst_rcvd[0] == '\0');
+
+        QSOList loaded;
+        memset(&loaded, 0, sizeof(loaded));
+        int load_rc = (db_rc == 0) ? db_load_all_qsos(&loaded) : -1;
+        int db_ok = (load_rc == 2) &&
+                    (loaded.items[0].rst_sent[0] == '\0') &&
+                    (loaded.items[0].rst_rcvd[0] == '\0') &&
+                    (loaded.items[1].rst_sent[0] == '\0') &&
+                    (loaded.items[1].rst_rcvd[0] == '\0');
+
+        record_result(mem_ok && db_ok,
+                      "try_save_current_qso sparar blankt RST i minne och SQLite när fälten är tomma", NULL);
+
+        free(loaded.items);
+        free(list.items);
+        db_close();
+        unlink(tmp_db);
+
+        /* Återställ station.conf till exakt ursprungligt skick */
+        if (had_conf) {
+            FILE *wcf = fopen(CONFIG_FILE, "wb");
+            if (wcf != NULL) {
+                if (conf_backup && conf_len > 0) fwrite(conf_backup, 1, conf_len, wcf);
+                fclose(wcf);
+            }
+        } else {
+            unlink(CONFIG_FILE);
+        }
+        free(conf_backup);
+    }
+
+    /* 4. finalize_imported_qso håller saknat RST blankt istället för att fylla i 59/599 */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+
+        QSO qi;
+        memset(&qi, 0, sizeof(qi));
+        copy_str(qi.date, sizeof(qi.date), "2026-11-18");
+        copy_str(qi.time_utc, sizeof(qi.time_utc), "10:30");
+        copy_str(qi.call, sizeof(qi.call), "SM0DDD");
+        copy_str(qi.mode, sizeof(qi.mode), "CW");
+        qi.rst_sent[0] = '\0';
+        qi.rst_rcvd[0] = '\0';
+
+        finalize_imported_qso(&qi, &st);
+
+        int imp_ok = (qi.rst_sent[0] == '\0') && (qi.rst_rcvd[0] == '\0');
+        record_result(imp_ok, "finalize_imported_qso lämnar saknat RST blankt vid import", NULL);
+    }
+}
+
+/* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
 int main(int argc, char *argv[]) {
@@ -2460,6 +2622,7 @@ int main(int argc, char *argv[]) {
     run_log_row_features_tests();
     run_qrz_sync_tests();
     run_csv_export_tests();
+    run_version_and_blank_rst_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

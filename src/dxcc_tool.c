@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 700
 
 #include "util.h"
+#include "version.h"
 #include <ctype.h>
 #include <curl/curl.h>
 #include <errno.h>
@@ -25,7 +26,7 @@
 
 #define DEFAULT_CTY_URL "https://www.country-files.com/cty/cty.csv"
 #define DEFAULT_DXCC_FILE "dxcc.txt"
-#define USER_AGENT "UEI-Logg-dxcc/1.0 (amateur radio log tool; contact: sm5uei@avitec.se)"
+#define USER_AGENT APP_FULL_NAME "-dxcc/" APP_VERSION " (amateur radio log tool; contact: sm5uei@avitec.se)"
 
 /* Svensk översättningstabell som fallback för entiteter vars namn skiljer sig från engelska */
 static const struct {
@@ -1132,17 +1133,17 @@ static int cmd_lookup(const char *target_file, const char *call_in) {
  * @brief Visar hjälptext för kommandot.
  */
 static void show_help(const char *prog_name) {
-    printf("\033[1;37mUEI-Logg DXCC-verktyg (dxcc) version 1.0\033[0m\n");
+    printf("\033[1;37m%s DXCC-verktyg (dxcc) version %s (%s)\033[0m\n", APP_FULL_NAME, APP_VERSION, APP_BUILD_DATE);
     printf("Hantering, uppdatering och statistikanalys av DXCC-databasen (%s)\n\n", DEFAULT_DXCC_FILE);
     printf("\033[1mAnvändning:\033[0m\n");
     printf("  %s help                         Visa denna hjälptext\n", prog_name);
-    printf("  %s version                      Visa versionsinformation (version 1.0)\n", prog_name);
+    printf("  %s version                      Visa versionsinformation (version %s)\n", prog_name, APP_VERSION);
     printf("  %s update [källa / URL / fil]   Ladda ner och uppdatera %s från nätet\n", prog_name, DEFAULT_DXCC_FILE);
     printf("  %s stat [filnamn]               Visa utförlig statistik och tabeller för %s\n", prog_name, DEFAULT_DXCC_FILE);
     printf("  %s lookup <signal>              Slå upp DXCC-land för en anropssignal\n\n", prog_name);
     printf("\033[1mExempel:\033[0m\n");
     printf("  %s help                         Visa hjälptext och tillgängliga kommandon\n", prog_name);
-    printf("  %s version                      Visa version (version 1.0)\n", prog_name);
+    printf("  %s version                      Visa version (version %s)\n", prog_name, APP_VERSION);
     printf("  %s update                       Uppdatera med senaste data från Country Files (AD1C)\n", prog_name);
     printf("  %s stat                         Presentera tabeller över länder, prefix och zoner\n", prog_name);
     printf("  %s lookup SM5UEI                Visa DXCC-tillhörighet för SM5UEI\n\n", prog_name);
@@ -1162,7 +1163,7 @@ int main(int argc, char **argv) {
         show_help(argv[0]);
         ret = 0;
     } else if (strcmp(argv[1], "version") == 0 || strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0) {
-        printf("dxcc version 1.0\n");
+        printf("dxcc version %s (%s)\n", APP_VERSION, APP_BUILD_DATE);
         ret = 0;
     } else if (strcmp(argv[1], "update") == 0 || strcmp(argv[1], "--update") == 0) {
         const char *src = (argc >= 3) ? argv[2] : NULL;

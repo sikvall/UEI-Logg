@@ -258,11 +258,11 @@ void write_adif_header(FILE *fp) {
              tm_utc.tm_year + 1900, tm_utc.tm_mon + 1, tm_utc.tm_mday,
              tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec);
 
-    fprintf(fp, "ADIF Log created by qsolog\n");
+    fprintf(fp, "ADIF Log created by %s\n", APP_PROGRAM_ID);
     fprintf(fp, "<ADIF_VER:5>3.1.8\n");
     fprintf(fp, "<CREATED_TIMESTAMP:%zu>%s\n", strlen(created_ts), created_ts);
-    fprintf(fp, "<PROGRAMID:6>qsolog\n");
-    fprintf(fp, "<PROGRAMVERSION:5>1.0.0\n");
+    fprintf(fp, "<PROGRAMID:%zu>%s\n", strlen(APP_PROGRAM_ID), APP_PROGRAM_ID);
+    fprintf(fp, "<PROGRAMVERSION:%zu>%s\n", strlen(APP_VERSION), APP_VERSION);
     fprintf(fp, "<EOH>\n\n");
 }
 
@@ -1024,12 +1024,6 @@ void try_save_current_qso(QSO *qso, int *time_frozen, int *active_field,
 
     if (qso->mode[0] == '\0') {
         copy_str(qso->mode, sizeof(qso->mode), "SSB");
-    }
-    if (qso->rst_sent[0] == '\0') {
-        copy_str(qso->rst_sent, sizeof(qso->rst_sent), strcmp(qso->mode, "CW") == 0 ? "599" : "59");
-    }
-    if (qso->rst_rcvd[0] == '\0') {
-        copy_str(qso->rst_rcvd, sizeof(qso->rst_rcvd), strcmp(qso->mode, "CW") == 0 ? "599" : "59");
     }
 
     /* Avstånd (ADIF: DISTANCE) i hela kilometer */

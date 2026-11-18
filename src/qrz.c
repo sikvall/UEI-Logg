@@ -15,7 +15,7 @@
 #include <strings.h>
 
 #define QRZ_XML_URL "https://xmldata.qrz.com/xml/current/"
-#define QRZ_AGENT   "qsolog1.0"
+#define QRZ_AGENT   APP_PROGRAM_ID "/" APP_VERSION
 
 /* Intern cache för QRZ-uppslag */
 typedef struct {
