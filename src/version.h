@@ -19,12 +19,12 @@
 #define APP_PROGRAM_ID   "qsolog"
 
 /** Applikationens versionsnummer */
-#define APP_VERSION      "1.0.0"
+#define APP_VERSION      "1.0.1"
 
 /** Byggdatum (ISO YYYY-MM-DD; kan även sättas till __DATE__ vid behov) */
-#define APP_BUILD_DATE   "2026-11-18"
+#define APP_BUILD_DATE   "2026-11-23"
 
-/** Sammansatt namn och version (t.ex. "UEI-Logg v1.0.0") */
+/** Sammansatt namn och version (t.ex. "UEI-Logg v1.0.1") */
 #define APP_TITLE_STRING APP_NAME " v" APP_VERSION
 
 #endif /* VERSION_H */

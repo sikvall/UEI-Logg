@@ -1,0 +1,97 @@
+.\" Manpage för dxcc(1)
+.TH DXCC 1 "2026-11-23" "UEI-Logg 1.0.1" "Användarmanual"
+.SH NAME
+dxcc \- hantera DXCC-databas och slå upp anropssignaler
+.SH SYNOPSIS
+.B dxcc
+\fBhelp\fR | \fB\-h\fR | \fB\-\-help\fR
+.br
+.B dxcc
+\fBversion\fR | \fB\-v\fR | \fB\-\-version\fR
+.br
+.B dxcc
+\fBupdate\fR | \fB\-\-update\fR [\fIURL\fR | \fIfil\fR]
+.br
+.B dxcc
+\fBstat\fR | \fBstats\fR | \fB\-\-stat\fR [\fIfilnamn\fR]
+.br
+.B dxcc
+\fBlookup\fR \fIanropssignal\fR
+.SH DESCRIPTION
+.B dxcc
+är ett fristående kommandoradsverktyg som ingår i UEI-Logg.
+Det används för att ladda ned och uppdatera AD1C Country Files
+(\fIdxcc.txt\fR), visa sammanfattande statistik över DXCC-entiteter och
+prefix samt slå upp enskilda anropssignaler direkt i terminalen.
+.SH COMMANDS
+.TP
+.BR help ", " \-h ", " \-\-help
+Visa kommandoradshjälp och avsluta.
+.TP
+.BR version ", " \-v ", " \-\-version
+Visa programmets namn, version och byggdatum och avsluta.
+.TP
+.BR update ", " \-\-update " [" \fIURL\fR " | " \fIfil\fR ]
+Ladda ned en ny version av \fIdxcc.txt\fR till \fI~/.ueilogg/dxcc.txt\fR.
+Innan den nya filen skrivs sparas en säkerhetskopia i
+\fI~/.ueilogg/dxcc.txt.bak\fR.
+Utan argument hämtas senaste \fIcty.dat\fR från Jim Reisert AD1C:s
+officiella webbplats (Country Files).
+En lokal fil eller alternativ URL kan anges som valfritt argument.
+.TP
+.BR stat ", " stats ", " \-\-stat " [" \fIfilnamn\fR ]
+Analysera och presentera detaljerad statistik över DXCC-databasen, inklusive
+antal entiteter, prefix, exakta undantag samt toppentiteter efter världsdel.
+Utan argument läses \fI~/.ueilogg/dxcc.txt\fR.
+.TP
+.BR lookup " " \fIanropssignal\fR
+Slå upp DXCC-entitet, huvudprefix, CQ-zon, ITU-zon, världsdel, koordinater
+och UTC-förskjutning för angiven \fIanropssignal\fR.
+.SH FILES
+.TP
+.I ~/.ueilogg/dxcc.txt
+Användarens aktiva DXCC-prefixdatabas.
+.TP
+.I ~/.ueilogg/dxcc.txt.bak
+Automatisk säkerhetskopia som skapas vid \fBdxcc update\fR.
+.SH EXIT STATUS
+.TP
+.B 0
+Lyckad körning (eller träff vid \fBlookup\fR).
+.TP
+.B 1
+Felaktiga argument, filfel eller nätverksfel.
+.TP
+.B 2
+Ingen matchande DXCC-entitet hittades vid \fBlookup\fR.
+.SH EXAMPLES
+Uppdatera den lokala DXCC-databasen från internet:
+.PP
+.RS
+.EX
+dxcc update
+.EE
+.RE
+.PP
+Visa statistik över nuvarande DXCC-databas:
+.PP
+.RS
+.EX
+dxcc stat
+.EE
+.RE
+.PP
+Slå upp anropssignaler i terminalen:
+.PP
+.RS
+.EX
+dxcc lookup SM5UEI
+dxcc lookup OH0
+.EE
+.RE
+.SH SEE ALSO
+.BR ueilogg (1)
+.SH AUTHOR
+Anders Sikvall (SM5UEI) <sm5uei@avitec.se>
+.SH COPYRIGHT
+Distribueras fritt under MIT-licensen.

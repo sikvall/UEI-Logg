@@ -20,6 +20,7 @@ BINDIR = $(DESTDIR)$(EXEC_PREFIX)/bin
 DATAROOTDIR ?= $(PREFIX)/share
 DATADIR = $(DESTDIR)$(DATAROOTDIR)/ueilogg
 DOCDIR = $(DESTDIR)$(DATAROOTDIR)/doc/ueilogg
+MANDIR = $(DESTDIR)$(DATAROOTDIR)/man
 APPDIR = $(DESTDIR)$(DATAROOTDIR)/applications
 
 # Inkludera genererad GNU configure-konfiguration om ./configure har körts
@@ -95,14 +96,17 @@ tests/%.o: tests/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: $(TARGET) $(TOOL_TARGET) $(INSTALL_MANUAL_DEP)
-	install -d "$(BINDIR)" "$(DATADIR)" "$(DOCDIR)" "$(APPDIR)"
+	install -d "$(BINDIR)" "$(DATADIR)" "$(DOCDIR)" "$(MANDIR)/man1" "$(APPDIR)"
 	install -m 755 $(TARGET) "$(BINDIR)/ueilogg"
 	$(STRIP) "$(BINDIR)/ueilogg"
 	install -m 755 $(TOOL_TARGET) "$(BINDIR)/dxcc"
 	$(STRIP) "$(BINDIR)/dxcc"
 	install -m 644 dxcc.txt "$(DATADIR)/dxcc.txt"
+	install -m 644 man/ueilogg.1 "$(MANDIR)/man1/ueilogg.1"
+	install -m 644 man/dxcc.1 "$(MANDIR)/man1/dxcc.1"
 	install -m 644 packaging/ueilogg.desktop "$(APPDIR)/ueilogg.desktop"
 	install -m 644 README.md "$(DOCDIR)/README.md"
+	install -m 644 CHANGELOG.md "$(DOCDIR)/CHANGELOG.md"
 	@if [ -f "$(MANUAL_PDF)" ]; then install -m 644 "$(MANUAL_PDF)" "$(DOCDIR)/manual.pdf"; fi
 	install -m 644 LICENSE "$(DOCDIR)/copyright"
 
@@ -110,6 +114,7 @@ install-strip: install
 
 uninstall:
 	rm -f "$(BINDIR)/ueilogg" "$(BINDIR)/dxcc"
+	rm -f "$(MANDIR)/man1/ueilogg.1" "$(MANDIR)/man1/dxcc.1"
 	rm -f "$(APPDIR)/ueilogg.desktop"
 	rm -rf "$(DATADIR)" "$(DOCDIR)"
 
@@ -118,7 +123,7 @@ deb: $(TARGET) $(TOOL_TARGET) $(INSTALL_MANUAL_DEP)
 	@command -v dpkg-deb >/dev/null 2>&1 || { echo "Fel: dpkg-deb saknas (installera paketet dpkg)."; exit 1; }
 	rm -rf $(DEB_STAGE)
 	mkdir -p $(DEB_STAGE)/DEBIAN dist
-	$(MAKE) install DESTDIR=$(DEB_STAGE) PREFIX=/usr BINDIR=$(DEB_STAGE)/usr/bin DATADIR=$(DEB_STAGE)/usr/share/ueilogg DOCDIR=$(DEB_STAGE)/usr/share/doc/ueilogg APPDIR=$(DEB_STAGE)/usr/share/applications
+	$(MAKE) install DESTDIR=$(DEB_STAGE) PREFIX=/usr BINDIR=$(DEB_STAGE)/usr/bin DATADIR=$(DEB_STAGE)/usr/share/ueilogg DOCDIR=$(DEB_STAGE)/usr/share/doc/ueilogg MANDIR=$(DEB_STAGE)/usr/share/man APPDIR=$(DEB_STAGE)/usr/share/applications
 	INSTALLED_SIZE=$$(du -sk $(DEB_STAGE)/usr | cut -f1); \
 	sed -e "s/@VERSION@/$(APP_VERSION)/g" \
 	    -e "s/@ARCH@/$(DEB_ARCH)/g" \
@@ -133,8 +138,8 @@ dist:
 	@if [ -z "$(APP_VERSION)" ]; then echo "Fel: Kunde inte läsa APP_VERSION från src/version.h"; exit 1; fi
 	rm -rf $(DIST_STAGE)
 	mkdir -p $(DIST_STAGE)/ueilogg-$(APP_VERSION) dist
-	cp -a configure Makefile install_dependencies.sh dxcc.txt README.md LICENSE $(DIST_STAGE)/ueilogg-$(APP_VERSION)/
-	cp -a src tests packaging $(DIST_STAGE)/ueilogg-$(APP_VERSION)/
+	cp -a configure Makefile install_dependencies.sh dxcc.txt README.md CHANGELOG.md LICENSE $(DIST_STAGE)/ueilogg-$(APP_VERSION)/
+	cp -a src tests packaging man $(DIST_STAGE)/ueilogg-$(APP_VERSION)/
 	rm -f $(DIST_STAGE)/ueilogg-$(APP_VERSION)/src/*.o $(DIST_STAGE)/ueilogg-$(APP_VERSION)/tests/*.o
 	mkdir -p $(DIST_STAGE)/ueilogg-$(APP_VERSION)/manual
 	cp -a manual/manual.tex $(DIST_STAGE)/ueilogg-$(APP_VERSION)/manual/
@@ -182,7 +187,7 @@ tarball: $(TARGET) $(TOOL_TARGET) $(INSTALL_MANUAL_DEP)
 	@if [ -z "$(APP_VERSION)" ]; then echo "Fel: Kunde inte läsa APP_VERSION från src/version.h"; exit 1; fi
 	rm -rf $(TAR_STAGE)
 	mkdir -p $(TAR_STAGE) dist
-	$(MAKE) install DESTDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH) PREFIX= BINDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/bin DATADIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/ueilogg DOCDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/doc/ueilogg APPDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/applications
+	$(MAKE) install DESTDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH) PREFIX= BINDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/bin DATADIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/ueilogg DOCDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/doc/ueilogg MANDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/man APPDIR=$(TAR_STAGE)/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)/share/applications
 	tar -C $(TAR_STAGE) -czf $(BIN_TARBALL) ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH)
 	@echo "Skapade portabel binärtarboll: $(BIN_TARBALL)"
 

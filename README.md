@@ -1,6 +1,6 @@
 # UEI-Logg
 
-**UEI-Logg** (v1.0.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
+**UEI-Logg** (v1.0.1) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
 
 ---
 
@@ -22,7 +22,7 @@
 ## Funktioner
 
 - **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). Tomma RST-fält sparas blanka när `Auto RST 59/59` är avstängt (default) eller när inget fyllts i. Flexibel tidsinmatning som accepterar både `HH:MM` (t.ex. `21:58`) och `HHMM` (`2158`). Tangenten `F2` startar UTC-klockan igen så att den rullar live även om inmatning påbörjats. `F7` i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
-- **Titelrad med namn, version, byggdatum och stationsinfo**: Översta listen visar applikationens namn, versionsnummer och byggdatum från `src/version.h` (`UEI-Logg v1.0.0 (2026-11-18)`), centrerad stationsinfo (`Anropssignal QTH Lokator` utan parenteser runt QTH) samt aktuell UTC-tid (`YYYY-MM-DD HH:MM UTC`).
+- **Titelrad med namn, version, byggdatum och stationsinfo**: Översta listen visar applikationens namn, versionsnummer och byggdatum från `src/version.h` (`UEI-Logg v1.0.1 (2026-11-23)`), centrerad stationsinfo (`Anropssignal QTH Lokator` utan parenteser runt QTH) samt aktuell UTC-tid (`YYYY-MM-DD HH:MM UTC`).
 - **SQLite3 Databas i `~/.ueilogg/` med WAL-läge**: Persistent och kraschsäker databaslagring i `~/.ueilogg/qsolog.sq3` (default). På inställningssidan (`F12`) går det att byta eller skapa en ny databas med valfritt namn (eller välja befintlig `.sq3` med `F3`). Loggrutan visar alltid aktiv databas (`Tidigare QSO (<databas>)`). Automatisk engångsmigrering från `~/.ueilogg/qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler (`Stationer`), unika `DXCC`, unika 4-teckens `Lokatorer`, körda `Bandland` samt QSO-takt per timme (`Rate`). Kan stängas av via inställningsmenyn (`F12`).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (`hf.avitec.se`: K/Kp, MUF, LUF, CME, Solfackla, Solvind, Norrsken samt DX/NVIS bästa band t.ex. `15m/80m`).
@@ -238,6 +238,13 @@ Starta programmet i din terminal (konfiguration och databaser skapas automatiskt
 ./bin/ueilogg
 ```
 
+Efter installation med `make install` (eller via paket) finns även vanliga Linux-manualsidor tillgängliga:
+
+```bash
+man ueilogg
+man dxcc
+```
+
 ### Kommandoradsflaggor
 
 UEI-Logg stöder valfri databasfil via kommandoraden:
@@ -326,4 +333,4 @@ Alla användarspecifika konfigurations-, databas- och DXCC-filer sparas i använ
 
 ## Licens
 
-UEI-Logg är utvecklat för radioamatörer och distribueras fritt för amatörradioändamål.
+UEI-Logg är utvecklat för radioamatörer och distribueras fritt under MIT-licensen ([LICENSE](LICENSE)). Se [CHANGELOG.md](CHANGELOG.md) för versionshistorik.

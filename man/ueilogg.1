@@ -1,0 +1,167 @@
+.\" Manpage för ueilogg(1)
+.TH UEILOGG 1 "2026-11-23" "UEI-Logg 1.0.1" "Användarmanual"
+.SH NAME
+ueilogg \- textbaserat loggboksprogram (TUI) för radioamatörer
+.SH SYNOPSIS
+.B ueilogg
+[\fB\-l\fR \fIfilnamn\fR | \fB\-\-logfile\fR \fIfilnamn\fR | \fB\-\-logfile=\fR\fIfilnamn\fR]
+.br
+.B ueilogg
+[\fB\-h\fR | \fB\-\-help\fR]
+.br
+.B ueilogg
+[\fB\-v\fR | \fB\-\-version\fR]
+.SH DESCRIPTION
+.B ueilogg
+är ett snabbt, terminalbaserat (ncursesw med fullt UTF-8-stöd) loggboksprogram
+för radioamatörer.
+Programmet hanterar QSO-loggning i realtid med lokal SQLite3-databas (WAL-läge),
+automatisk avstånds- och bäringsberäkning (QRB/QUJ) via Maidenhead-lokator,
+DXCC-uppslag mot lokal prefixdatabas, hämtning av rymdväder (SFI, A-index,
+K-index och bandkonditioner), anpassningsbara färgteman samt export/import av
+ADIF och CSV.
+.PP
+Valfri integration mot QRZ.COM (XML-uppslag och Logbook API) finns tillgänglig
+i inställningarna.
+.SH OPTIONS
+.TP
+.BR \-l " " \fIfilnamn\fR ", " \-\-logfile " " \fIfilnamn\fR ", " \-\-logfile= \fIfilnamn\fR
+Använd angiven SQLite3-databas i stället för standarddatabasen.
+Om endast ett filnamn anges (utan sökvägsavgränsare) placeras eller öppnas
+filen i \fI~/.ueilogg/\fR.
+Om databasen saknas skapas den automatiskt.
+.TP
+.BR \-h ", " \-\-help
+Visa kortfattad kommandoradshjälp och avsluta.
+.TP
+.BR \-v ", " \-\-version
+Visa programmets namn, versionsnummer och byggdatum och avsluta.
+.SH KEYBINDINGS
+Följande tangenter är tillgängliga i det interaktiva terminalgränssnittet:
+.TP
+.B F1
+Rensa inmatningsformuläret och starta UTC-klockan.
+.TP
+.B Esc
+Återställ aktiv sökning, återgå från loggläge till formulär eller rensa formuläret.
+.TP
+.B F2
+I inmatningsläge: starta UTC-klockan igen så att tiden uppdateras live.
+.TP
+.B Enter
+I inmatningsläge: spara och logga aktuellt QSO till aktiv SQLite3-databas
+(samt direktlogga till QRZ.COM om automatisk loggning är aktiverad).
+I loggläge: ladda markerat QSO till formuläret för redigering.
+.TP
+.B Ctrl+L
+Direktlogga aktuellt formulär eller markerad/valda loggrader till QRZ.COM.
+.TP
+.BR w " / " s
+I loggläge: flytta vald loggrad uppåt (\fBw\fR) eller nedåt (\fBs\fR).
+.TP
+.B c
+I loggläge: cykla bakgrundsfärg för aktuell rad
+(Standard \-> Grön \-> Gul \-> Röd \-> Standard).
+.TP
+.BR F3 " / " Ctrl+F
+Sök och filtrera i logghistoriken på signal eller fritext
+(i inställningsmenyn öppnar \fBF3\fR databasväljaren för \fI~/.ueilogg/\fR).
+.TP
+.BR F4 " / " Ctrl+O
+Växla fokus mellan inmatningsformulär och loggrader.
+.TP
+.B F5
+I inmatningsläge: manuellt uppslag mot QRZ.COM.
+I loggläge: växla status mellan Hanterad och Ny.
+.TP
+.B F6
+Växla visning av noteringar i loggtabellen (på/av för kompakt vy).
+.TP
+.B F7
+I inmatningsläge: räkna om QRB och bäring (QUJ) för angiven lokator eller QTH.
+I loggläge: markera samtliga loggrader som Hanterade.
+.TP
+.B F8
+I loggläge: radera vald eller markerade rader (med bekräftelse).
+I inställningar: synkronisera nya QSO från QRZ.COM.
+.TP
+.B F9
+Öppna den inbyggda hjälpdialogen.
+.TP
+.B F12
+Öppna inställningar (Min Station, databas i \fI~/.ueilogg/\fR, QRZ.COM,
+färgteman och egen färgprofilseditor [\fBF7\fR], ADIF/CSV-export och ADIF-import).
+.TP
+.BR F10 " / " Ctrl+Q
+Avsluta programmet.
+.TP
+.BR Tab " / " Skift+Tab
+Stega framåt eller bakåt mellan inmatningsfälten.
+.TP
+.BR Insert " (" INS )
+Markera eller avmarkera enskild rad i loggen för gruppåtgärder.
+.TP
+.BR Delete " (" DEL )
+Töm hela det aktiva inmatningsfältet.
+.TP
+.BR "Page Up" " / " "Page Down"
+Bläddra en sida uppåt eller nedåt i logghistoriken.
+.TP
+.BR Home " / " End
+Hoppa till början (Signal) eller slutet (Notering) i formuläret.
+.TP
+.BR Ctrl+Home " / " Ctrl+End
+Hoppa till första eller sista posten i loggen.
+.SH FILES
+Alla användarspecifika konfigurations- och databasfiler lagras i användarens
+hemkatalog under \fI~/.ueilogg/\fR:
+.TP
+.I ~/.ueilogg/station.conf
+Konfigurationsfil för station, operatör, lokator, tidszon, vald databas,
+QRZ-inställningar och färgtema.
+.TP
+.I ~/.ueilogg/qsolog.sq3
+Standarddatabas i SQLite3-format.
+Ytterligare databaser kan skapas och väljas via \fBF12\fR -> \fBF3\fR
+eller flaggan \fB\-l\fR.
+.TP
+.I ~/.ueilogg/qsolog.adi
+ADIF-fil för automatisk engångsmigrering om standarddatabasen saknas.
+.TP
+.I ~/.ueilogg/dxcc.txt
+Lokal DXCC-databas (kopieras vid första start från systemets installerade
+\fIdxcc.txt\fR och uppdateras med \fBdxcc\fR(1)).
+.SH EXAMPLES
+Starta programmet med standarddatabasen:
+.PP
+.RS
+.EX
+ueilogg
+.EE
+.RE
+.PP
+Använd en separat databas för en tävling (skapas i \fI~/.ueilogg/contest2026.sq3\fR):
+.PP
+.RS
+.EX
+ueilogg \-l contest2026.sq3
+.EE
+.RE
+.PP
+Öppna en databas på valfri sökväg:
+.PP
+.RS
+.EX
+ueilogg \-\-logfile=/tmp/portabel.sq3
+.EE
+.RE
+.SH EXIT STATUS
+Returnerar \fB0\fR vid normal avslutning och ett värde skilt från noll om
+initialisering eller kommandoradstolkning misslyckas.
+.SH SEE ALSO
+.BR dxcc (1),
+.BR sqlite3 (1)
+.SH AUTHOR
+Anders Sikvall (SM5UEI) <sm5uei@avitec.se>
+.SH COPYRIGHT
+Distribueras fritt under MIT-licensen.
