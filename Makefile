@@ -1,8 +1,39 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -O2 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE_EXTENDED -Isrc -pthread
+
+# Länkningsläge:
+#   STATIC=auto (standard): Länkar statiskt om samtliga nödvändiga .a-bibliotek
+#                           finns och fungerar (t.ex. Debian/Ubuntu), annars
+#                           dynamiskt mot systemets delade bibliotek (t.ex. RHEL/Fedora/Arch).
+#   STATIC=1:               Tvingar statisk länkning (-static med lib/libcurl.a).
+#   STATIC=0:               Tvingar dynamisk länkning (-lcurl, -lncursesw, -lsqlite3).
+STATIC ?= auto
+
+ifeq ($(STATIC),1)
+USE_STATIC := 1
+else ifeq ($(STATIC),0)
+USE_STATIC := 0
+else
+USE_STATIC := $(shell \
+	tmp=$$(mktemp /tmp/ueilogg_linkcheck_XXXXXX); \
+	if printf 'void curl_global_init(long); void *initscr(void); const char *sqlite3_libversion(void);\nint main(void){ curl_global_init(0); initscr(); sqlite3_libversion(); return 0; }\n' | \
+		$(CC) -x c - -static -lncursesw -ltinfo -Llib -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group -lsqlite3 -lm -pthread -ldl -o "$$tmp" >/dev/null 2>&1; then \
+		echo 1; \
+	else \
+		echo 0; \
+	fi; \
+	rm -f "$$tmp")
+endif
+
+ifeq ($(USE_STATIC),1)
 CURL_LIBS = -Llib -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group
 LDFLAGS = -static -lncursesw -ltinfo $(CURL_LIBS) -lsqlite3 -lm -pthread -ldl
 TOOL_LDFLAGS = -static $(CURL_LIBS) -lm -pthread -ldl
+else
+CURL_LIBS = -lcurl
+LDFLAGS = -lncursesw $(CURL_LIBS) -lsqlite3 -lm -pthread -ldl
+TOOL_LDFLAGS = $(CURL_LIBS) -lm -pthread -ldl
+endif
 TARGET = ueilogg
 TOOL_TARGET = dxcc
 TEST_TARGET = testing

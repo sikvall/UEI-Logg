@@ -117,6 +117,7 @@ echo -e "${BLUE}================================================================
 OS_ID=""
 OS_LIKE=""
 OS_NAME="Linux"
+OS_VERSION_ID=""
 if [ -f /etc/os-release ]; then
     # Läs in /etc/os-release i en säker delmiljö (bara kända variabler används)
     # shellcheck disable=SC1091
@@ -124,6 +125,7 @@ if [ -f /etc/os-release ]; then
     OS_ID="${ID:-}"
     OS_LIKE="${ID_LIKE:-}"
     OS_NAME="${NAME:-Linux}"
+    OS_VERSION_ID="${VERSION_ID:-}"
 fi
 
 # Normalisera ID och ID_LIKE till gemener för säker jämförelse
@@ -198,7 +200,7 @@ rpm_pkg_available() {
 
 zypper_pkg_available() {
     local pkg="$1"
-    zypper --non-interactive info "$pkg" >/dev/null 2>&1
+    zypper --non-interactive search --match-exact "$pkg" >/dev/null 2>&1
 }
 
 # ==============================================================================
@@ -256,6 +258,9 @@ install_debian_ubuntu() {
             "texlive-lang-european"
             "texlive-fonts-recommended"
         )
+        if [ "$DRY_RUN" -eq 1 ] || apt_pkg_exists "cm-super-minimal"; then
+            PACKAGES+=("cm-super-minimal")
+        fi
     fi
 
     echo -e "${BLUE}[INFO]${RESET} Installerar paket: ${BOLD}${PACKAGES[*]}${RESET}"
@@ -272,7 +277,7 @@ install_debian_ubuntu() {
 install_fedora_rhel() {
     # Välj dnf om tillgängligt, annars yum (för äldre RHEL/CentOS 7)
     local PKG_MGR="dnf"
-    if ! command -v dnf >/dev/null 2>&1; then
+    if [ "$DRY_RUN" -eq 0 ] && ! command -v dnf >/dev/null 2>&1; then
         if command -v yum >/dev/null 2>&1; then
             PKG_MGR="yum"
         else
@@ -283,11 +288,29 @@ install_fedora_rhel() {
 
     echo -e "\n${BLUE}[INFO]${RESET} Förbereder installation för Red Hat/Fedora-familjen ($PKG_MGR)..."
 
+    # På RHEL, Rocky Linux, AlmaLinux och CentOS ligger många utvecklings- och
+    # -static-paket i CRB (CodeReady Linux Builder, kallat PowerTools i EL8).
+    # Vi försöker aktivera CRB/PowerTools automatiskt innan vi söker efter paket.
+    local RHEL_MAJOR="${OS_VERSION_ID%%.*}"
+    local HOST_ARCH
+    HOST_ARCH="$(uname -m)"
+    if [ "$OS_ID" != "fedora" ] && [ "$OS_ID" != "nobara" ] && [ "$OS_ID" != "bazzite" ]; then
+        echo -e "${BLUE}[INFO]${RESET} Kontrollerar/aktiverar CRB/PowerTools-förråd om tillgängligt..."
+        if [ -x /usr/bin/crb ]; then
+            run_cmd $SUDO /usr/bin/crb enable >/dev/null 2>&1 || true
+        elif [ "$OS_ID" = "rhel" ] && command -v subscription-manager >/dev/null 2>&1 && [ -n "$RHEL_MAJOR" ]; then
+            run_cmd $SUDO subscription-manager repos --enable "codeready-builder-for-rhel-${RHEL_MAJOR}-${HOST_ARCH}-rpms" >/dev/null 2>&1 || true
+        elif [ "$DRY_RUN" -eq 0 ] && "$PKG_MGR" config-manager --help >/dev/null 2>&1; then
+            run_cmd $SUDO "$PKG_MGR" config-manager --set-enabled crb >/dev/null 2>&1 || \
+            run_cmd $SUDO "$PKG_MGR" config-manager --set-enabled powertools >/dev/null 2>&1 || true
+        fi
+    fi
+
     # Grundläggande byggverktyg & utvecklingsheaders enligt Makefile:
     #   gcc, make, binutils (strip)
     #   glibc-devel    -> standard C-headers
     #   ncurses-devel  -> <ncurses.h> samt dynamiska ncursesw/tinfo
-    #   libcurl-devel  -> <curl/curl.h>
+    #   libcurl-devel  -> <curl/curl.h> samt delat libcurl.so
     #   openssl-devel  -> -lssl -lcrypto headers & bibliotek
     #   brotli-devel   -> -lbrotlidec -lbrotlicommon headers & bibliotek
     #   sqlite-devel   -> -lsqlite3 headers & bibliotek
@@ -312,10 +335,12 @@ install_fedora_rhel() {
     fi
 
     # Statiska bibliotek för "-static" i Makefile:
-    #   På Fedora/RHEL ligger statiska ".a"-bibliotek i separata "-static"-paket.
-    #   På RHEL/Rocky/AlmaLinux krävs ofta att CRB / PowerTools-repot är aktiverat.
-    #   Dessutom saknar Fedora/RHEL ibland officiella static-paket för t.ex. sqlite
-    #   och brotli – vi kontrollerar därför varje statiskt paket innan vi lägger till det.
+    #   RHEL 9+ och Fedora skeppar inte längre openssl-static (libssl.a/libcrypto.a),
+    #   brotli-static (libbrotlidec.a/libbrotlicommon.a) eller sqlite-static i sina
+    #   officiella förråd av säkerhets- och FIPS-skäl.
+    #   Vi installerar de -static-paket som finns (t.ex. på RHEL 8 med CRB), och
+    #   när några saknas växlar Makefile automatiskt till dynamisk länkning mot
+    #   systemets egna .so-bibliotek (libcurl, libssl, libbrotli, sqlite, ncursesw).
     local STATIC_CANDIDATES=(
         "glibc-static"
         "ncurses-static"
@@ -343,11 +368,10 @@ install_fedora_rhel() {
         done
 
         if [ ${#MISSING_STATIC_RPM[@]} -gt 0 ]; then
-            echo -e "${YELLOW}[OBS]${RESET} Följande statiska paket hittades inte i aktiva förråd: ${MISSING_STATIC_RPM[*]}"
-            echo -e "${YELLOW}[TIPS]${RESET} På RHEL/Rocky/Alma kan du behöva aktivera CRB/PowerTools:"
-            echo -e "         sudo dnf config-manager --set-enabled crb   # (RHEL 9+)"
-            echo -e "         Saknas brotli-static/sqlite-static kan du behöva bygga dynamiskt"
-            echo -e "         genom att ta bort '-static' från LDFLAGS/TOOL_LDFLAGS i Makefile."
+            echo -e "${YELLOW}[INFO]${RESET} Följande -static-paket finns inte i aktiva RPM-förråd: ${MISSING_STATIC_RPM[*]}"
+            echo -e "       Detta är normalt på RHEL 9+/Fedora (Red Hat levererar t.ex. inte"
+            echo -e "       brotli-static eller openssl-static som RPM). Makefile känner av detta"
+            echo -e "       automatiskt och länkar istället dynamiskt mot systemets delade bibliotek."
         fi
     fi
 
@@ -356,6 +380,7 @@ install_fedora_rhel() {
         echo -e "${BLUE}[INFO]${RESET} Lägger till TeX Live / LaTeX-paket för manual/manual.pdf..."
         local LATEX_CANDIDATES=(
             "texlive-scheme-basic"
+            "texlive-latex"
             "texlive-collection-latex"
             "texlive-collection-latexrecommended"
             "texlive-collection-latexextra"
@@ -430,9 +455,9 @@ install_arch() {
 
     run_cmd $SUDO pacman -Syu "${PAC_FLAGS[@]}" "${PACKAGES[@]}"
 
-    echo -e "${YELLOW}[OBS]${RESET} Arch Linux bygger officiella bibliotekspaket utan statiska .a-filer (!staticlibs)."
-    echo -e "      Om 'make' klagar på saknade .a-bibliotek vid '-static', ta bort '-static'"
-    echo -e "      ur LDFLAGS och TOOL_LDFLAGS i Makefile för att länka dynamiskt."
+    echo -e "${BLUE}[INFO]${RESET} Arch Linux levererar officiella bibliotekspaket utan statiska .a-filer (!staticlibs)."
+    echo -e "       Makefile känner av detta automatiskt och länkar istället dynamiskt"
+    echo -e "       mot systemets delade bibliotek (-lcurl, -lncursesw, -lsqlite3)."
 }
 
 # ==============================================================================
@@ -440,39 +465,43 @@ install_arch() {
 # ==============================================================================
 install_opensuse() {
     echo -e "\n${BLUE}[INFO]${RESET} Förbereder installation för openSUSE/SLES-familjen (zypper)..."
+    echo -e "${BLUE}[INFO]${RESET} Uppdaterar paketkällor med zypper refresh..."
+    run_cmd $SUDO zypper --non-interactive refresh
 
     # Baspaket och headers som motsvarar alla flaggor i Makefile:
     #   gcc, make, binutils (strip)
-    #   glibc-devel, glibc-devel-static -> statiska libc.a/libm.a/libpthread.a/libdl.a
-    #   ncurses-devel                   -> <ncurses.h> samt ncursesw/tinfo
-    #   libcurl-devel                   -> <curl/curl.h>
-    #   libopenssl-devel                -> -lssl -lcrypto
-    #   zlib-devel, zlib-devel-static   -> -lz (inkl. libz.a)
-    #   libbrotli-devel                 -> -lbrotlidec -lbrotlicommon
-    #   sqlite3-devel                   -> -lsqlite3
+    #   glibc-devel       -> C-headers & grundläggande libc
+    #   ncurses-devel     -> <ncurses.h> samt ncursesw/tinfo
+    #   libcurl-devel     -> <curl/curl.h> samt libcurl.so
+    #   libopenssl-devel  -> -lssl -lcrypto headers & bibliotek
+    #   zlib-devel        -> -lz headers & bibliotek
+    #   libbrotli-devel   -> -lbrotlidec -lbrotlicommon headers & bibliotek
+    #   sqlite3-devel     -> -lsqlite3 headers & bibliotek
     local PACKAGES=(
         "gcc"
         "make"
         "binutils"
         "glibc-devel"
-        "glibc-devel-static"
         "ncurses-devel"
         "libcurl-devel"
         "libopenssl-devel"
         "zlib-devel"
-        "zlib-devel-static"
         "libbrotli-devel"
         "sqlite3-devel"
     )
 
-    # Kontrollera om extra statiska RPM-paket finns tillgängliga i aktiva repos
+    # Kontrollera vilka statiska (-static) RPM-paket som finns i aktiva förråd
     local OPTIONAL_STATIC=(
+        "glibc-devel-static"
+        "zlib-devel-static"
         "ncurses-devel-static"
         "libopenssl-devel-static"
         "sqlite3-devel-static"
         "libbrotli-devel-static"
     )
-    if [ "$DRY_RUN" -eq 0 ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+        PACKAGES+=("glibc-devel-static" "zlib-devel-static")
+    else
         for spkg in "${OPTIONAL_STATIC[@]}"; do
             if zypper_pkg_available "$spkg"; then
                 PACKAGES+=("$spkg")
@@ -485,6 +514,7 @@ install_opensuse() {
         echo -e "${BLUE}[INFO]${RESET} Lägger till TeX Live / LaTeX-paket för manual/manual.pdf..."
         local LATEX_CANDIDATES=(
             "texlive-latex"
+            "texlive-latex-bin"
             "texlive-babel-swedish"
             "texlive-microtype"
             "texlive-parskip"
@@ -493,6 +523,7 @@ install_opensuse() {
             "texlive-xcolor"
             "texlive-hyperref"
             "texlive-zapfding"
+            "texlive-collection-latex"
             "texlive-collection-latexrecommended"
             "texlive-collection-latexextra"
         )
@@ -738,26 +769,46 @@ verify_dependencies() {
             if [ -n "$resolved" ] && [ "$resolved" != "$slib" ] && [ -e "$resolved" ]; then
                 echo -e "  ${GREEN}[OK]${RESET} Statisk: ${slib}"
             else
-                echo -e "  ${YELLOW}[SAKNAS]${RESET} Statisk: ${slib} (krävs vid '-static' i Makefile)"
+                echo -e "  ${YELLOW}[INFO]${RESET} Statisk: ${slib} saknas (ej tillgänglig som .a på denna plattform)"
                 MISSING_STATIC=$((MISSING_STATIC + 1))
             fi
         done
+
+        # 4. Verifiera verklig länkning (både statiskt och dynamiskt) med symboler från curl/ncursesw/sqlite3
+        local DYN_OK=0
+        local STATIC_LINK_OK=0
+        local tmp_bin
+        tmp_bin="$(mktemp /tmp/ueilogg_verify_XXXXXX)"
+        local probe_src='void curl_global_init(long); void *initscr(void); const char *sqlite3_libversion(void); int main(void){ curl_global_init(0); initscr(); sqlite3_libversion(); return 0; }'
+
+        if printf '%s\n' "$probe_src" | \
+            gcc -x c - -static -lncursesw -ltinfo -L"${SCRIPT_DIR}/lib" -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group -lsqlite3 -lm -pthread -ldl -o "$tmp_bin" >/dev/null 2>&1; then
+            STATIC_LINK_OK=1
+            echo -e "  ${GREEN}[OK]${RESET} Länkning: Statisk länkning (-static med lib/libcurl.a) fungerar"
+        else
+            echo -e "  ${YELLOW}[INFO]${RESET} Länkning: Statisk länkning ej tillgänglig här (saknade .a eller annan libc/ABI)"
+        fi
+
+        if printf '%s\n' "$probe_src" | \
+            gcc -x c - -lncursesw -lcurl -lsqlite3 -lm -pthread -ldl -o "$tmp_bin" >/dev/null 2>&1; then
+            DYN_OK=1
+            echo -e "  ${GREEN}[OK]${RESET} Länkning: Dynamisk länkning (-lncursesw -lcurl -lsqlite3) fungerar"
+        else
+            echo -e "  ${RED}[SAKNAS]${RESET} Länkning: Dynamisk länkning (-lncursesw -lcurl -lsqlite3) misslyckades"
+        fi
+        rm -f "$tmp_bin"
     fi
 
     echo ""
-    if [ "$MISSING_TOOLS" -eq 0 ] && [ "$MISSING_HEADERS" -eq 0 ] && [ "$MISSING_STATIC" -eq 0 ]; then
-        echo -e "${GREEN}[OK]${RESET} ${BOLD}Alla byggberoenden och statiska bibliotek är på plats!${RESET}"
+    if [ "$MISSING_TOOLS" -eq 0 ] && [ "$MISSING_HEADERS" -eq 0 ] && [ "${STATIC_LINK_OK:-0}" -eq 1 ]; then
+        echo -e "${GREEN}[OK]${RESET} ${BOLD}Alla byggberoenden och statiska bibliotek är på plats! (Statisk länkning aktiv)${RESET}"
+    elif [ "$MISSING_TOOLS" -eq 0 ] && [ "$MISSING_HEADERS" -eq 0 ] && [ "${DYN_OK:-0}" -eq 1 ]; then
+        echo -e "${GREEN}[OK]${RESET} ${BOLD}Alla byggberoenden är på plats!${RESET}"
+        echo -e "${BLUE}[INFO]${RESET} Statisk hel-länkning är inte tillgänglig på denna plattform,"
+        echo "       så Makefile växlar automatiskt till dynamisk länkning mot systemets bibliotek."
     else
-        if [ "$MISSING_TOOLS" -gt 0 ] || [ "$MISSING_HEADERS" -gt 0 ]; then
-            echo -e "${RED}[VARNING]${RESET} Vissa verktyg eller headerfiler saknas fortfarande."
-        fi
-        if [ "$MISSING_STATIC" -gt 0 ]; then
-            echo -e "${YELLOW}[INFO]${RESET} ${MISSING_STATIC} statiskt/statiska bibliotek (.a) saknas på detta system."
-            echo "       Makefile länkar som standard statiskt (-static)."
-            echo "       Om länkningssteget misslyckas på din distribution kan du:"
-            echo "         1) Installera motsvarande -static-paket om de finns i extra förråd, eller"
-            echo "         2) Ta bort '-static' från LDFLAGS och TOOL_LDFLAGS i Makefile."
-        fi
+        echo -e "${RED}[VARNING]${RESET} Vissa verktyg, headerfiler eller länkningsbibliotek saknas fortfarande."
+        echo "          Kontrollera utskriften ovan innan du kör 'make'."
     fi
 }
 
