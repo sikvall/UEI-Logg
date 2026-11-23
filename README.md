@@ -155,52 +155,75 @@ sudo zypper install -y gcc make ncurses-devel libcurl-devel sqlite3-devel
 
 ## Kompilering och bygge
 
-Projektet byggs med GNU Make.
+Projektet stöder GNU-konfigurering (`./configure`) och byggs med GNU Make.
 
-### Bygg alla mål (huvudprogram, dxcc, testbinär och manual)
+### Konfigurera (valfritt) och bygg alla mål
 
 ```bash
+# Konfigurera installationssökvägar och kompilator (t.ex. --prefix=/usr)
+./configure
+
+# Bygg huvudprogram, dxcc, testbinär och (om pdflatex finns) manual
 make
 # eller
 make all
 ```
 
-Detta skapar följande i projektkatalogen:
-- **`ueilogg`**: Det huvudsakliga TUI-loggboksprogrammet.
-- **`dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`~/.ueilogg/dxcc.txt`).
-- **`testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (115 tester).
+Detta skapar följande byggda filer i projektkatalogen:
+- **`bin/ueilogg`**: Det huvudsakliga TUI-loggboksprogrammet.
+- **`bin/dxcc`**: Hjälpverktyg för uppdatering och analys av DXCC-databasen (`~/.ueilogg/dxcc.txt`).
+- **`bin/testing`**: Fristående automatiserad testsvit för enhets- och regressionstester (115 tester).
 - **`manual/manual.pdf`**: Komplett användarmanual i PDF-format.
 
 ### Bygg enskilda mål
 
 ```bash
-# Bygg endast UEI-Logg
+# Bygg endast UEI-Logg (bin/ueilogg)
 make ueilogg
 
-# Bygg endast DXCC-verktyget
+# Bygg endast DXCC-verktyget (bin/dxcc)
 make dxcc
 
-# Bygg och kör testsviten
-make test
+# Bygg och kör testsviten (make test eller GNU-standard make check)
+make check
 
 # Bygg användarmanualen
 make manual
 
-# Installera / avinstallera lokalt (standard: /usr/local)
+# Installera / avinstallera lokalt (standard: /usr/local eller valt --prefix)
 sudo make install
 sudo make uninstall
+
+# Skapa inbyggt paket för din aktuella distribution automatiskt (dist/)
+make package
 
 # Skapa Debian/Ubuntu-paket (.deb) i dist/
 make deb
 sudo apt install ./dist/ueilogg_<version>_<arkitektur>.deb
+
+# Skapa RPM-paket (.rpm) för RHEL / Fedora / Rocky / Alma / openSUSE i dist/
+make rpm
+sudo dnf install ./dist/ueilogg-<version>-1.*.rpm
+
+# Skapa Arch Linux / Manjaro-paket (.pkg.tar.zst) i dist/
+make archpkg
+sudo pacman -U ./dist/ueilogg-<version>-1-*.pkg.tar.*
+
+# Skapa Alpine Linux-paket (.apk) eller portabel binär-/källkodstarboll i dist/
+make apk
+make tarball
+make dist
 ```
 
 ### Rensa byggfiler
 
-För att ta bort kompilerade objektfiler (`*.o`), binärer, `build/`, `dist/` och temporära LaTeX-filer:
+För att ta bort kompilerade objektfiler (`*.o`), `bin/`, `build/`, `dist/` och temporära LaTeX-filer:
 
 ```bash
 make clean
+
+# Ta även bort genererade konfigurationsfiler (config.mk, config.log, config.status)
+make distclean
 ```
 
 ---
@@ -212,7 +235,7 @@ make clean
 Starta programmet i din terminal (konfiguration och databaser skapas automatiskt i `~/.ueilogg/`):
 
 ```bash
-./ueilogg
+./bin/ueilogg
 ```
 
 ### Kommandoradsflaggor
@@ -221,14 +244,14 @@ UEI-Logg stöder valfri databasfil via kommandoraden:
 
 ```bash
 # Använd en specifik databas i ~/.ueilogg/ (skapas automatiskt om den saknas)
-./ueilogg -l contest2026.sq3
-./ueilogg --logfile=/path/to/my_log.sq3
+./bin/ueilogg -l contest2026.sq3
+./bin/ueilogg --logfile=/path/to/my_log.sq3
 
 # Visa hjälpinformation
-./ueilogg --help
+./bin/ueilogg --help
 
 # Visa programversion
-./ueilogg --version
+./bin/ueilogg --version
 ```
 
 ---
@@ -239,20 +262,20 @@ Projektet inkluderar det fristående verktyget `dxcc` för hantering av `~/.ueil
 
 ```bash
 # Visa hjälp och tillgängliga kommandon
-./dxcc help
+./bin/dxcc help
 
 # Visa version
-./dxcc version
+./bin/dxcc version
 
 # Uppdatera ~/.ueilogg/dxcc.txt från Jim Reisert AD1C:s Country Files online
-./dxcc update
+./bin/dxcc update
 
 # Presentera detaljerad statistik och formaterade tabeller över databasen
-./dxcc stat
+./bin/dxcc stat
 
 # Slå upp DXCC-entitet för en anropssignal direkt i terminalen
-./dxcc lookup SM5UEI
-./dxcc lookup OH0
+./bin/dxcc lookup SM5UEI
+./bin/dxcc lookup OH0
 ```
 
 ---

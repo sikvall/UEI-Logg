@@ -107,43 +107,55 @@ sudo apt install -y texlive-latex-base texlive-latex-extra \
     texlive-lang-european
 \end{verbatim}
 
-\subsection{Kompilering med Make}
-Projektet levereras med en färdig \texttt{Makefile}:
+\subsection{Konfigurering och kompilering med Make}
+Projektet har GNU-kompatibel konfigurering (\texttt{./configure}) och levereras med en \texttt{Makefile} där färdiga binärer placeras i katalogen \texttt{bin/}:
 
 \begin{verbatim}
-# Bygg samtliga mål (ueilogg, dxcc, testing och manual)
+# (Valfritt) Konfigurera installationsprefix, kompilator m.m.
+./configure --prefix=/usr/local
+
+# Bygg samtliga mål (bin/ueilogg, bin/dxcc, bin/testing och manual)
 make
 # eller
 make all
 
-# Bygg endast huvudprogrammet (ueilogg)
+# Bygg endast huvudprogrammet (bin/ueilogg)
 make ueilogg
 
-# Bygg endast hjälpprogrammet dxcc
+# Bygg endast hjälpprogrammet dxcc (bin/dxcc)
 make dxcc
 
-# Bygg och kör den automatiserade testsviten
-make test
+# Bygg och kör den automatiserade testsviten (make test eller make check)
+make check
 
 # Bygg användarmanualen till PDF via pdflatex
 make manual
 
-# Installera / avinstallera lokalt i /usr/local
+# Installera / avinstallera lokalt (standard: /usr/local eller valt --prefix)
 sudo make install
 sudo make uninstall
 
-# Skapa Debian/Ubuntu-paket (.deb) i dist/
-make deb
-sudo apt install ./dist/ueilogg_<version>_<arkitektur>.deb
+# Skapa paket för din Linux-distribution automatiskt i dist/ (deb/rpm/arch/apk/tarball)
+make package
 
-# Rensa kompilerade filer, build/, dist/ och byggda binärer
+# Specifika paketformat i dist/:
+make deb        # Debian / Ubuntu / Mint (.deb)
+make rpm        # RHEL / Fedora / Rocky / Alma / openSUSE (.rpm)
+make archpkg    # Arch Linux / Manjaro (.pkg.tar.*)
+make apk        # Alpine Linux (.apk)
+make tarball    # Portabel binärtarboll (.tar.gz)
+make dist       # Källkodstarboll (.tar.gz)
+
+# Rensa kompilerade filer, bin/, build/, dist/ och byggda binärer
 make clean
+# Rensa även genererade konfigurationsfiler (config.mk, config.log, config.status)
+make distclean
 \end{verbatim}
 
 \subsection{Starta Programmet}
 Kör programmet direkt från terminalen (konfiguration, databas och \texttt{dxcc.txt} hanteras automatiskt i \texttt{\textasciitilde/.ueilogg/}):
 \begin{verbatim}
-./ueilogg
+./bin/ueilogg
 \end{verbatim}
 
 \textbf{Tips för terminalstorlek:} Minsta rekommenderade terminalstorlek är $80 \times 25$ tecken. Har terminalen minst 30 rader visas även statistikrutan högst upp. I mindre fönster anpassas layouten automatiskt så att inmatning och loggrutor alltid förblir läsbara.
@@ -395,13 +407,13 @@ Tillsammans med UEI-Logg medföljer hjälpbinären \texttt{dxcc}. Den används i
 \subsection{Kommandoöversikt}
 Programmet anropas med syntaxen:
 \begin{verbatim}
-./dxcc <kommando> [argument]
+./bin/dxcc <kommando> [argument]
 \end{verbatim}
 
 \subsubsection{dxcc update}
 Laddar ner den senaste officiella DXCC- och prefixdatabasen från AD1C:s Country Files (\texttt{cty.csv}) via HTTPS och sparar den till \texttt{\textasciitilde/.ueilogg/dxcc.txt} (efter säkerhetskopiering till \texttt{dxcc.txt.bak}):
 \begin{verbatim}
-$ ./dxcc update
+$ ./bin/dxcc update
 DXCC-uppdatering startar...
   Sparad fil:        /home/user/.ueilogg/dxcc.txt
 \end{verbatim}
@@ -412,7 +424,7 @@ Analyserar \texttt{\textasciitilde/.ueilogg/dxcc.txt} och presenterar en översk
 \subsubsection{dxcc lookup <signal>}
 Slår upp en anropssignal och visar svenskt DXCC-land och matchande regel:
 \begin{verbatim}
-$ ./dxcc lookup SM5UEI
+$ ./bin/dxcc lookup SM5UEI
 Signal:        SM5UEI
 DXCC-land:     Sverige
 Matchning:     Prefixmatch (SM)

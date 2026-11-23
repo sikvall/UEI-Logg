@@ -1,0 +1,561 @@
+#!/bin/sh
+# ==============================================================================
+# configure - GNU-kompatibelt konfigurationsskript för UEI-Logg
+# ==============================================================================
+#
+# Stöder standardflaggor enligt GNU Coding Standards, t.ex.:
+#   ./configure --prefix=/usr --enable-debug
+#   ./configure CC=clang --disable-manual
+#   make && make check && sudo make install
+#
+# Skapar:
+#   config.mk     - Inkluderas automatiskt av Makefile
+#   config.status - Kan köras för att återskapa config.mk (--recheck)
+#   config.log    - Detaljerad logg över alla kompilator- och bibliotekstester
+#
+# ==============================================================================
+
+set -u
+
+PACKAGE_NAME="UEI-Logg"
+PACKAGE_TARNAME="ueilogg"
+PACKAGE_BUGREPORT="sm5uei@avitec.se"
+
+# Hitta källkodskatalog relativt detta skript
+srcdir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+if [ ! -f "$srcdir/src/main.c" ] || [ ! -f "$srcdir/src/version.h" ]; then
+    echo "configure: fel: kunde inte hitta källkod i '$srcdir'" >&2
+    exit 1
+fi
+
+PACKAGE_VERSION="$(sed -n 's/^#define[[:space:]]\{1,\}APP_VERSION[[:space:]]\{1,\}"\([^"]*\)".*/\1/p' "$srcdir/src/version.h")"
+if [ -z "$PACKAGE_VERSION" ]; then
+    PACKAGE_VERSION="1.0.0"
+fi
+
+# ------------------------------------------------------------------------------
+# Standardvärden för GNU-kataloger och byggalternativ
+# ------------------------------------------------------------------------------
+prefix="/usr/local"
+exec_prefix=""
+bindir=""
+datarootdir=""
+datadir=""
+docdir=""
+mandir=""
+libdir=""
+sysconfdir=""
+
+enable_debug="no"
+enable_werror="no"
+enable_static="no"
+enable_manual="auto"
+quiet="no"
+host_alias=""
+build_alias=""
+
+# Bevara ursprungliga argument för config.status --recheck
+ORIG_ARGS=""
+for _arg in "$@"; do
+    _escaped="$(printf '%s' "$_arg" | sed "s/'/'\\\\''/g")"
+    ORIG_ARGS="$ORIG_ARGS '$_escaped'"
+done
+
+# ------------------------------------------------------------------------------
+# Hjälpfunktioner
+# ------------------------------------------------------------------------------
+print_help() {
+    cat <<EOF
+'configure' konfigurerar $PACKAGE_NAME $PACKAGE_VERSION inför kompilering.
+
+Användning: $0 [FLAGGA]... [VAR=VÄRDE]...
+
+Allmänna flaggor:
+  -h, --help              visa denna hjälptext och avsluta
+  -V, --version           visa versionsinformation och avsluta
+  -q, --quiet, --silent   dölj 'checking ...'-utskrifter
+
+Installationskataloger:
+  --prefix=PREFIX         installera arkitekturoberoende filer i PREFIX
+                          [/usr/local]
+  --exec-prefix=EPREFIX   installera arkitekturberoende filer i EPREFIX
+                          [PREFIX]
+  --bindir=DIR            användarkörbara program [EPREFIX/bin]
+  --datarootdir=DIR       rot för skrivskyddad data [PREFIX/share]
+  --datadir=DIR           delade datafiler (dxcc.txt m.m.) [DATAROOTDIR]
+  --docdir=DIR            dokumentationsfiler [DATAROOTDIR/doc/$PACKAGE_TARNAME]
+  --mandir=DIR            manualsidor [DATAROOTDIR/man]
+
+Valfria funktioner:
+  --enable-debug          kompilera med felsökningssymboler (-g -O0 -DDEBUG)
+  --disable-debug         kompilera optimerat utan debug (-O2) [standard]
+  --enable-werror         behandla kompilatorvarningar som fel (-Werror)
+  --enable-static         länka statiskt mot .a-bibliotek om möjligt
+  --disable-static        länka dynamiskt mot systemets bibliotek [standard]
+  --enable-manual         kräv pdflatex och bygg manual/manual.pdf
+  --disable-manual        hoppa över PDF-manualen även om pdflatex finns
+
+Införda miljövariabler (kan även anges som VAR=VÄRDE):
+  CC          C-kompilator (t.ex. gcc, clang)
+  CFLAGS      flaggor till C-kompilatorn
+  CPPFLAGS    preprocessor-flaggor (t.ex. -I/sökväg/include)
+  LDFLAGS     länkarflaggor (t.ex. -L/sökväg/lib)
+  PKG_CONFIG  sökväg till pkg-config
+  STRIP       verktyg för att strippa binärer vid install
+  PDFLATEX    sökväg till pdflatex
+EOF
+}
+
+print_version() {
+    cat <<EOF
+$PACKAGE_NAME configure $PACKAGE_VERSION
+Skapad för GNU-kompatibel konfigurering och dynamisk/valfri statisk länkning.
+EOF
+}
+
+msg_check() {
+    [ "$quiet" = "yes" ] || printf "checking %s... " "$1"
+    printf "checking %s... " "$1" >>"$LOG_FILE"
+}
+
+msg_res() {
+    [ "$quiet" = "yes" ] || printf "%s\n" "$1"
+    printf "%s\n" "$1" >>"$LOG_FILE"
+}
+
+die() {
+    echo "configure: fel: $1" >&2
+    echo "configure: fel: $1" >>"$LOG_FILE"
+    echo "Se 'config.log' för mer information." >&2
+    exit 1
+}
+
+# ------------------------------------------------------------------------------
+# Tolka kommandoradsflaggor och VAR=VÄRDE-par enligt GNU-konvention
+# ------------------------------------------------------------------------------
+prev_opt=""
+for opt in "$@"; do
+    if [ -n "$prev_opt" ]; then
+        eval "$prev_opt=\$opt"
+        prev_opt=""
+        continue
+    fi
+
+    case "$opt" in
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        -V|--version)
+            print_version
+            exit 0
+            ;;
+        -q|--quiet|--silent)
+            quiet="yes"
+            ;;
+        --prefix=*)         prefix="${opt#*=}" ;;
+        --prefix)           prev_opt="prefix" ;;
+        --exec-prefix=*)    exec_prefix="${opt#*=}" ;;
+        --exec-prefix)      prev_opt="exec_prefix" ;;
+        --bindir=*)         bindir="${opt#*=}" ;;
+        --bindir)           prev_opt="bindir" ;;
+        --datarootdir=*)    datarootdir="${opt#*=}" ;;
+        --datarootdir)      prev_opt="datarootdir" ;;
+        --datadir=*)        datadir="${opt#*=}" ;;
+        --datadir)          prev_opt="datadir" ;;
+        --docdir=*)         docdir="${opt#*=}" ;;
+        --docdir)           prev_opt="docdir" ;;
+        --mandir=*)         mandir="${opt#*=}" ;;
+        --mandir)           prev_opt="mandir" ;;
+        --libdir=*)         libdir="${opt#*=}" ;;
+        --libdir)           prev_opt="libdir" ;;
+        --sysconfdir=*)     sysconfdir="${opt#*=}" ;;
+        --sysconfdir)       prev_opt="sysconfdir" ;;
+        --sbindir=*|--libexecdir=*|--sharedstatedir=*|--localstatedir=*|--includedir=*|--infodir=*|--oldincludedir=*|--localedir=*|--htmldir=*|--dvidir=*|--pdfdir=*|--psdir=*|--srcdir=*)
+            ;;
+        --sbindir|--libexecdir|--sharedstatedir|--localstatedir|--includedir|--infodir|--oldincludedir|--localedir|--htmldir|--dvidir|--pdfdir|--psdir|--srcdir)
+            prev_opt="_ignored_opt"
+            ;;
+        --host=*)           host_alias="${opt#*=}" ;;
+        --host)             prev_opt="host_alias" ;;
+        --build=*)          build_alias="${opt#*=}" ;;
+        --build)            prev_opt="build_alias" ;;
+        --target=*)         ;;
+        --target)           prev_opt="_ignored_opt" ;;
+        --enable-debug|--enable-debug=yes)
+            enable_debug="yes" ;;
+        --disable-debug|--enable-debug=no)
+            enable_debug="no" ;;
+        --enable-werror|--enable-werror=yes)
+            enable_werror="yes" ;;
+        --disable-werror|--enable-werror=no)
+            enable_werror="no" ;;
+        --enable-static|--enable-static=yes)
+            enable_static="yes" ;;
+        --disable-static|--enable-static=no)
+            enable_static="no" ;;
+        --enable-manual|--enable-manual=yes)
+            enable_manual="yes" ;;
+        --disable-manual|--enable-manual=no)
+            enable_manual="no" ;;
+        --disable-dependency-tracking|--enable-dependency-tracking|--disable-silent-rules|--enable-silent-rules|--disable-option-checking)
+            ;;
+        *=*)
+            env_name="${opt%%=*}"
+            env_val="${opt#*=}"
+            case "$env_name" in
+                *[!A-Za-z0-9_]*|'')
+                    echo "configure: fel: ogiltigt variabelnamn '$env_name'" >&2
+                    exit 1
+                    ;;
+                *)
+                    eval "$env_name=\$env_val"
+                    export "$env_name"
+                    ;;
+            esac
+            ;;
+        -*)
+            echo "configure: fel: okänd flagga '$opt' (se --help)" >&2
+            exit 1
+            ;;
+        *)
+            echo "configure: varning: ignorerar oväntat argument '$opt'" >&2
+            ;;
+    esac
+done
+
+if [ -n "$prev_opt" ]; then
+    echo "configure: fel: flaggan saknar värde" >&2
+    exit 1
+fi
+
+# ------------------------------------------------------------------------------
+# Initiera config.log
+# ------------------------------------------------------------------------------
+LOG_FILE="config.log"
+cat >"$LOG_FILE" <<EOF
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+It was created by $PACKAGE_NAME configure $PACKAGE_VERSION
+Invocation: $0$ORIG_ARGS
+
+uname -m = $(uname -m 2>/dev/null || echo unknown)
+uname -r = $(uname -r 2>/dev/null || echo unknown)
+uname -s = $(uname -s 2>/dev/null || echo unknown)
+
+EOF
+
+# Härled standardkataloger enligt GNU-hierarkin
+[ -n "$exec_prefix" ] || exec_prefix="$prefix"
+[ -n "$bindir" ]      || bindir="${exec_prefix}/bin"
+[ -n "$datarootdir" ] || datarootdir="${prefix}/share"
+[ -n "$datadir" ]     || datadir="${datarootdir}"
+[ -n "$docdir" ]      || docdir="${datarootdir}/doc/${PACKAGE_TARNAME}"
+[ -n "$mandir" ]      || mandir="${datarootdir}/man"
+
+app_datadir="${datadir}/${PACKAGE_TARNAME}"
+app_dir="${datarootdir}/applications"
+
+# ------------------------------------------------------------------------------
+# Hitta verktyg (C-kompilator, make, install, strip, pkg-config, pdflatex)
+# ------------------------------------------------------------------------------
+find_prog() {
+    _fp_name="$1"
+    _fp_old_ifs="$IFS"
+    IFS=":"
+    for _fp_dir in $PATH; do
+        [ -z "$_fp_dir" ] && _fp_dir="."
+        if [ -x "$_fp_dir/$_fp_name" ] && [ ! -d "$_fp_dir/$_fp_name" ]; then
+            IFS="$_fp_old_ifs"
+            printf '%s\n' "$_fp_dir/$_fp_name"
+            return 0
+        fi
+    done
+    IFS="$_fp_old_ifs"
+    return 1
+}
+
+msg_check "for C compiler"
+if [ -z "${CC:-}" ]; then
+    if [ -n "$host_alias" ] && find_prog "${host_alias}-gcc" >/dev/null 2>&1; then
+        CC="${host_alias}-gcc"
+    elif find_prog gcc >/dev/null 2>&1; then
+        CC="gcc"
+    elif find_prog cc >/dev/null 2>&1; then
+        CC="cc"
+    elif find_prog clang >/dev/null 2>&1; then
+        CC="clang"
+    else
+        msg_res "no"
+        die "ingen C-kompilator hittades. Kör ./install_dependencies.sh först."
+    fi
+fi
+msg_res "$CC"
+
+# Kontrollera att C-kompilatorn fungerar och klarar C11
+msg_check "whether the C compiler works and supports C11"
+_tmp_c="$(mktemp /tmp/ueilogg_cfg_XXXXXX.c)"
+_tmp_out="$(mktemp /tmp/ueilogg_cfg_XXXXXX)"
+cat >"$_tmp_c" <<'EOF'
+#include <stdio.h>
+int main(void) {
+    int arr[] = { [0] = 1 };
+    (void)arr;
+    return 0;
+}
+EOF
+if $CC -std=c11 ${CPPFLAGS:-} ${CFLAGS:-} "$_tmp_c" -o "$_tmp_out" >>"$LOG_FILE" 2>&1; then
+    msg_res "yes"
+else
+    msg_res "no"
+    rm -f "$_tmp_c" "$_tmp_out"
+    die "$CC kunde inte kompilera en enkel C11-kodsnutt."
+fi
+rm -f "$_tmp_c" "$_tmp_out"
+
+msg_check "for make"
+MAKE_PROG="${MAKE:-}"
+if [ -z "$MAKE_PROG" ]; then
+    if find_prog make >/dev/null 2>&1; then
+        MAKE_PROG="make"
+    else
+        msg_res "no"
+        die "GNU make hittades inte."
+    fi
+fi
+msg_res "$MAKE_PROG"
+
+msg_check "for strip"
+if [ -z "${STRIP:-}" ]; then
+    if [ -n "$host_alias" ] && find_prog "${host_alias}-strip" >/dev/null 2>&1; then
+        STRIP="${host_alias}-strip"
+    elif find_prog strip >/dev/null 2>&1; then
+        STRIP="strip"
+    else
+        STRIP="true"
+    fi
+fi
+msg_res "$STRIP"
+
+msg_check "for pkg-config"
+if [ -z "${PKG_CONFIG:-}" ]; then
+    if [ -n "$host_alias" ] && find_prog "${host_alias}-pkg-config" >/dev/null 2>&1; then
+        PKG_CONFIG="${host_alias}-pkg-config"
+    elif find_prog pkg-config >/dev/null 2>&1; then
+        PKG_CONFIG="pkg-config"
+    else
+        PKG_CONFIG=""
+    fi
+fi
+msg_res "${PKG_CONFIG:-no}"
+
+msg_check "for pdflatex"
+if [ -z "${PDFLATEX:-}" ]; then
+    if find_prog pdflatex >/dev/null 2>&1; then
+        PDFLATEX="pdflatex"
+    else
+        PDFLATEX=""
+    fi
+fi
+msg_res "${PDFLATEX:-no}"
+
+if [ "$enable_manual" = "yes" ]; then
+    [ -n "$PDFLATEX" ] || die "--enable-manual angavs, men pdflatex hittades inte (kör ./install_dependencies.sh --latex)."
+    build_manual=1
+elif [ "$enable_manual" = "no" ]; then
+    build_manual=0
+else
+    if [ -n "$PDFLATEX" ]; then
+        build_manual=1
+    else
+        build_manual=0
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# Hämta flaggor via pkg-config om tillgängligt, annars säkra standardvärden
+# ------------------------------------------------------------------------------
+NCURSES_CFLAGS=""
+NCURSES_LIBS="-lncursesw"
+CURL_CFLAGS=""
+CURL_LIBS="-lcurl"
+SQLITE_CFLAGS=""
+SQLITE_LIBS="-lsqlite3"
+
+if [ -n "$PKG_CONFIG" ]; then
+    if "$PKG_CONFIG" --exists ncursesw >/dev/null 2>&1; then
+        NCURSES_CFLAGS="$("$PKG_CONFIG" --cflags ncursesw 2>/dev/null || true)"
+        NCURSES_LIBS="$("$PKG_CONFIG" --libs ncursesw 2>/dev/null || echo "-lncursesw")"
+    fi
+    if "$PKG_CONFIG" --exists libcurl >/dev/null 2>&1; then
+        CURL_CFLAGS="$("$PKG_CONFIG" --cflags libcurl 2>/dev/null || true)"
+        CURL_LIBS="$("$PKG_CONFIG" --libs libcurl 2>/dev/null || echo "-lcurl")"
+    fi
+    if "$PKG_CONFIG" --exists sqlite3 >/dev/null 2>&1; then
+        SQLITE_CFLAGS="$("$PKG_CONFIG" --cflags sqlite3 2>/dev/null || true)"
+        SQLITE_LIBS="$("$PKG_CONFIG" --libs sqlite3 2>/dev/null || echo "-lsqlite3")"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# Sätt ihop kompilator- och länkarflaggor
+# ------------------------------------------------------------------------------
+if [ -n "${CFLAGS:-}" ]; then
+    CFG_OPT_CFLAGS="$CFLAGS"
+else
+    if [ "$enable_debug" = "yes" ]; then
+        CFG_OPT_CFLAGS="-g -O0 -DDEBUG"
+    else
+        CFG_OPT_CFLAGS="-O2"
+    fi
+fi
+
+CFG_WERROR=""
+if [ "$enable_werror" = "yes" ]; then
+    CFG_WERROR="-Werror"
+fi
+
+EXTRA_PKG_CFLAGS=""
+for _cf in $NCURSES_CFLAGS $CURL_CFLAGS $SQLITE_CFLAGS; do
+    case "$_cf" in
+        -D_DEFAULT_SOURCE|-D_XOPEN_SOURCE=*)
+            continue
+            ;;
+    esac
+    case " $EXTRA_PKG_CFLAGS " in
+        *" $_cf "*) ;;
+        *) EXTRA_PKG_CFLAGS="$EXTRA_PKG_CFLAGS $_cf" ;;
+    esac
+done
+
+FINAL_CFLAGS="-Wall -Wextra ${CFG_WERROR} -std=c11 ${CFG_OPT_CFLAGS} -D_DEFAULT_SOURCE -D_XOPEN_SOURCE_EXTENDED -Isrc -pthread ${CPPFLAGS:-} ${EXTRA_PKG_CFLAGS}"
+# Ta bort dubbla mellanslag snyggt
+FINAL_CFLAGS="$(printf '%s' "$FINAL_CFLAGS" | tr -s ' ' | sed 's/^ //; s/ $//')"
+
+if [ "$enable_static" = "yes" ]; then
+    STATIC_CURL_LIBS="-Llib -Wl,--start-group -lcurl -lssl -lcrypto -lz -lbrotlidec -lbrotlicommon -Wl,--end-group"
+    FINAL_LDFLAGS="-static ${NCURSES_LIBS} -ltinfo ${STATIC_CURL_LIBS} ${SQLITE_LIBS} -lm -pthread -ldl ${LDFLAGS:-}"
+    FINAL_TOOL_LDFLAGS="-static ${STATIC_CURL_LIBS} -lm -pthread -ldl ${LDFLAGS:-}"
+else
+    FINAL_LDFLAGS="${NCURSES_LIBS} ${CURL_LIBS} ${SQLITE_LIBS} -lm -pthread -ldl ${LDFLAGS:-}"
+    FINAL_TOOL_LDFLAGS="${CURL_LIBS} -lm -pthread -ldl ${LDFLAGS:-}"
+fi
+FINAL_LDFLAGS="$(printf '%s' "$FINAL_LDFLAGS" | tr -s ' ' | sed 's/^ //; s/ $//')"
+FINAL_TOOL_LDFLAGS="$(printf '%s' "$FINAL_TOOL_LDFLAGS" | tr -s ' ' | sed 's/^ //; s/ $//')"
+
+# ------------------------------------------------------------------------------
+# Verifiera nödvändiga C-headers och länkning
+# ------------------------------------------------------------------------------
+check_header() {
+    _hdr="$1"
+    msg_check "for <$_hdr>"
+    _tmp_hc="$(mktemp /tmp/ueilogg_hdr_XXXXXX.c)"
+    _tmp_ho="$(mktemp /tmp/ueilogg_hdr_XXXXXX.o)"
+    printf '#include <%s>\nint main(void){return 0;}\n' "$_hdr" >"$_tmp_hc"
+    if $CC $FINAL_CFLAGS -c "$_tmp_hc" -o "$_tmp_ho" >>"$LOG_FILE" 2>&1; then
+        msg_res "yes"
+        rm -f "$_tmp_hc" "$_tmp_ho"
+        return 0
+    else
+        msg_res "no"
+        rm -f "$_tmp_hc" "$_tmp_ho"
+        return 1
+    fi
+}
+
+check_header "ncurses.h"   || die "<ncurses.h> saknas. Kör ./install_dependencies.sh först."
+check_header "curl/curl.h" || die "<curl/curl.h> saknas. Kör ./install_dependencies.sh först."
+check_header "sqlite3.h"   || die "<sqlite3.h> saknas. Kör ./install_dependencies.sh först."
+check_header "pthread.h"   || die "<pthread.h> saknas."
+
+msg_check "whether linking against ncursesw, libcurl and sqlite3 succeeds"
+_tmp_lc="$(mktemp /tmp/ueilogg_lnk_XXXXXX.c)"
+_tmp_lb="$(mktemp /tmp/ueilogg_lnk_XXXXXX)"
+cat >"$_tmp_lc" <<'EOF'
+#include <ncurses.h>
+#include <curl/curl.h>
+#include <sqlite3.h>
+int main(void) {
+    curl_global_init(0);
+    sqlite3_libversion();
+    (void)stdscr;
+    return 0;
+}
+EOF
+if $CC $FINAL_CFLAGS "$_tmp_lc" -o "$_tmp_lb" $FINAL_LDFLAGS >>"$LOG_FILE" 2>&1; then
+    msg_res "yes"
+else
+    msg_res "no"
+    rm -f "$_tmp_lc" "$_tmp_lb"
+    if [ "$enable_static" = "yes" ]; then
+        die "statisk länkning (--enable-static) misslyckades. Saknas .a-bibliotek, använd dynamisk länkning istället (utan --enable-static)."
+    else
+        die "länkning mot ncursesw/libcurl/sqlite3 misslyckades. Kör ./install_dependencies.sh och se config.log."
+    fi
+fi
+rm -f "$_tmp_lc" "$_tmp_lb"
+
+# ------------------------------------------------------------------------------
+# Skriv config.mk och config.status
+# ------------------------------------------------------------------------------
+msg_check "creating config.mk"
+cat >config.mk <<EOF
+# Genererad av ./configure den $(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "okänt datum")
+# Kör ./configure igen (eller ./config.status --recheck) för att ändra dessa värden.
+
+CC = $CC
+STRIP = $STRIP
+PDFLATEX = ${PDFLATEX:-pdflatex}
+CFLAGS = $FINAL_CFLAGS
+LDFLAGS = $FINAL_LDFLAGS
+TOOL_LDFLAGS = $FINAL_TOOL_LDFLAGS
+
+PREFIX = $prefix
+EXEC_PREFIX = $exec_prefix
+BINDIR = \$(DESTDIR)$bindir
+DATAROOTDIR = $datarootdir
+DATADIR = \$(DESTDIR)$app_datadir
+DOCDIR = \$(DESTDIR)$docdir
+APPDIR = \$(DESTDIR)$app_dir
+MANDIR = \$(DESTDIR)$mandir
+
+BUILD_MANUAL = $build_manual
+EOF
+msg_res "done"
+
+msg_check "creating config.status"
+cat >config.status <<EOF
+#!/bin/sh
+# Återskapar konfigurationen för $PACKAGE_NAME $PACKAGE_VERSION
+if [ "\${1:-}" = "--recheck" ]; then
+    exec "$srcdir/configure" $ORIG_ARGS
+fi
+exec "$srcdir/configure" $ORIG_ARGS "\$@"
+EOF
+chmod +x config.status
+msg_res "done"
+
+# ------------------------------------------------------------------------------
+# Sammanfattning
+# ------------------------------------------------------------------------------
+if [ "$quiet" != "yes" ]; then
+    echo ""
+    echo "================================================================"
+    echo "  $PACKAGE_NAME $PACKAGE_VERSION konfigurerad"
+    echo "================================================================"
+    echo "  Kompilator (CC)   : $CC"
+    echo "  Länkningsläge     : $( [ "$enable_static" = "yes" ] && echo "statiskt (-static)" || echo "dynamiskt (.so)" )"
+    echo "  Debug-läge        : $enable_debug"
+    echo "  Bygg PDF-manual   : $( [ "$build_manual" = "1" ] && echo "ja ($PDFLATEX)" || echo "nej" )"
+    echo "  Install-prefix    : $prefix"
+    echo "  Binärer install.  : $bindir (byggs i ./bin/)"
+    echo "  Delade datafiler  : $app_datadir"
+    echo "  Dokumentation     : $docdir"
+    echo "----------------------------------------------------------------"
+    echo "  Kör nu:"
+    echo "    $MAKE_PROG              (bygger bin/ueilogg, bin/dxcc, bin/testing)"
+    echo "    $MAKE_PROG check        (kör automatiserade tester)"
+    echo "    sudo $MAKE_PROG install (installerar i $prefix)"
+    echo "================================================================"
+fi

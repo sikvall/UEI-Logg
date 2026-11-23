@@ -1,7 +1,11 @@
 station.conf
+bin/
 ueilogg
 dxcc
 testing
+config.mk
+config.log
+config.status
 qsolog.sq3
 *.sq3
 *.sq3-*
@@ -17,3 +21,7 @@ manual/manual.pdf
 build/
 dist/
 *.deb
+*.rpm
+*.pkg.tar.*
+*.apk
+*.tar.gz

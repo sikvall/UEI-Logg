@@ -5,23 +5,24 @@
 #
 # Syfte:
 #   Detta skript identifierar din Linux-distribution och installerar alla
-#   kompilatorer, utvecklingsheaders, statiska bibliotek och (valfritt) LaTeX-
-#   paket som krävs av Makefile för att bygga, testa och paketera UEI-Logg.
+#   kompilatorer, verktyg, utvecklingsheaders och (valfritt) LaTeX-paket som
+#   krävs av ./configure och Makefile för att bygga, testa, paketera och
+#   installera UEI-Logg till bin/ (bin/ueilogg, bin/dxcc, bin/testing).
 #
-# Koppling till Makefile (vad som faktiskt kompileras och länkas):
-#   1. Kompilator & byggverktyg:
+# Koppling till ./configure och Makefile:
+#   1. Konfigurering & byggverktyg:
 #        - gcc (C11-kompilator), GNU make, binutils (strip vid "make install"),
-#          samt standard C-bibliotek (glibc/musl).
+#          coreutils (install), pkg-config/pkgconf (används av ./configure).
 #        - dpkg-deb / dpkg (för "make deb" på Debian/Ubuntu-baserade system).
-#   2. Huvudprogrammet (ueilogg) och testsviten (testing) – dynamisk länkning:
+#   2. Huvudprogrammet (bin/ueilogg) och testsviten (bin/testing):
 #        LDFLAGS = -lncursesw -lcurl -lsqlite3 -lm -pthread -ldl
 #        - ncurses med bredteckenstöd (UTF-8): -lncursesw (<ncurses.h>)
 #        - libcurl (HTTP/HTTPS för QRZ/r.-väder): -lcurl (<curl/curl.h>)
 #        - SQLite3-databas:                   -lsqlite3 (<sqlite3.h>)
 #        - Standardmatematik, trådar, dl:     -lm -pthread -ldl
-#   3. Hjälpverktyget dxcc:
+#   3. Hjälpverktyget (bin/dxcc):
 #        TOOL_LDFLAGS = -lcurl -lm -pthread -ldl
-#   4. Användarmanual i PDF (valfritt med --latex):
+#   4. Användarmanual i PDF (valfritt med --latex; detekteras automatiskt av ./configure):
 #        pdflatex på manual/manual.tex kräver stöd för svenska (babel/swedish),
 #        UTF-8/T1-typsnitt, amsmath, amssymb, pifont (zapfding), geometry,
 #        parskip, booktabs, tabularx, enumitem, microtype, xcolor och hyperref.
@@ -56,7 +57,7 @@ INSTALL_LATEX=0
 AUTO_YES=0
 DRY_RUN=0
 
-# Hitta katalogen där skriptet ligger (så vi kan kontrollera t.ex. lib/libcurl.a)
+# Hitta projektkatalogen där detta skript ligger (för kontroll av ./configure)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ------------------------------------------------------------------------------
@@ -65,8 +66,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 print_usage() {
     echo -e "${BOLD}Användning:${RESET} $0 [alternativ]"
     echo ""
-    echo "Installerar alla kompilatorer, headers och bibliotek som Makefile"
-    echo "behöver för att kompilera, testa och installera UEI-Logg på Linux."
+    echo "Installerar alla kompilatorer, verktyg, headers och delade bibliotek"
+    echo "som ./configure och Makefile behöver för att bygga UEI-Logg på Linux."
     echo ""
     echo "Alternativ:"
     echo "  -y, --yes          Installera automatiskt utan interaktiva frågor"
@@ -114,15 +115,13 @@ echo -e "${BLUE}================================================================
 OS_ID=""
 OS_LIKE=""
 OS_NAME="Linux"
-OS_VERSION_ID=""
 if [ -f /etc/os-release ]; then
-    # Läs in /etc/os-release i en säker delmiljö (bara kända variabler används)
+    # Läs in /etc/os-release säkert (endast standardvariabler används)
     # shellcheck disable=SC1091
     . /etc/os-release
     OS_ID="${ID:-}"
     OS_LIKE="${ID_LIKE:-}"
     OS_NAME="${NAME:-Linux}"
-    OS_VERSION_ID="${VERSION_ID:-}"
 fi
 
 # Normalisera ID och ID_LIKE till gemener för säker jämförelse
@@ -181,7 +180,7 @@ run_cmd() {
 # Hjälpfunktioner för att kontrollera om valfria paket finns i aktiva förråd
 # ------------------------------------------------------------------------------
 # På t.ex. olika versioner av Debian, Fedora/RHEL och openSUSE kan namn på vissa
-# statiska paket eller TeX Live-paket skilja sig åt. Genom att fråga pakethanteraren
+# ncurses- eller TeX Live-paket skilja sig åt. Genom att fråga pakethanteraren
 # först undviker vi att hela installationen avbryts på grund av ett enda paketnamn.
 
 apt_pkg_exists() {
@@ -209,10 +208,13 @@ install_debian_ubuntu() {
     run_cmd $SUDO apt-get update
 
     # Grundläggande byggverktyg:
-    #   build-essential = gcc, g++, make, libc6-dev, binutils (inkl. strip), dpkg-dev
+    #   build-essential = gcc, g++, make, libc6-dev, binutils (strip), dpkg-dev
+    #   dpkg-dev        = för "make deb"
+    #   pkg-config      = används av ./configure för biblioteksupptäckt
     local PACKAGES=(
         "build-essential"
         "dpkg-dev"
+        "pkg-config"
     )
 
     # ncursesw (-lncursesw, <ncurses.h>):
@@ -223,7 +225,7 @@ install_debian_ubuntu() {
         PACKAGES+=("libncursesw5-dev")
     fi
 
-    # Utvecklingsheaders och delade bibliotek (.so) enligt Makefile:
+    # Utvecklingsheaders och delade bibliotek (.so) enligt ./configure & Makefile:
     #   libcurl4-openssl-dev -> -lcurl (<curl/curl.h>)
     #   libsqlite3-dev       -> -lsqlite3 (<sqlite3.h>)
     PACKAGES+=(
@@ -276,16 +278,18 @@ install_fedora_rhel() {
 
     echo -e "\n${BLUE}[INFO]${RESET} Förbereder installation för Red Hat/Fedora-familjen ($PKG_MGR)..."
 
-    # Grundläggande byggverktyg & utvecklingsheaders enligt Makefile:
+    # Grundläggande byggverktyg & utvecklingsheaders enligt ./configure & Makefile:
     #   gcc, make, binutils (strip)
-    #   glibc-devel    -> standard C-headers
-    #   ncurses-devel  -> -lncursesw (<ncurses.h>)
-    #   libcurl-devel  -> -lcurl (<curl/curl.h>)
-    #   sqlite-devel   -> -lsqlite3 (<sqlite3.h>)
+    #   pkgconf-pkg-config -> tillhandahåller pkg-config för ./configure
+    #   glibc-devel        -> standard C-headers
+    #   ncurses-devel      -> -lncursesw (<ncurses.h>)
+    #   libcurl-devel      -> -lcurl (<curl/curl.h>)
+    #   sqlite-devel       -> -lsqlite3 (<sqlite3.h>)
     local PACKAGES=(
         "gcc"
         "make"
         "binutils"
+        "pkgconf-pkg-config"
         "glibc-devel"
         "ncurses-devel"
         "libcurl-devel"
@@ -331,13 +335,15 @@ install_arch() {
     echo -e "\n${BLUE}[INFO]${RESET} Förbereder installation för Arch-familjen (pacman)..."
 
     # På Arch Linux ingår utvecklingsheaders direkt i huvudpaketen (ingen -dev split):
-    #   base-devel -> gcc, make, binutils (strip), sed m.fl.
+    #   base-devel -> gcc, make, binutils (strip), pkgconf m.fl.
+    #   pkgconf    -> pkg-config för ./configure
     #   glibc      -> C-standardbiblioteket
     #   ncurses    -> -lncursesw (<ncurses.h>)
     #   curl       -> -lcurl (<curl/curl.h>)
     #   sqlite     -> -lsqlite3 (<sqlite3.h>)
     local PACKAGES=(
         "base-devel"
+        "pkgconf"
         "glibc"
         "ncurses"
         "curl"
@@ -375,8 +381,9 @@ install_opensuse() {
     echo -e "${BLUE}[INFO]${RESET} Uppdaterar paketkällor med zypper refresh..."
     run_cmd $SUDO zypper --non-interactive refresh
 
-    # Baspaket och headers som motsvarar alla flaggor i Makefile:
+    # Baspaket och headers som motsvarar alla flaggor i ./configure & Makefile:
     #   gcc, make, binutils (strip)
+    #   pkg-config     -> för ./configure
     #   glibc-devel    -> C-headers & grundläggande libc
     #   ncurses-devel  -> -lncursesw (<ncurses.h>)
     #   libcurl-devel  -> -lcurl (<curl/curl.h>)
@@ -385,6 +392,7 @@ install_opensuse() {
         "gcc"
         "make"
         "binutils"
+        "pkg-config"
         "glibc-devel"
         "ncurses-devel"
         "libcurl-devel"
@@ -436,6 +444,7 @@ install_alpine() {
 
     local PACKAGES=(
         "build-base"
+        "pkgconf"
         "ncurses-dev"
         "curl-dev"
         "sqlite-dev"
@@ -464,6 +473,7 @@ install_void() {
 
     local PACKAGES=(
         "base-devel"
+        "pkg-config"
         "ncurses-devel"
         "libcurl-devel"
         "sqlite-devel"
@@ -541,7 +551,7 @@ case "$OS_ID" in
             else
                 echo -e "${RED}[FEL]${RESET} Kunde inte avgöra vilken pakethanterare som används."
                 echo "Installera manuellt motsvarande paket för ditt system:"
-                echo "  - C-kompilator (gcc), GNU make och binutils (strip)"
+                echo "  - C-kompilator (gcc), GNU make, binutils (strip) och pkg-config"
                 echo "  - ncursesw utveckling (libncurses-dev / ncurses-devel)"
                 echo "  - libcurl utveckling (libcurl4-openssl-dev / libcurl-devel)"
                 echo "  - SQLite3 utveckling (libsqlite3-dev / sqlite-devel)"
@@ -558,7 +568,7 @@ esac
 verify_dependencies() {
     echo ""
     echo -e "${BLUE}----------------------------------------------------------------${RESET}"
-    echo -e "${BOLD}   Verifierar byggmiljö mot kraven i Makefile                   ${RESET}"
+    echo -e "${BOLD}   Verifierar byggmiljö mot kraven i ./configure och Makefile   ${RESET}"
     echo -e "${BLUE}----------------------------------------------------------------${RESET}"
 
     local MISSING_TOOLS=0
@@ -566,7 +576,7 @@ verify_dependencies() {
     local DYN_OK=0
 
     # 1. Kontrollera kommandoradsverktyg
-    for tool in gcc make strip; do
+    for tool in gcc make strip install; do
         if command -v "$tool" >/dev/null 2>&1; then
             echo -e "  ${GREEN}[OK]${RESET} Verktyg: $tool ($(command -v "$tool"))"
         else
@@ -574,6 +584,18 @@ verify_dependencies() {
             MISSING_TOOLS=$((MISSING_TOOLS + 1))
         fi
     done
+
+    if command -v pkg-config >/dev/null 2>&1; then
+        echo -e "  ${GREEN}[OK]${RESET} Verktyg: pkg-config ($(command -v pkg-config))"
+    else
+        echo -e "  ${YELLOW}[INFO]${RESET} Verktyg: pkg-config saknas (./configure använder standardflaggor)"
+    fi
+
+    if [ -x "${SCRIPT_DIR}/configure" ]; then
+        echo -e "  ${GREEN}[OK]${RESET} Skript:  ./configure är körbart"
+    else
+        echo -e "  ${YELLOW}[VARNING]${RESET} Skript:  ${SCRIPT_DIR}/configure saknas eller saknar kör-rättighet"
+    fi
 
     if [ "$INSTALL_LATEX" -eq 1 ]; then
         if command -v pdflatex >/dev/null 2>&1; then
@@ -583,15 +605,40 @@ verify_dependencies() {
         fi
     fi
 
-    # 2. Kontrollera nödvändiga C-headers via kompilatorns faktiska sökvägar
+    # 2. Hämta eventuella extra flaggor via pkg-config på samma sätt som ./configure
+    local EXTRA_INC_FLAGS=""
+    local LINK_FLAGS="-lncursesw -lcurl -lsqlite3 -lm -pthread -ldl"
+    if command -v pkg-config >/dev/null 2>&1; then
+        local NC_LIBS="-lncursesw"
+        local CU_LIBS="-lcurl"
+        local SQ_LIBS="-lsqlite3"
+        if pkg-config --exists ncursesw >/dev/null 2>&1; then
+            EXTRA_INC_FLAGS="$EXTRA_INC_FLAGS $(pkg-config --cflags ncursesw 2>/dev/null || true)"
+            NC_LIBS="$(pkg-config --libs ncursesw 2>/dev/null || echo "-lncursesw")"
+        fi
+        if pkg-config --exists libcurl >/dev/null 2>&1; then
+            EXTRA_INC_FLAGS="$EXTRA_INC_FLAGS $(pkg-config --cflags libcurl 2>/dev/null || true)"
+            CU_LIBS="$(pkg-config --libs libcurl 2>/dev/null || echo "-lcurl")"
+        fi
+        if pkg-config --exists sqlite3 >/dev/null 2>&1; then
+            EXTRA_INC_FLAGS="$EXTRA_INC_FLAGS $(pkg-config --cflags sqlite3 2>/dev/null || true)"
+            SQ_LIBS="$(pkg-config --libs sqlite3 2>/dev/null || echo "-lsqlite3")"
+        fi
+        LINK_FLAGS="$NC_LIBS $CU_LIBS $SQ_LIBS -lm -pthread -ldl"
+    fi
+
+    # 3. Kontrollera nödvändiga C-headers via kompilatorns faktiska sökvägar
     if command -v gcc >/dev/null 2>&1; then
         local HEADERS=(
             "ncurses.h"
             "curl/curl.h"
             "sqlite3.h"
+            "pthread.h"
+            "math.h"
         )
         for hdr in "${HEADERS[@]}"; do
-            if echo "#include <${hdr}>" | gcc -E -x c - >/dev/null 2>&1; then
+            # shellcheck disable=SC2086
+            if echo "#include <${hdr}>" | gcc -E -x c $EXTRA_INC_FLAGS - >/dev/null 2>&1; then
                 echo -e "  ${GREEN}[OK]${RESET} Header:  <${hdr}>"
             else
                 echo -e "  ${RED}[SAKNAS]${RESET} Header:  <${hdr}>"
@@ -599,27 +646,28 @@ verify_dependencies() {
             fi
         done
 
-        # 3. Verifiera verklig dynamisk länkning mot delade bibliotek
+        # 4. Verifiera verklig dynamisk länkning mot delade bibliotek
         local tmp_bin
         tmp_bin="$(mktemp /tmp/ueilogg_verify_XXXXXX)"
         local probe_src='void curl_global_init(long); void *initscr(void); const char *sqlite3_libversion(void); int main(void){ curl_global_init(0); initscr(); sqlite3_libversion(); return 0; }'
 
+        # shellcheck disable=SC2086
         if printf '%s\n' "$probe_src" | \
-            gcc -x c - -lncursesw -lcurl -lsqlite3 -lm -pthread -ldl -o "$tmp_bin" >/dev/null 2>&1; then
+            gcc -x c - $EXTRA_INC_FLAGS $LINK_FLAGS -o "$tmp_bin" >/dev/null 2>&1; then
             DYN_OK=1
-            echo -e "  ${GREEN}[OK]${RESET} Länkning: Dynamisk länkning (-lncursesw -lcurl -lsqlite3) fungerar"
+            echo -e "  ${GREEN}[OK]${RESET} Länkning: Dynamisk länkning fungerar ($LINK_FLAGS)"
         else
-            echo -e "  ${RED}[SAKNAS]${RESET} Länkning: Dynamisk länkning (-lncursesw -lcurl -lsqlite3) misslyckades"
+            echo -e "  ${RED}[SAKNAS]${RESET} Länkning: Dynamisk länkning misslyckades ($LINK_FLAGS)"
         fi
         rm -f "$tmp_bin"
     fi
 
     echo ""
     if [ "$MISSING_TOOLS" -eq 0 ] && [ "$MISSING_HEADERS" -eq 0 ] && [ "$DYN_OK" -eq 1 ]; then
-        echo -e "${GREEN}[OK]${RESET} ${BOLD}Alla byggberoenden är på plats och dynamisk länkning fungerar!${RESET}"
+        echo -e "${GREEN}[OK]${RESET} ${BOLD}Alla byggberoenden är på plats och redo för ./configure & make!${RESET}"
     else
         echo -e "${RED}[VARNING]${RESET} Vissa verktyg, headerfiler eller länkbibliotek saknas fortfarande."
-        echo "          Kontrollera utskriften ovan innan du kör 'make'."
+        echo "          Kontrollera utskriften ovan innan du kör './configure' eller 'make'."
     fi
 }
 
@@ -631,9 +679,11 @@ else
 fi
 
 echo ""
-echo "Du kan nu bygga och testa projektet med:"
-echo -e "  ${BOLD}make${RESET}              (bygger ueilogg, dxcc, testing och manual)"
-echo -e "  ${BOLD}make test${RESET}         (kör den automatiserade testsviten)"
+echo "Du kan nu konfigurera, bygga och testa projektet med:"
+echo -e "  ${BOLD}./configure${RESET}       (konfigurerar prefix, kompilator m.m.)"
+echo -e "  ${BOLD}make${RESET}              (bygger bin/ueilogg, bin/dxcc, bin/testing och manual)"
+echo -e "  ${BOLD}make check${RESET}        (kör den automatiserade testsviten)"
 echo -e "  ${BOLD}sudo make install${RESET} (installerar ueilogg, dxcc, dxcc.txt och manual)"
-echo -e "  ${BOLD}./ueilogg${RESET}         (startar loggboksprogrammet lokalt)"
+echo -e "  ${BOLD}./bin/ueilogg${RESET}     (startar loggboksprogrammet lokalt)"
+echo -e "  ${BOLD}./bin/dxcc help${RESET}   (kör DXCC-hjälpverktyget lokalt)"
 echo ""
