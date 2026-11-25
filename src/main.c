@@ -12,6 +12,7 @@
 #include "qrz.h"
 #include "settings.h"
 #include "space_weather.h"
+#include "dxcluster.h"
 #include "tui.h"
 #include "util.h"
 #include "help.h"
@@ -46,7 +47,8 @@ static int log_qso_to_qrz(QSOList *log_list, int qso_idx,
     draw_main_screen(station, current_qso, focus_mode, active_field, band_selecting,
                      field_cursor_pos, time_frozen, editing_index,
                      log_list, selected_log_pos, log_scroll_offset,
-                     active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                     active_filter, status_msg, current_qrb, current_quj,
+                     0, NULL, &cur_y, &cur_x);
     refresh();
 
     char err_buf[192] = "";
@@ -193,6 +195,12 @@ int main(int argc, char *argv[]) {
 
     /* Starta asynkron inhämtning av rymdväder från https://hf.avitec.se */
     space_weather_init();
+    dxcluster_init();
+    if (station.show_cluster) {
+        char my_dxcc[64] = "";
+        lookup_dxcc(station.call, my_dxcc, sizeof(my_dxcc));
+        dxcluster_start(station.cluster_host, station.cluster_port, station.call, station.gridsquare, my_dxcc);
+    }
 
     /* Initiera terminalgränssnittet (ncurses) och aktivera valt tema */
     tui_init();
@@ -219,8 +227,11 @@ int main(int argc, char *argv[]) {
     char current_qrb[32] = "-";
     char current_quj[32] = "-";
     FocusMode focus_mode = FOCUS_INPUT;
+    FocusMode prev_focus_mode = FOCUS_INPUT;
     int selected_log_pos = 0;
     int log_scroll_offset = 0;
+    int selected_cluster_pos = 0;
+    int cluster_scroll_offset = 0;
     char search_filter[32] = "";
     char last_smcb_call[32] = "";
     char status_msg[256] = "";
@@ -274,7 +285,9 @@ int main(int argc, char *argv[]) {
         draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                          field_cursor_pos, time_frozen, editing_index,
                          &log_list, selected_log_pos, &log_scroll_offset,
-                         active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                         active_filter, status_msg, current_qrb, current_quj,
+                         selected_cluster_pos, &cluster_scroll_offset,
+                         &cur_y, &cur_x);
 
         /* Läs in användartangent med timeout */
         wint_t wch = 0;
@@ -314,6 +327,12 @@ int main(int argc, char *argv[]) {
 
         /* GLOBALA FUNKTIONSTANGENTER */
         if (ch == 27) {
+            if (focus_mode == FOCUS_CLUSTER) {
+                focus_mode = prev_focus_mode;
+                copy_str(status_msg, sizeof(status_msg),
+                         (focus_mode == FOCUS_LOG) ? "Tillbaka till loggraderna." : "Tillbaka till inmatningsfälten.");
+                continue;
+            }
             /* ESC: Återställ sökning om aktiv, annars lämna loggläge eller rensa formulär */
             if (search_filter[0] != '\0') {
                 search_filter[0] = '\0';
@@ -329,16 +348,6 @@ int main(int argc, char *argv[]) {
                 copy_str(status_msg, sizeof(status_msg), "Åter i inmatningsfälten.");
                 continue;
             }
-            focus_mode = FOCUS_INPUT;
-            band_selecting = 0;
-            edit_from_log = 0;
-            reset_qso_form(&current_qso, &station, &time_frozen, &active_field, &field_cursor_pos, &editing_index, last_smcb_call, current_qrb, current_quj);
-            field_fresh = 1;
-            preferred_col = 0;
-            copy_str(status_msg, sizeof(status_msg), "Formulär rensat – UTC-klockan tickar igen.");
-            continue;
-        } else if (ch == KEY_F(1)) {
-            /* F1: Rensa formuläret och låt UTC-klockan ticka igen */
             focus_mode = FOCUS_INPUT;
             band_selecting = 0;
             edit_from_log = 0;
@@ -368,6 +377,12 @@ int main(int argc, char *argv[]) {
         } else if (ch == KEY_F(4) || ch == 15) {
             /* F4 eller Ctrl+O: Växla fokus mellan inmatningsfält och loggrader */
             band_selecting = 0;
+            if (focus_mode == FOCUS_CLUSTER) {
+                focus_mode = prev_focus_mode;
+                copy_str(status_msg, sizeof(status_msg),
+                         (focus_mode == FOCUS_LOG) ? "Tillbaka till loggraderna." : "Tillbaka till inmatningsfälten.");
+                continue;
+            }
             const char *cur_filter = (search_filter[0] != '\0') ? search_filter :
                                      (station.filter_log && current_qso.call[0] != '\0') ? current_qso.call : NULL;
             if (focus_mode == FOCUS_INPUT) {
@@ -405,6 +420,86 @@ int main(int argc, char *argv[]) {
         } else if (ch == KEY_F(10) || ch == 17) {
             /* F10 eller Ctrl+Q: Avsluta programmet */
             break;
+        } else if (ch == KEY_F(1) || ch == KEY_F(11) || ch == 4) {
+            /* F1, F11 eller Ctrl+D: Toggla DX-Kluster (vertikal ruta på vänster sida) */
+            station.show_cluster = !station.show_cluster;
+            save_station_settings(CONFIG_FILE, &station);
+            if (station.show_cluster) {
+                char my_dxcc[64] = "";
+                lookup_dxcc(station.call, my_dxcc, sizeof(my_dxcc));
+                dxcluster_start(station.cluster_host, station.cluster_port, station.call, station.gridsquare, my_dxcc);
+                snprintf(status_msg, sizeof(status_msg), "DX-Kluster PÅ (%s:%d). F1/^D=Dölj, ^B=Filter, ^S=Spotta",
+                         station.cluster_host, station.cluster_port);
+            } else {
+                dxcluster_stop();
+                copy_str(status_msg, sizeof(status_msg), "DX-Kluster AV (frånkopplat).");
+            }
+            continue;
+        } else if (ch == 2) {
+            /* Ctrl+B: Toggla bandfilter för DX-Klustret */
+            station.cluster_band_filter = !station.cluster_band_filter;
+            save_station_settings(CONFIG_FILE, &station);
+            if (station.cluster_band_filter) {
+                snprintf(status_msg, sizeof(status_msg), "DX-Kluster: Visar endast inställt band (%s).",
+                         current_qso.band[0] ? current_qso.band : "Alla");
+            } else {
+                copy_str(status_msg, sizeof(status_msg), "DX-Kluster: Visar alla band oavsett inställning.");
+            }
+            continue;
+        } else if (ch == 11) {
+            /* Ctrl+K: Hoppa till klusterrutan eller tillbaka där man kom ifrån */
+            if (focus_mode == FOCUS_CLUSTER) {
+                focus_mode = prev_focus_mode;
+                copy_str(status_msg, sizeof(status_msg),
+                         (focus_mode == FOCUS_LOG) ? "Tillbaka till loggraderna." : "Tillbaka till inmatningsfälten.");
+            } else {
+                if (COLS < 74) {
+                    copy_str(status_msg, sizeof(status_msg), "Fönstret är för smalt för DX-Kluster (minst 74 kolumner).");
+                    continue;
+                }
+                if (!station.show_cluster) {
+                    station.show_cluster = 1;
+                    save_station_settings(CONFIG_FILE, &station);
+                    char my_dxcc[64] = "";
+                    lookup_dxcc(station.call, my_dxcc, sizeof(my_dxcc));
+                    dxcluster_start(station.cluster_host, station.cluster_port, station.call, station.gridsquare, my_dxcc);
+                }
+                prev_focus_mode = focus_mode;
+                focus_mode = FOCUS_CLUSTER;
+                copy_str(status_msg, sizeof(status_msg), "DX-Kluster fokus: Pilar=Bläddra, Enter=Välj signal, Esc/^K=Återgå.");
+            }
+            continue;
+        } else if (ch == 19) {
+            /* Ctrl+S: Spotta inställd anropssignal på klustret */
+            if (current_qso.call[0] == '\0') {
+                copy_str(status_msg, sizeof(status_msg), "Ange en anropssignal först för att spotta.");
+                continue;
+            }
+            double mhz = parse_and_normalize_freq(current_qso.freq, NULL, 0);
+            if (mhz <= 0.0) {
+                copy_str(status_msg, sizeof(status_msg), "Ange en giltig frekvens först för att spotta.");
+                continue;
+            }
+            double khz = mhz * 1000.0;
+            char sp_comment[128] = "";
+            if (current_qso.mode[0] != '\0' && current_qso.comment[0] != '\0') {
+                snprintf(sp_comment, sizeof(sp_comment), "%.30s %.60s", current_qso.mode, current_qso.comment);
+            } else if (current_qso.mode[0] != '\0') {
+                copy_str(sp_comment, sizeof(sp_comment), current_qso.mode);
+            } else if (current_qso.comment[0] != '\0') {
+                copy_str(sp_comment, sizeof(sp_comment), current_qso.comment);
+            } else {
+                copy_str(sp_comment, sizeof(sp_comment), "UEI-Logg");
+            }
+
+            int s_res = dxcluster_send_spot(khz, current_qso.call, sp_comment);
+            if (s_res == 0) {
+                snprintf(status_msg, sizeof(status_msg), "Spottade %s på %.1f kHz på klustret (%s)!",
+                         current_qso.call, khz, station.cluster_host);
+            } else {
+                snprintf(status_msg, sizeof(status_msg), "Kunde inte spotta (klustret ej anslutet – F11/^D för att ansluta).");
+            }
+            continue;
         } else if (ch == KEY_F(12)) {
             /* F12: Inställningar, import och export */
             band_selecting = 0;
@@ -424,6 +519,75 @@ int main(int argc, char *argv[]) {
             update_all_missing_qrbs(&station, &log_list);
             if (station.show_space_weather) {
                 space_weather_refresh_async();
+            }
+            continue;
+        }
+
+        /* FOKUS I KLUSTERRUTAN (FOCUS_CLUSTER) */
+        if (focus_mode == FOCUS_CLUSTER) {
+            DxSpot cspots[64];
+            int cspot_cnt = 0;
+            dxcluster_get_spots(cspots, 64, station.cluster_band_filter ? current_qso.band : NULL, &cspot_cnt);
+
+            if (ch == KEY_UP || ch == 'k' || ch == 'K') {
+                if (selected_cluster_pos > 0) {
+                    selected_cluster_pos--;
+                }
+                continue;
+            } else if (ch == KEY_DOWN || ch == 'j' || ch == 'J') {
+                if (selected_cluster_pos + 1 < cspot_cnt) {
+                    selected_cluster_pos++;
+                }
+                continue;
+            } else if (ch == KEY_PPAGE) {
+                selected_cluster_pos -= 5;
+                if (selected_cluster_pos < 0) selected_cluster_pos = 0;
+                continue;
+            } else if (ch == KEY_NPAGE) {
+                selected_cluster_pos += 5;
+                if (selected_cluster_pos >= cspot_cnt) selected_cluster_pos = (cspot_cnt > 0) ? cspot_cnt - 1 : 0;
+                continue;
+            } else if (ch == KEY_HOME || ch == KEY_SHOME || ch == KEY_CTRL_HOME) {
+                selected_cluster_pos = 0;
+                continue;
+            } else if (ch == KEY_END || ch == KEY_SEND || ch == KEY_CTRL_END) {
+                selected_cluster_pos = (cspot_cnt > 0) ? cspot_cnt - 1 : 0;
+                continue;
+            } else if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+                if (cspot_cnt > 0 && selected_cluster_pos < cspot_cnt) {
+                    DxSpot *chosen = &cspots[selected_cluster_pos];
+                    copy_str(current_qso.call, sizeof(current_qso.call), chosen->call);
+                    trim_str(current_qso.call);
+                    to_upper_str(current_qso.call);
+
+                    /* Frekvens i MHz med 3 decimaler */
+                    double mhz = chosen->freq_khz / 1000.0;
+                    snprintf(current_qso.freq, sizeof(current_qso.freq), "%.3f", mhz);
+
+                    /* Amatörband från spot eller gissat */
+                    if (chosen->band[0] != '\0') {
+                        copy_str(current_qso.band, sizeof(current_qso.band), chosen->band);
+                    } else {
+                        const char *gb = guess_band_from_mhz(mhz);
+                        if (gb) copy_str(current_qso.band, sizeof(current_qso.band), gb);
+                    }
+
+                    /* Slå upp DXCC och eventuellt tidigare information */
+                    lookup_dxcc(current_qso.call, current_qso.dxcc, sizeof(current_qso.dxcc));
+                    maybe_lookup_call_details(&current_qso, &log_list, &station, last_smcb_call, sizeof(last_smcb_call), status_msg, sizeof(status_msg));
+
+                    /* Beräkna QRB och QUJ om lokator finns */
+                    compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
+
+                    /* Återgå till inmatningsrutan och ställ markören i RST T-fältet */
+                    focus_mode = FOCUS_INPUT;
+                    active_field = FLD_RSTS;
+                    field_cursor_pos = 0;
+                    field_fresh = 1;
+
+                    snprintf(status_msg, sizeof(status_msg), "Valde %s (%.1f kHz) från klustret.", chosen->call, chosen->freq_khz);
+                }
+                continue;
             }
             continue;
         }
@@ -764,7 +928,9 @@ int main(int argc, char *argv[]) {
                             draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                              field_cursor_pos, time_frozen, editing_index,
                                              &log_list, selected_log_pos, &log_scroll_offset,
-                                             cur_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                                             cur_filter, status_msg, current_qrb, current_quj,
+                                             selected_cluster_pos, &cluster_scroll_offset,
+                                             &cur_y, &cur_x);
                             refresh();
 
                             char err_buf[192] = "";
@@ -850,7 +1016,9 @@ int main(int argc, char *argv[]) {
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj,
+                                 selected_cluster_pos, &cluster_scroll_offset,
+                                 &cur_y, &cur_x);
                 refresh();
 
                 char sm_name[64] = "", sm_qth[64] = "";
@@ -898,7 +1066,9 @@ int main(int argc, char *argv[]) {
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj,
+                                 selected_cluster_pos, &cluster_scroll_offset,
+                                 &cur_y, &cur_x);
                 refresh();
 
                 char qrz_name[64] = "", qrz_qth[64] = "", qrz_grid[16] = "";
@@ -975,7 +1145,9 @@ int main(int argc, char *argv[]) {
                 draw_main_screen(&station, &current_qso, focus_mode, active_field, band_selecting,
                                  field_cursor_pos, time_frozen, editing_index,
                                  &log_list, selected_log_pos, &log_scroll_offset,
-                                 active_filter, status_msg, current_qrb, current_quj, &cur_y, &cur_x);
+                                 active_filter, status_msg, current_qrb, current_quj,
+                                 selected_cluster_pos, &cluster_scroll_offset,
+                                 &cur_y, &cur_x);
                 refresh();
 
                 compute_qrb_quj_str(&station, &current_qso, current_qrb, sizeof(current_qrb), current_quj, sizeof(current_quj));
@@ -1249,6 +1421,7 @@ int main(int argc, char *argv[]) {
     /* Rensa resurser och stäng bakgrundstrådar */
     callbook_cleanup();
     qrz_cleanup();
+    dxcluster_stop();
     space_weather_cleanup();
     tui_cleanup();
     free(log_list.items);

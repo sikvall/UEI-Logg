@@ -47,13 +47,13 @@ APK_STAGE = build/apk
 TAR_STAGE = build/tarball
 BIN_TARBALL = dist/ueilogg-$(APP_VERSION)-linux-$(HOST_ARCH).tar.gz
 
-SRCS = src/main.c src/db.c src/tui.c src/logg.c src/settings.c src/callbook.c src/dxcc.c src/qrb.c src/util.c src/space_weather.c src/qrz.c src/file_dialog.c src/help.c src/theme_editor.c
+SRCS = src/main.c src/db.c src/tui.c src/logg.c src/settings.c src/callbook.c src/dxcc.c src/qrb.c src/util.c src/space_weather.c src/qrz.c src/file_dialog.c src/help.c src/theme_editor.c src/dxcluster.c
 OBJS = $(SRCS:.c=.o)
 HEADERS = $(wildcard src/*.h)
 
 TEST_SRCS = tests/test_main.c
 TEST_OBJS = $(TEST_SRCS:.c=.o)
-TEST_DEPS = src/db.o src/tui.o src/logg.o src/settings.o src/callbook.o src/dxcc.o src/qrb.o src/util.o src/space_weather.o src/qrz.o src/file_dialog.o src/help.o src/theme_editor.o
+TEST_DEPS = src/db.o src/tui.o src/logg.o src/settings.o src/callbook.o src/dxcc.o src/qrb.o src/util.o src/space_weather.o src/qrz.o src/file_dialog.o src/help.o src/theme_editor.o src/dxcluster.o
 
 # Standardmål: Bygg huvudprogrammet, hjälpbinären, testbinären (och manualen om aktiverad)
 all: $(TARGET) $(TOOL_TARGET) $(TEST_TARGET) $(ALL_MANUAL)

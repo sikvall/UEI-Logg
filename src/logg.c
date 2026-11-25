@@ -694,6 +694,14 @@ int find_call_in_log(const QSOList *log_list, const char *call_in,
     return 0;
 }
 
+int is_call_in_log(const QSOList *log_list, const char *call_in) {
+    if (log_list == NULL || call_in == NULL || call_in[0] == '\0') return 0;
+    for (size_t i = 0; i < log_list->count; ++i) {
+        if (strcasecmp(log_list->items[i].call, call_in) == 0) return 1;
+    }
+    return 0;
+}
+
 /**
  * @brief Utför automatisk uppslagning av namn och QTH för en anropssignal:
  * 1. Kontrollerar först tidigare loggrader.

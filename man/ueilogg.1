@@ -1,5 +1,5 @@
 .\" Manpage för ueilogg(1)
-.TH UEILOGG 1 "2026-11-23" "UEI-Logg 1.0.1" "Användarmanual"
+.TH UEILOGG 1 "2026-11-25" "UEI-Logg 1.1.0" "Användarmanual"
 .SH NAME
 ueilogg \- textbaserat loggboksprogram (TUI) för radioamatörer
 .SH SYNOPSIS
@@ -39,11 +39,11 @@ Visa programmets namn, versionsnummer och byggdatum och avsluta.
 .SH KEYBINDINGS
 Följande tangenter är tillgängliga i det interaktiva terminalgränssnittet:
 .TP
-.B F1
-Rensa inmatningsformuläret och starta UTC-klockan.
+.BR F1 " / " Ctrl+D
+Toggla visning av DX-Klustret (vertikal sidopanel till vänster). Kopplar upp vid aktivering och kopplar ned vid stängning.
 .TP
 .B Esc
-Återställ aktiv sökning, återgå från loggläge till formulär eller rensa formuläret.
+Rensa inmatningsformuläret och återstarta UTC-klockan, återställ aktiv sökning eller lämna loggläget.
 .TP
 .B F2
 I inmatningsläge: starta UTC-klockan igen så att tiden uppdateras live.
@@ -88,9 +88,22 @@ I inställningar: synkronisera nya QSO från QRZ.COM.
 .B F9
 Öppna den inbyggda hjälpdialogen.
 .TP
+.B Ctrl+B
+Toggla DX-Kluster filter mellan alla band och endast inställt band.
+.TP
+.B Ctrl+K
+Hoppa till DX-Klusterrutan för att bläddra bland spots med piltangenterna, eller tryck igen för att återgå.
+.TP
+.B Enter
+I klusterrutan: överför markerad anropssignal och frekvens till formuläret och sätt markören i RST T.
+.TP
+.B Ctrl+S
+"Spotta" aktuell inmatad anropssignal och frekvens till DX-Klustret.
+.TP
 .B F12
 Öppna inställningar (Min Station, databas i \fI~/.ueilogg/\fR, QRZ.COM,
-färgteman och egen färgprofilseditor [\fBF7\fR], ADIF/CSV-export och ADIF-import).
+färgteman och egen färgprofilseditor [\fBF7\fR], ADIF/CSV-export och ADIF-import,
+samt bygginformation nederst i rutan).
 .TP
 .BR F10 " / " Ctrl+Q
 Avsluta programmet.

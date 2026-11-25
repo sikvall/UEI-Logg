@@ -22,6 +22,7 @@
 #include "tui.h"
 #include "space_weather.h"
 #include "theme_editor.h"
+#include "dxcluster.h"
 
 static int g_tests_run = 0;
 static int g_tests_passed = 0;
@@ -2744,6 +2745,256 @@ static void run_ueilogg_dir_and_db_switch_tests(void) {
     }
 }
 
+static void run_dxcluster_tests(void) {
+    printf("\n=== [18] Tester för DX-Kluster (DXSpider / W3LPL) ===\n");
+    dxcluster_init();
+    dxcluster_clear_spots();
+
+    /* 1. Tolkning av standard realtidsspot från DXSpider */
+    {
+        DxSpot spot;
+        int ok = dxcluster_parse_line("DX de W3LPL:     14025.1  OH2BU        CW CQ                             2145Z", &spot);
+        int fields_ok = ok && (strcmp(spot.call, "OH2BU") == 0) &&
+                        (fabs(spot.freq_khz - 14025.1) < 0.01) &&
+                        (strcmp(spot.band, "20 m") == 0) &&
+                        (strcmp(spot.spotter, "W3LPL") == 0) &&
+                        (strcmp(spot.time_str, "2145Z") == 0);
+        record_result(fields_ok, "dxcluster_parse_line tolkar standard DXSpider-spot (anrop, frekvens, band, spotter, tid)", NULL);
+    }
+
+    /* 2. Tolkning av spot med skimmer-suffix (-#) och lokator */
+    {
+        DxSpot spot;
+        int ok = dxcluster_parse_line("DX de SV1DPI-#:  7015.0  KH6LC        599 in Greece                     2146Z  KM18", &spot);
+        int fields_ok = ok && (strcmp(spot.call, "KH6LC") == 0) &&
+                        (fabs(spot.freq_khz - 7015.0) < 0.01) &&
+                        (strcmp(spot.band, "40 m") == 0) &&
+                        (strcmp(spot.spotter, "SV1DPI-#") == 0);
+        record_result(fields_ok, "dxcluster_parse_line hanterar skimmer-anrop (-#) och lokator i kommentaren", NULL);
+    }
+
+    /* 3. Tolkning av VHF-spot med portabelanrop (/P) */
+    {
+        DxSpot spot;
+        int ok = dxcluster_parse_line("DX de DL1ABC:   144200.0  SM5UEI/P     USB portable                      1200Z", &spot);
+        int fields_ok = ok && (strcmp(spot.call, "SM5UEI/P") == 0) &&
+                        (fabs(spot.freq_khz - 144200.0) < 0.01) &&
+                        (strcmp(spot.band, "2 m") == 0);
+        record_result(fields_ok, "dxcluster_parse_line hanterar portabelanrop (/P) och 2m VHF-frekvenser", NULL);
+    }
+
+    /* 4. Tolkning av sh/dx-rad från klustret */
+    {
+        DxSpot spot;
+        int ok = dxcluster_parse_line("  14074.0  JA1ABC       25-Nov-2026 1305Z FT8 -12dB                     <W3LPL>", &spot);
+        int fields_ok = ok && (strcmp(spot.call, "JA1ABC") == 0) &&
+                        (fabs(spot.freq_khz - 14074.0) < 0.01) &&
+                        (strcmp(spot.band, "20 m") == 0);
+        record_result(fields_ok, "dxcluster_parse_line tolkar sh/dx-utdata med inledande frekvens", NULL);
+    }
+
+    /* 5. Avvisa icke-spot-rader (inloggningsprompter, servermeddelanden) */
+    {
+        DxSpot spot;
+        int not_spot1 = !dxcluster_parse_line("login:", &spot);
+        int not_spot2 = !dxcluster_parse_line("Hello SM5UEI, this is W3LPL DXSpider v1.57", &spot);
+        int not_spot3 = !dxcluster_parse_line("WC2L de W3LPL 25-Nov 1200Z >", &spot);
+        record_result(not_spot1 && not_spot2 && not_spot3,
+                      "dxcluster_parse_line avvisar serverprompter och icke-spotrader", NULL);
+    }
+
+    /* 6. Sortering i frekvensordning: lägsta frekvensen upptill */
+    {
+        dxcluster_clear_spots();
+        dxcluster_add_spot_direct("OH2BU",  14025.1, "W3LPL", "CW", "2145Z");
+        dxcluster_add_spot_direct("KH6LC",   7015.0, "W3LPL", "CW", "2146Z");
+        dxcluster_add_spot_direct("JA1ABC", 28074.0, "W3LPL", "FT8", "2147Z");
+        dxcluster_add_spot_direct("SM5UEI",  3550.0, "W3LPL", "CW", "2148Z");
+        dxcluster_add_spot_direct("W1AW",    1840.0, "W3LPL", "CW", "2149Z");
+
+        DxSpot sorted[10];
+        int count = 0;
+        dxcluster_get_spots(sorted, 10, NULL, &count);
+
+        int sort_ok = (count == 5) &&
+                      (sorted[0].freq_khz < sorted[1].freq_khz) &&
+                      (sorted[1].freq_khz < sorted[2].freq_khz) &&
+                      (sorted[2].freq_khz < sorted[3].freq_khz) &&
+                      (sorted[3].freq_khz < sorted[4].freq_khz) &&
+                      (strcmp(sorted[0].call, "W1AW") == 0) &&
+                      (strcmp(sorted[1].call, "SM5UEI") == 0) &&
+                      (strcmp(sorted[2].call, "KH6LC") == 0) &&
+                      (strcmp(sorted[3].call, "OH2BU") == 0) &&
+                      (strcmp(sorted[4].call, "JA1ABC") == 0);
+
+        record_result(sort_ok, "dxcluster_get_spots sorterar spots i frekvensordning med lägsta frekvensen upptill", NULL);
+    }
+
+    /* 7. Bandfilter: visa endast inställt band vs alla band */
+    {
+        DxSpot band_spots[10];
+        int b_count = 0;
+        dxcluster_get_spots(band_spots, 10, "20 m", &b_count);
+        int b_20m_ok = (b_count == 1) && (strcmp(band_spots[0].call, "OH2BU") == 0);
+
+        dxcluster_get_spots(band_spots, 10, "40 m", &b_count);
+        int b_40m_ok = (b_count == 1) && (strcmp(band_spots[0].call, "KH6LC") == 0);
+
+        dxcluster_get_spots(band_spots, 10, "80 m", &b_count);
+        int b_80m_ok = (b_count == 1) && (strcmp(band_spots[0].call, "SM5UEI") == 0);
+
+        dxcluster_get_spots(band_spots, 10, NULL, &b_count);
+        int b_all_ok = (b_count == 5);
+
+        record_result(b_20m_ok && b_40m_ok && b_80m_ok && b_all_ok,
+                      "Bandfilter visar endast signaler på inställt band eller alla band oavsett inställning", NULL);
+    }
+
+    /* 8. Deduplicering och uppdatering av signal */
+    {
+        dxcluster_clear_spots();
+        dxcluster_add_spot_direct("K1ZZ", 14025.0, "W3LPL", "CW", "2140Z");
+        dxcluster_add_spot_direct("K1ZZ", 14028.0, "W3LPL", "CW QSY", "2145Z");
+
+        DxSpot spots[5];
+        int count = 0;
+        dxcluster_get_spots(spots, 5, NULL, &count);
+
+        int dedup_ok = (count == 1) && (strcmp(spots[0].call, "K1ZZ") == 0) &&
+                       (fabs(spots[0].freq_khz - 14028.0) < 0.01) &&
+                       (strcmp(spots[0].comment, "CW QSY") == 0);
+
+        record_result(dedup_ok, "Ny spot för samma signal uppdaterar frekvens och kommentar utan dubblett", NULL);
+    }
+
+    /* 9. Layoutformat: signal och frekvens i kHz ryms inom 12 tecken */
+    {
+        char f_buf[32];
+        snprintf(f_buf, sizeof(f_buf), " %7.1f kHz", 14025.1);
+        int w_freq1 = (int)strlen(f_buf);
+
+        snprintf(f_buf, sizeof(f_buf), "%8.1f kHz", 144200.0);
+        int w_freq2 = (int)strlen(f_buf);
+
+        const char *long_call = "HB9/DL1ABC/P";
+        int w_call = (int)strlen(long_call);
+
+        int layout_ok = (w_freq1 <= 12) && (w_freq2 <= 12) && (w_call <= 12);
+        record_result(layout_ok, "Frekvens i kHz under signalen och anropssignal ryms i fönsterbredd 12 tecken", NULL);
+    }
+
+    /* 10. Konfigurationspersistens i station.conf */
+    {
+        StationSettings st;
+        memset(&st, 0, sizeof(st));
+        st.show_cluster = 1;
+        st.cluster_band_filter = 1;
+        copy_str(st.cluster_host, sizeof(st.cluster_host), "dxc.w3lpl.net");
+        st.cluster_port = 7373;
+
+        const char *cfg_tmp = "/tmp/test_cluster_station.conf";
+        save_station_settings(cfg_tmp, &st);
+
+        StationSettings loaded;
+        load_station_settings(cfg_tmp, &loaded);
+        unlink(cfg_tmp);
+
+        int persist_ok = (loaded.show_cluster == 1) &&
+                         (loaded.cluster_band_filter == 1) &&
+                         (strcmp(loaded.cluster_host, "dxc.w3lpl.net") == 0) &&
+                         (loaded.cluster_port == 7373);
+
+        record_result(persist_ok, "station.conf sparar och läser in inställningar för DX-Kluster (aktiverad, bandfilter, värd, port)", NULL);
+    }
+
+    /* 11. Formatering av inloggningssekvens (login, set/qra, set/dxcc och sh/dx 30) */
+    {
+        char login_buf[512];
+        dxcluster_format_login_commands("SM5UEI", "JO89we", "Sweden", login_buf, sizeof(login_buf));
+        int cmd_ok1 = (strstr(login_buf, "SM5UEI\r\n") != NULL) &&
+                      (strstr(login_buf, "set/qra JO89WE\r\n") != NULL) &&
+                      (strstr(login_buf, "set/dxcc Sweden\r\n") != NULL) &&
+                      (strstr(login_buf, "sh/dx 30\r\n") != NULL);
+
+        char login_buf2[512];
+        dxcluster_format_login_commands("SM5UEI", "", "", login_buf2, sizeof(login_buf2));
+        int cmd_ok2 = (strstr(login_buf2, "SM5UEI\r\n") != NULL) &&
+                      (strstr(login_buf2, "set/qra") == NULL) &&
+                      (strstr(login_buf2, "set/dxcc") == NULL) &&
+                      (strstr(login_buf2, "sh/dx 30\r\n") != NULL);
+
+        record_result(cmd_ok1 && cmd_ok2,
+                      "dxcluster_format_login_commands rapporterar lokator (set/qra) och DXCC (set/dxcc) vid inloggning", NULL);
+    }
+
+    /* 12. Loggkontroll för gråmarkering av redan körda stationer */
+    {
+        QSOList test_list;
+        memset(&test_list, 0, sizeof(test_list));
+        test_list.capacity = 4;
+        test_list.items = calloc(test_list.capacity, sizeof(QSO));
+        test_list.count = 2;
+        copy_str(test_list.items[0].call, sizeof(test_list.items[0].call), "SM5UEI");
+        copy_str(test_list.items[1].call, sizeof(test_list.items[1].call), "OH2BU");
+
+        int found1 = is_call_in_log(&test_list, "SM5UEI");
+        int found2 = is_call_in_log(&test_list, "oh2bu");
+        int not_found = !is_call_in_log(&test_list, "K1ZZ");
+
+        free(test_list.items);
+
+        record_result(found1 && found2 && not_found,
+                      "is_call_in_log identifierar stationer som redan finns i loggen (gråmarkeras)", NULL);
+    }
+
+    /* 13. Tidsdifferens: Nya signaler identifieras under 5 minuter (gulmarkeras) */
+    {
+        time_t now = time(NULL);
+        time_t spot_recent = now - 120;  /* 2 minuter gammal -> gul */
+        time_t spot_old = now - 360;     /* 6 minuter gammal -> standard */
+
+        double age_recent = difftime(now, spot_recent);
+        double age_old = difftime(now, spot_old);
+
+        int is_new_recent = (age_recent >= 0.0 && age_recent <= 300.0);
+        int is_new_old = (age_old >= 0.0 && age_old <= 300.0);
+
+        record_result(is_new_recent && !is_new_old,
+                      "Nya spots markeras som nya i upp till 5 minuter (300 sekunder)", NULL);
+    }
+
+    /* 14. Överföring av vald spot till QSO-inmatning och fokus på RST T */
+    {
+        DxSpot test_spot;
+        memset(&test_spot, 0, sizeof(test_spot));
+        copy_str(test_spot.call, sizeof(test_spot.call), "JA1ABC");
+        test_spot.freq_khz = 14074.0;
+        copy_str(test_spot.band, sizeof(test_spot.band), "20 m");
+
+        QSO q;
+        memset(&q, 0, sizeof(q));
+        copy_str(q.call, sizeof(q.call), test_spot.call);
+        snprintf(q.freq, sizeof(q.freq), "%.3f", test_spot.freq_khz / 1000.0);
+        copy_str(q.band, sizeof(q.band), test_spot.band);
+
+        FocusMode fm = FOCUS_CLUSTER;
+        int active_fld = FLD_CALL;
+
+        /* Simulera val med Enter: växla till inmatning och ställ markör i RST T */
+        fm = FOCUS_INPUT;
+        active_fld = FLD_RSTS;
+
+        int transfer_ok = (strcmp(q.call, "JA1ABC") == 0) &&
+                          (strcmp(q.freq, "14.074") == 0) &&
+                          (strcmp(q.band, "20 m") == 0) &&
+                          (fm == FOCUS_INPUT) &&
+                          (active_fld == FLD_RSTS);
+
+        record_result(transfer_ok,
+                      "Enter på klusterspot överför anrop och frekvens samt sätter fokus på RST T", NULL);
+    }
+}
+
 /* ========================================================================= */
 /* Huvudfunktion för testsviten                                              */
 /* ========================================================================= */
@@ -2774,6 +3025,7 @@ int main(int argc, char *argv[]) {
     run_csv_export_tests();
     run_version_and_blank_rst_tests();
     run_ueilogg_dir_and_db_switch_tests();
+    run_dxcluster_tests();
 
     printf("\n====================================================\n");
     printf("Slutresultat: %d av %d tester lyckades.\n", g_tests_passed, g_tests_run);

@@ -172,10 +172,11 @@ void draw_top_bar(const StationSettings *st);
  * @brief Ritar den lilla statistikrutan ovanför QSO-inmatningen (2 rader data i ram).
  * Visar QSO, Stationer, DXCC, Lokatorer, Bandland och Rate (senaste 60 min).
  * @param top_y Översta raden för rutan.
+ * @param left_x Vänster startkolumn.
  * @param width Rutans bredd.
  * @param log_list Pekare till logglistan.
  */
-void draw_stats_box(int top_y, int width, const QSOList *log_list);
+void draw_stats_box(int top_y, int left_x, int width, const QSOList *log_list);
 
 /**
  * @brief Ritar ett högerjusterat inmatningsfält med etikett, värde och aktiv markör.
@@ -212,15 +213,31 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
  * @param mode_type 0 för huvudskärmen, 1 för inställningsskärmen.
  * @param focus_mode FOCUS_INPUT eller FOCUS_LOG.
  * @param search_filter Aktivt sökfilter (eller NULL).
+ * @param show_cluster 1 om DX-klusterfönstret är aktivt.
  */
-void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter);
+void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter, int show_cluster);
 
 /**
  * @brief Ritar rymdvädersrutan med mätvärden och färgkoder från hf.avitec.se.
  * @param top_y Övre radposition.
+ * @param left_x Vänster kolumnposition.
  * @param width Total tillgänglig bredd.
  */
-void draw_space_weather_box(int top_y, int width);
+void draw_space_weather_box(int top_y, int left_x, int width);
+
+/**
+ * @brief Ritar DX-klusterfönstret som en vertikal ruta till vänster i systemet.
+ * @param top_y Övre radposition.
+ * @param left_x Vänster kolumnposition (vanligen 0).
+ * @param h Total höjd för rutan.
+ * @param w Total bredd för rutan (vanligen 14 för 12 teckens innerbredd).
+ * @param current_band Aktuellt inställt amatörband i loggen.
+ * @param band_filter_active 1 om endast spots på inställt band ska visas, 0 för alla band.
+ */
+void draw_cluster_box(int top_y, int left_x, int h, int w,
+                      const char *current_band, int band_filter_active,
+                      const QSOList *log_list, int is_focused,
+                      int selected_pos, int *scroll_offset);
 
 /**
  * @brief Ritar hela huvudskärmen (inmatningsformulär, rymdväder och loggtabell).
@@ -239,6 +256,8 @@ void draw_space_weather_box(int top_y, int width);
  * @param status_msg Meddelande att visa i statuslisten.
  * @param qrb_str Beräknat avstånd.
  * @param quj_str Beräknad bäring.
+ * @param selected_cluster_pos Vald rad i DX-klustret.
+ * @param cluster_scroll_offset Rullningsposition i DX-klustret.
  * @param cur_y Utdatapekare för terminalmarkörens rad.
  * @param cur_x Utdatapekare för terminalmarkörens kolumn.
  */
@@ -248,6 +267,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
                       const char *qrb_str, const char *quj_str,
+                      int selected_cluster_pos, int *cluster_scroll_offset,
                       int *cur_y, int *cur_x);
 
 /**

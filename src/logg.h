@@ -149,6 +149,11 @@ int find_call_in_log(const QSOList *log_list, const char *call_in,
                      char *grid_out, size_t grid_sz);
 
 /**
+ * @brief Returnerar 1 om anropssignalen redan finns registrerad i loggboken, annars 0.
+ */
+int is_call_in_log(const QSOList *log_list, const char *call_in);
+
+/**
  * @brief Utför automatisk bakgrundsuppslagning vid inaktivitet eller fältbyte (Logg -> SMCB -> QRZ).
  * @param qso Aktuellt QSO.
  * @param log_list Loggbokslistan.

@@ -2,13 +2,14 @@
  * @file help.c
  * @brief Implementering av den interaktiva hjälpdialogen (F9) i UEI-Logg.
  *
- * Visar omfattande hjälp indelad i sex informativa flikar:
+ * Visar omfattande hjälp indelad i sju informativa flikar:
  * 1. Globala snabbkommandon
  * 2. QSO-inmatning & fältrensning/redigeringsregler
  * 3. Uppslagsfunktioner (Logg -> QRZ.COM -> DXCC)
  * 4. Loggrader, redigering och statusmarkering
- * 5. Inställningar, fildialog och ADIF import/export
- * 6. Rymdväder, K-index och HF-konditioner
+ * 5. DX-Kluster (DXSpider / W3LPL)
+ * 6. Inställningar, fildialog och ADIF import/export
+ * 7. Rymdväder, K-index och HF-konditioner
  */
 
 #define _XOPEN_SOURCE 700
@@ -27,7 +28,7 @@
 typedef struct {
     const char *tab_name;
     const char *title;
-    const char *lines[40];
+    const char *lines[48];
     int line_count;
 } HelpTopic;
 
@@ -36,7 +37,7 @@ static const HelpTopic HELP_TOPICS[] = {
         "[1] Tangenter",
         "Globala tangentbordskommandon",
         {
-            "F1           - Rensa inmatningsformulär & återstarta UTC-klockan",
+            "F1 el. ^D   - Toggla DX-Kluster på/av (vertikal ruta på vänster sida)",
             "F2           - Starta UTC-klockan igen i formuläret (även om inmatning börjat)",
             "Enter        - Logga och spara pågående QSO (även till QRZ vid Automatisk)",
             "Ctrl+L (^L)  - Logga direkt mot QRZ.COM (i formulär eller på loggrad)",
@@ -47,8 +48,12 @@ static const HelpTopic HELP_TOPICS[] = {
             "F7           - Beräkna QRB på nytt i formuläret (lokator föredras, annars QTH)",
             "F9           - Denna hjälpdialog (tillgänglig i logg- och inställningsskärm)",
             "F10 el. ^Q   - Avsluta UEI-Logg på ett säkert sätt",
+            "Ctrl+K (^K)  - Hoppa till DX-Klusterrutan (eller tillbaka där man kom ifrån)",
+            "Ctrl+B (^B)  - Toggla DX-Kluster bandfilter (inställt band / alla band)",
+            "Ctrl+S (^S)  - Spotta aktuell anropssignal och frekvens till klustret (W3LPL)",
+            "Enter (i DX) - Överför vald signal & frekvens till QSO och ställ markör i RST T",
             "F12          - Stationsinställningar, ADIF-filhantering & färgscheman",
-            "ESC          - Återställ aktiv sökning, lämna loggläge eller stäng fönster",
+            "ESC          - Rensa formulär, återställ sökning eller lämna loggläge",
             "",
             "Navigering:",
             "  Tab / Shift-Tab - Stega framåt / bakåt mellan inmatningsfälten",
@@ -57,7 +62,7 @@ static const HelpTopic HELP_TOPICS[] = {
             "  PgUp / PgDown   - Bläddra en hel sida i logglistan",
             NULL
         },
-        19
+        22
     },
     {
         "[2] Inmatning",
@@ -156,7 +161,40 @@ static const HelpTopic HELP_TOPICS[] = {
         26
     },
     {
-        "[5] Inställningar",
+        "[5] DX-Kluster",
+        "DX-Kluster (DXSpider / W3LPL)",
+        {
+            "Inbyggt DX-Kluster i vertikal sidopanel till vänster:",
+            "  * F1 el. Ctrl+D: Toggla visning av klusterrutan (öppnar/stänger anslutning).",
+            "  * Ctrl+K: Hoppa till klusterrutan eller tillbaka till formulär/logg.",
+            "  * Bredd: 12 teckens innerbredd som rymmer anropssignaler & frekvens i kHz.",
+            "  * Koppling: Telnet till dxc.w3lpl.net:7373 (fallback port 23) i bakgrunden.",
+            "  * Inloggning: Loggar automatiskt in med stationens anropssignal.",
+            "  * Lokator & DXCC: Sätter set/qra och set/dxcc automatiskt om ifyllt i F12.",
+            "",
+            "Navigering och val:",
+            "  * Pilar Upp / Ned (även j/k, PgUp/PgDn, Home/End) bläddrar bland mottagna spots.",
+            "  * Enter på en signal överför anropssignal och frekvens direkt till QSO-inmatningen,",
+            "    uppdaterar band & DXCC-uppslag automatiskt och ställer markören i RST T.",
+            "  * Esc / F4 / Ctrl+K återgår till formuläret utan att ändra pågående QSO.",
+            "",
+            "Färgsättning och markering:",
+            "  * Använder samma färgschema som QSO-raderna för en enhetlig layout.",
+            "  * Körda stationer: Signaler som redan finns i loggen markeras i grått.",
+            "  * Nya spots: Nya signaler framhävs i gult under 5 minuter.",
+            "  * Aktiv markering visas med samma markörfärg som i logglistan.",
+            "",
+            "Bandfiltrering och spottning:",
+            "  * Ctrl+B: Toggla filter mellan endast inställt amatörband eller alla band.",
+            "  * Signalerna sorteras alltid i frekvensordning med lägsta frekvensen överst.",
+            "  * Ctrl+S: Spotta aktuell inmatad signal och frekvens direkt till klustret.",
+            "  * Återanslutning sker automatiskt vid nätverksavbrott eller timeout.",
+            NULL
+        },
+        26
+    },
+    {
+        "[6] Inställningar",
         "Konfiguration, Fildialog & ADIF (F12)",
         {
             "Stationsinställningar (~/.ueilogg/station.conf):",
@@ -169,6 +207,8 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * Färgscheman: 16 teman med UEI-tema som default samt Egen profil (F7 för editor).",
             "  * Databas (~/.ueilogg/): Byt eller skapa en ny loggdatabas (default: qsolog.sq3).",
             "    Skriv ett nytt namn och tryck Enter/F2 eller tryck F3 för att välja befintlig.",
+            "  * DX-Kluster: Sparar visningsläge och bandfilter i station.conf.",
+            "  * Bygginformation: Versionsnummer, byggdatum och kompilator visas nederst i rutan.",
             "",
             "ADIF Import (F5 i inställningar):",
             "  * Interaktiv katalogbläddrare med filter för .adi och .adif-filer.",
@@ -200,10 +240,10 @@ static const HelpTopic HELP_TOPICS[] = {
             "  * dxcc stat   : Visa tabellstatistik över DXCC-entiteter och prefix.",
             NULL
         },
-        37
+        39
     },
     {
-        "[6] Rymdväder",
+        "[7] Rymdväder",
         "Rymdväder & HF-Konditioner (hf.avitec.se)",
         {
             "Realtidsdata hämtas asynkront i bakgrunden utan fördröjning:",
@@ -353,7 +393,7 @@ void run_help_modal(const StationSettings *st) {
 
         /* Navigeringsinstruktioner längst ned */
         attron(COLOR_PAIR(CP_LABEL) | A_BOLD);
-        mvprintw(bot_line_y + 1, left_x + 3, "1-6 / Pilar V-H: Byt flik   Pilar U-N / PgUp-Dn: Rulla   Esc / Enter: Stäng");
+        mvprintw(bot_line_y + 1, left_x + 3, "1-7 / Pilar V-H: Byt flik   Pilar U-N / PgUp-Dn: Rulla   Esc / Enter: Stäng");
         attroff(COLOR_PAIR(CP_LABEL) | A_BOLD);
 
         /* Rullningsindikator om innehållet är längre än fönstret */

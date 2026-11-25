@@ -1,6 +1,6 @@
 # UEI-Logg
 
-**UEI-Logg** (v1.0.1) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
+**UEI-Logg** (v1.1.0) är ett snabbt, modernt och textbaserat loggboksprogram (TUI) skrivet i C11 för radioamatörer. Programmet är anpassat för både svenska och internationella amatörradiokontakter och fungerar i alla Linux- och Unix-terminaler med stöd för UTF-8.
 
 ---
 
@@ -22,7 +22,8 @@
 ## Funktioner
 
 - **4-raders QSO-inmatning**: Optimerat och kompakt inmatningsformulär (Signal, RST T, RST R, Namn, DXCC, Lokator, QRB, QTH, Frekvens, Band, Mode, QUJ, Datum, UTC, Notering). Tomma RST-fält sparas blanka när `Auto RST 59/59` är avstängt (default) eller när inget fyllts i. Flexibel tidsinmatning som accepterar både `HH:MM` (t.ex. `21:58`) och `HHMM` (`2158`). Tangenten `F2` startar UTC-klockan igen så att den rullar live även om inmatning påbörjats. `F7` i inmatningsläget beräknar om QRB och QUJ (bäring) från angiven lokator (föredras) eller QTH. Vid redigering av ett tidigare sparat QSO märks det automatiskt som nytt (`Ny = ✗`).
-- **Titelrad med namn, version, byggdatum och stationsinfo**: Översta listen visar applikationens namn, versionsnummer och byggdatum från `src/version.h` (`UEI-Logg v1.0.1 (2026-11-23)`), centrerad stationsinfo (`Anropssignal QTH Lokator` utan parenteser runt QTH) samt aktuell UTC-tid (`YYYY-MM-DD HH:MM UTC`).
+- **Titelrad med namn, version och stationsinfo**: Översta listen visar applikationens namn och versionsnummer från `src/version.h` (`UEI-Logg v1.1.0`), centrerad stationsinfo (`Anropssignal QTH Lokator` utan parenteser runt QTH) samt aktuell UTC-tid (`YYYY-MM-DD HH:MM UTC`). Fullständig bygginformation (byggdatum, kompilator och version) finns i inställningsrutan (`F12`).
+- **Inbyggt DX-Kluster (DXSpider / W3LPL)**: Vertikal ruta på vänster sida i systemet (12 teckens innerbredd) som togglas med **F1** eller **Ctrl+D**. Ansluter asynkront via telnet till DXSpider hos W3LPL (`dxc.w3lpl.net:7373`, fallback port `23`), loggar in med operatörens anropssignal och sätter automatiskt lokator (`set/qra`) och DXCC (`set/dxcc`) om ifyllda. Visar spottade anropssignaler sorterade i frekvensordning med lägsta frekvensen upptill och frekvensen i kHz formaterad under varje signal. Stationer som redan finns loggade markeras i grått, och nya stationer markeras i gult under 5 minuter. Tangenten **Ctrl+B** togglar mellan att visa alla band eller endast signaler på loggens inställda band. Med **Ctrl+S** spottas aktuell inmatad signal och frekvens direkt till klustret. Kopplingen stängs automatiskt när rutan döljs och återansluter automatiskt vid avbrott.
 - **SQLite3 Databas i `~/.ueilogg/` med WAL-läge**: Persistent och kraschsäker databaslagring i `~/.ueilogg/qsolog.sq3` (default). På inställningssidan (`F12`) går det att byta eller skapa en ny databas med valfritt namn (eller välja befintlig `.sq3` med `F3`). Loggrutan visar alltid aktiv databas (`Tidigare QSO (<databas>)`). Automatisk engångsmigrering från `~/.ueilogg/qsolog.adi` och sanering av UTF-8 (Å, Ä, Ö).
 - **Live-statistikruta**: Visar antal loggade QSO, unika anropssignaler (`Stationer`), unika `DXCC`, unika 4-teckens `Lokatorer`, körda `Bandland` samt QSO-takt per timme (`Rate`). Kan stängas av via inställningsmenyn (`F12`).
 - **Rymdväder och solförhållanden**: Integrerad rymdvädersruta med realtidsdata från Avitec HF (`hf.avitec.se`: K/Kp, MUF, LUF, CME, Solfackla, Solvind, Norrsken samt DX/NVIS bästa band t.ex. `15m/80m`).
@@ -293,8 +294,8 @@ När `ueilogg` körs är följande tangenter tillgängliga:
 
 | Tangent | Beskrivning |
 |---|---|
-| **F1** | Rensa inmatningsformuläret och starta UTC-klockan |
-| **Esc** | Återställ aktiv sökning, återgå från loggläge till formulär eller rensa inmatningsformuläret |
+| **F1** / **Ctrl+D** | Toggla visning av DX-Kluster (vertikal sidoruta till vänster; ansluter/kopplar ned) |
+| **Esc** | Rensa formulär och återstarta UTC-klocka, återställ sökning eller lämna loggläge |
 | **F2** | I inmatningsläge: Starta UTC-klockan igen så att den kör live även om inmatning påbörjats |
 | **Enter** | I inmatningsläge: Spara och logga aktuellt QSO till aktiv SQLite-databas (samt QRZ.COM vid Automatisk).<br>I loggläge: Ladda markerat QSO till formuläret för redigering (sparas med Enter i formuläret, återgår därefter till loggraderna) |
 | **Ctrl+L** | Direktlogga mot QRZ.COM (i inmatningsformuläret eller vald/markerade loggrader) |
@@ -307,6 +308,10 @@ När `ueilogg` körs är följande tangenter tillgängliga:
 | **F7** | I inmatningsläge: Ny beräkning av QRB och bäring (QUJ) för angiven lokator (föredras) eller QTH<br>I loggläge: Markera samtliga loggrader som Hanterade (✓) |
 | **F8** | I loggläge: Radera vald eller markerade rader ur loggen (med bekräftelse)<br>I inställningar: Synka nya QSO från QRZ.COM |
 | **F9** | Öppna den interaktiva hjälpdialogen med fullständig handbok |
+| **Ctrl+K** | Hoppa till DX-Klusterrutan för att bläddra bland spots, eller tillbaka dit du kom ifrån |
+| **Enter (i kluster)** | Välj markerad spot: anropssignal och frekvens överförs till formuläret och markören ställs i RST T |
+| **Ctrl+B** | Toggla DX-Kluster filter: endast aktuellt band eller alla band |
+| **Ctrl+S** | "Spotta" aktuell anropssignal och frekvens till DX-Klustret |
 | **F12** | Öppna och spara inställningar (Min Station, Databas i `~/.ueilogg/`, QRZ, direktlogg, synkronisering [F8], färgteman, egen färgprofilseditor [F7], ADIF/CSV-export, ADIF-import, reglage m.m.) |
 | **F10** / **Ctrl+Q** | Avsluta programmet |
 | **Tab** / **Skift+Tab** | Stega framåt / bakåt mellan inmatningsfälten |

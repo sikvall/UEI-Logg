@@ -27,7 +27,7 @@
 
 \title{
     \vspace{-1cm}
-    \LARGE\textbf{UEI-Logg v1.0.1}\\[0.3cm]
+    \LARGE\textbf{UEI-Logg v1.1.0}\\[0.3cm]
     \large Användarmanual och Teknisk Referens
 }
 \author{Täpp Amders Sikvall\\ SM5UEI}
@@ -59,7 +59,8 @@ Programmets styrkor:
     \item \textbf{QRZ.com-integration:} Omedelbar uppslagning av DXCC-land direkt från prefixdatabasen, bakgrundsuppslag mot QRZ.com XML Data Service, direktloggning av QSO i realtid samt dubbelriktad synkronisering från QRZ.com Logbook API.
     \item \textbf{Rymdvädersbox:} Visar kontinuerligt sol- och magnetdata, HF-konditioner samt bästa band för DX och NVIS från \texttt{hf.avitec.se}. Kan döljas vid behov för att ge mer plats åt loggen.
     \item \textbf{Flexibel logghantering:} Sortera och flytta loggrader direkt med \texttt{w}/\texttt{s}, cykla radfärger med \texttt{c} och återgå automatiskt till logglistan efter sparad redigering.
-    \item \textbf{Titelrad och statistikruta:} Visar \texttt{UEI-Logg}, versionsnummer och byggdatum samt centrerad stationsinfo; statistikpanelen visar antal QSO, unika stationer, DXCC, lokatorer, bandland och QSO-takt (Rate).
+    \item \textbf{Titelrad och statistikruta:} Visar \texttt{UEI-Logg}, versionsnummer samt centrerad stationsinfo; fullständig bygginformation (datum och kompilator) visas i inställningsrutan (F12). Statistikpanelen visar antal QSO, unika stationer, DXCC, lokatorer, bandland och QSO-takt (Rate).
+    \item \textbf{Inbyggt DX-Kluster (DXSpider / W3LPL):} Vertikal sidopanel (12 teckens bredd) med asynkron telnet-koppling mot W3LPL. Visar mottagna spots i frekvensordning med lägsta frekvensen överst. Möjliggör snabb bläddring och direktval med \texttt{Enter} (överför signal och frekvens samt ställer markör i RST T), bandfiltrering samt spottning.
     \item \textbf{ADIF 3-kompatibilitet:} Smidig import och export för LoTW, eQSL, ClubLog m.fl.
     \item \textbf{DXCC-hjälpverktyg:} Fristående terminalprogram (\texttt{dxcc}) för databasuppdatering och statistik.
 \end{itemize}
@@ -166,7 +167,7 @@ Kör programmet direkt från terminalen (konfiguration, databas och \texttt{dxcc
 Huvudskärmen i UEI-Logg är indelad i fem tydliga komponenter uppifrån och ned:
 
 \subsection{Titelrad (Topbar)}
-Visar applikationens namn, versionsnummer och byggdatum hämtade från \texttt{src/version.h} (\texttt{UEI-Logg v1.0.1 (2026-11-23)}), operatörens stationssignal, hemort (QTH) och Maidenhead-lokator centrerat (t.ex.\ \texttt{SM5UEI Linköping JO88fk}, utan parenteser kring QTH) samt aktuell UTC-tid längst till höger (\texttt{YYYY-MM-DD HH:MM UTC}).
+Visar applikationens namn, versionsnummer och byggdatum hämtade från \texttt{src/version.h} (\texttt{UEI-Logg v1.1.0 (2026-11-25)}), operatörens stationssignal, hemort (QTH) och Maidenhead-lokator centrerat (t.ex.\ \texttt{SM5UEI Linköping JO88fk}, utan parenteser kring QTH) samt aktuell UTC-tid längst till höger (\texttt{YYYY-MM-DD HH:MM UTC}).
 
 \subsection{Statistikruta (Realtidsstatistik)}
 När terminalen har minst 30 rader och funktionen är påslagen i inställningarna visas en kompakt statuspanel:
@@ -256,7 +257,11 @@ All interaktion i UEI-Logg styrs via tangentbordet.
 \texttt{Pilar Vänster/Höger} & Inmatning & Flytta textmarkören i det aktiva fältet \\
 \texttt{Pilar Upp/Ned} & Inmatning & Byt inmatningsrad / fält \\
 \texttt{Delete (DEL)} & Inmatning & \textbf{Rensa hela det aktiva fältet omedelbart} \\
-\texttt{F1} & Allmänt & Visa snabbhjälp och tangentbordsguide \\
+\texttt{F1} / \texttt{Ctrl+D} & Allmänt & \textbf{Toggla DX-Kluster}: Öppna eller stäng den vertikala klusterrutan \\
+\texttt{Ctrl+K} & Allmänt & \textbf{Växla till DX-Kluster}: Hoppa till klustret för att bläddra, eller återgå \\
+\texttt{Enter} & DX-Kluster & \textbf{Överför spot}: Kopiera vald signal och frekvens till QSO och sätt markör i RST T \\
+\texttt{Ctrl+B} & DX-Kluster/Allmänt & \textbf{Toggla bandfilter}: Visa endast inställt amatörband eller alla band \\
+\texttt{Ctrl+S} & Allmänt & \textbf{Spotta signal}: Skicka aktuell anropssignal och frekvens till klustret \\
 \texttt{F2} & Inmatning & \textbf{Starta UTC-klockan igen} i formuläret (rullar även om inmatning påbörjats) \\
 \texttt{Enter} & Inmatning & \textbf{Spara QSO} till loggboken (loggning sker uteslutande med Enter; loggar även till QRZ.COM om Automatisk är valt) \\
 \texttt{Ctrl+L} & Allmänt & \textbf{Direktlogga mot QRZ.COM} (i formuläret eller vald/markerade loggrader) \\
@@ -352,6 +357,23 @@ Tryck på \texttt{F12} för att öppna inställningsdialogen. Här konfigureras 
     \item \textbf{Synka från QRZ.COM (F8):} Hämtar loggade kontakter direkt från ditt QRZ.com-konto via Logbook API (ACTION=FETCH). Hämtad data avkodas automatiskt från XML/HTML-entiteter, matchas mot den lokala databasen så att dubbletter undviks, och infogas sömlöst i kronologisk ordning. De importerade kontakterna markeras automatiskt som hanterade (\texttt{✓}).
     \item \textbf{Töm hela loggboken:} Raderar samtliga sparade QSO efter dubbel bekräftelse.
 \end{enumerate}
+
+\subsection{Bygginformation i inställningsrutan}
+\label{sec:build_info}
+Längst ned i inställningsrutan (ovanför tangentbordsgenvägarna) visas alltid programmets fullständiga bygginformation: versionsnummer, byggdatum samt kompilator och kompilatorversion (t.ex.\ \texttt{GCC 11.4.0} eller \texttt{Clang}). Detta håller den översta titelraden ren och fokuserad på stationsuppgifter och UTC-tid, samtidigt som detaljerad bygginformation alltid finns tillgänglig vid support och versionskontroll.
+
+\subsection{Inbyggt DX-Kluster (DXSpider / W3LPL)}
+\label{sec:dxcluster}
+UEI-Logg innehåller en fullt integrerad telnet-klient för DX-Kluster (DXSpider) som körs i en separat bakgrundstråd:
+\begin{itemize}
+    \item \textbf{Vertikal sidoruta:} Klustret visas som en 12 tecken bred panel till vänster om loggen och inmatningsrutan. Rutan öppnas och stängs med snabbkommandot \texttt{F1} eller \texttt{Ctrl+D}. När rutan stängs kopplas telnet-sessionen ned, och vid öppning återansluts den automatiskt.
+    \item \textbf{Automatisk anslutning och inloggning:} Ansluter asynkront via telnet mot W3LPL (\texttt{dxc.w3lpl.net:7373}, med automatisk fallback till port 23) och loggar in med operatörens anropssignal. Om lokator och DXCC är konfigurerade i inställningarna skickas automatiskt kommandona \texttt{set/qra <lokator>} och \texttt{set/dxcc <dxcc>}.
+    \item \textbf{Fokusväxling med Ctrl+K:} Tryck \texttt{Ctrl+K} för att flytta tangentbordsfokus till klusterrutan. Där kan du bläddra uppåt och nedåt bland mottagna spots med piltangenterna (\texttt{Upp}/\texttt{Ned}, \texttt{j}/\texttt{k}, \texttt{Page Up}/\texttt{Page Down}, \texttt{Home}/\texttt{End}). Ett nytt tryck på \texttt{Ctrl+K} (eller \texttt{Esc}/\texttt{F4}) återgår till formuläret eller loggraderna.
+    \item \textbf{Direktval med Enter:} Trycker du på \texttt{Enter} på en markerad spot överförs motstationens anropssignal och frekvens (i MHz) omedelbart till inmatningsfältet, amatörband och DXCC slås upp i realtid, fokus växlar till inmatning och textmarkören ställs automatiskt i rapportfältet \textbf{RST T}.
+    \item \textbf{Färgkodning:} Klusterrutan använder samma färgschema som QSO-raderna. Stationer som redan finns loggade i loggboken gråmarkeras automatiskt, medan nya spots (mottagna inom 5 minuter) markeras i gult.
+    \item \textbf{Bandfiltrering (Ctrl+B):} Tangenten \texttt{Ctrl+B} växlar mellan att visa enbart spots på loggens för tillfället inställda amatörband eller alla mottagna spots oavsett band.
+    \item \textbf{Spotta signal (Ctrl+S):} Med snabbkommandot \texttt{Ctrl+S} skickas aktuell inmatad motstation och frekvens direkt till DX-klustret. Terminalens mjukvaruflödesstyrning (\texttt{IXON}) har avaktiverats så att \texttt{Ctrl+S} inte fryser terminalutmatningen.
+\end{itemize}
 
 \subsection{QRZ.COM-integration: Uppslag, Direktloggning och Synkronisering}
 \label{sec:qrz_integration}
@@ -470,6 +492,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/settings.c} & Inställningsmodal (F12), databasbyte och konfiguration. \\
 \texttt{src/util.c} / \texttt{util.h} & UTF-8, strängverktyg, frekvens/band-logik samt sökvägar i \texttt{\textasciitilde/.ueilogg/}. \\
 \texttt{src/space\_weather.c} & Asynkron HTTP-hämtning av rymdväder och DX/NVIS från \texttt{hf.avitec.se}. \\
+\texttt{src/dxcluster.c} / \texttt{dxcluster.h} & Asynkron telnet-klient och spothantering för DX-Kluster (DXSpider / W3LPL). \\
 \texttt{src/dxcc.c} / \texttt{dxcc.h} & Prefixsökning och regler för DXCC-länder. \\
 \texttt{src/dxcc\_tool.c} & Källkod för kommandoradsverktyget \texttt{dxcc}. \\
 \texttt{src/qrb.c} & Beräkning av avstånd och bäring baserat på Maidenhead-lokatorer. \\
@@ -477,7 +500,7 @@ HF-utbredningen styrs av solaktivitet och jordens jonosfär. UEI-Logg hämtar up
 \texttt{src/callbook.c} & Hjälpmodul för bakgrundsuppslag. \\
 \texttt{src/file\_dialog.c} & Grafisk filbläddrarmodal för ADIF/CSV. \\
 \texttt{src/help.c} & Hjälpdialoger (F1 och F9). \\
-\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (115 tester). \\
+\texttt{tests/test\_main.c} & Fristående automatiserad testsvit för enhets- och regressionstester (127 tester). \\
 \texttt{install\_dependencies.sh} & Skript för automatisk installation av utvecklingspaket. \\
 \texttt{manual/} & Denna manual (\texttt{manual.tex}) och kompilerad PDF. \\
 \texttt{\textasciitilde/.ueilogg/qsolog.sq3} & Standard SQLite3-databas för loggboken (eller annan vald \texttt{.sq3}). \\
@@ -496,7 +519,7 @@ Resultatet sparas permanent i aktiv SQLite3-databas under fältet \texttt{distan
 \section{Automatiserade Enhetstester (testing)}
 \label{sec:testing}
 
-Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 115 omfattande verifieringstester i 17 avsnitt mot programmets samtliga kärnfunktioner:
+Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 127 omfattande verifieringstester i 18 avsnitt mot programmets samtliga kärnfunktioner:
 \begin{itemize}
     \item \textbf{Frekvens- och bandberäkning:} Verifiering av frekvenstolkning med enheter (kHz, MHz), decimalkomma samt automatisk våglängdsberäkning ($\lambda = 300 / f$) utanför amatörbanden (t.ex. \texttt{8 MHz} $\rightarrow$ \texttt{38 m}, \texttt{27 MHz} $\rightarrow$ \texttt{11 m}).
     \item \textbf{ADIF-import och minnestolkning:} Säkerställer att frekvenser utan decimaler (t.ex. \texttt{7}) tolkas som MHz, att felaktiga skalningar återställs och att minnesbaserad ADIF-import hanterar poster korrekt.
@@ -514,6 +537,7 @@ Projektet inkluderar en separat testbinär, \texttt{testing}, som kör 115 omfat
     \item \textbf{CSV-export:} Kontroll av filnamnsgenerering, UTF-8 BOM, rubrikordning och korrekt citatteckenhantering.
     \item \textbf{Version och blank RST:} Validering av makron i \texttt{src/version.h} samt att tomma RST-fält sparas och importeras blanka.
     \item \textbf{Användarkatalog (\textasciitilde/.ueilogg/) och databasbyte:} Verifiering av sökvägar, automatisk DXCC-kopiering, databasnamn i \texttt{station.conf} samt isolerat byte mellan databaser.
+    \item \textbf{DX-Kluster (DXSpider / W3LPL):} Automatiserade tester för telnet- och spotparsning (inkl. portabel, skimmer och sh/dx-rader), frekvenssortering (lägsta frekvens upptill), bandfiltrering, uppdatering av befintliga spots, formatering av login-kommandon med lokator/DXCC, gråmarkering av loggade anrop, 5-minuters gulmarkering för nya signaler och överföring med direktfokus på RST T.
 \end{itemize}
 
 Testsviten körs från kommandoraden med:

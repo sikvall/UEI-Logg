@@ -5,6 +5,32 @@ Formatet baseras på [Keep a Changelog](https://keepachangelog.com/sv/1.1.0/) oc
 
 ---
 
+## [1.1.0] - 2026-11-25
+
+### Tillagt
+- **Inbyggt DX-Kluster (DXSpider / W3LPL)**:
+  - Vertikal sidopanel till vänster (12 teckens innerbredd för anropssignaler och frekvens i kHz).
+  - Toggla visning med **F1** eller **Ctrl+D** (kopplar upp vid aktivering och kopplar ned vid stängning).
+  - **Fokus och navigering med Ctrl+K**: Hoppa till klusterfönstret för att bläddra upp och ned bland spots med piltangenterna, och tryck **Ctrl+K** eller **Esc** för att återgå dit man kom ifrån.
+  - **Direktöverföring med Enter**: Tryck **Enter** på en markerad spot för att överföra anropssignal och frekvens direkt till QSO-inmatningen och ställa markören i RST T-fältet.
+  - **Enhetligt färgschema**: Klusterrutan använder samma färgschema och markeringsfärg som i QSO-tabellen (`CP_LOG_ROW` och `CP_LOG_SELECTED`), med gråmarkering för körda stationer och gulmarkering under 5 minuter för nya stationer.
+  - **Spottning & flödesstyrning**: Inaktiverat XON/XOFF mjukvaruflödesstyrning (`IXON`) i terminalen så att **Ctrl+S** inte fryser terminalen, och gjort nätverkssändning asynkron (`MSG_DONTWAIT | MSG_NOSIGNAL`) utan låsblockering.
+  - Asynkron telnet-anslutning (`dxc.w3lpl.net`, primär port 7373, fallback port 23) med automatisk inloggning med stationens anropssignal och bakgrundstråd (`pthread`).
+  - Automatisk rapportering av egen Maidenhead-lokator (`set/qra`) och DXCC (`set/dxcc`) vid inloggning om de är ifyllda i stationsinställningarna.
+  - Automatisk återanslutning med återförsök vid timeout eller tappad förbindelse.
+  - Visar spottade anropssignaler sorterade i frekvensordning med lägsta frekvensen överst och frekvens under varje signal.
+  - Tangenten **Ctrl+B** togglar bandfilter (endast aktuellt band i loggen vs. alla band).
+  - Tangenten **Ctrl+S** spottar aktuell inmatad anropssignal och frekvens direkt till DX-Klustret.
+  - Inställningar i `station.conf` för visning, bandfilter, klustervärd och port (`SHOW_CLUSTER`, `CLUSTER_BAND_FILTER`, `CLUSTER_HOST`, `CLUSTER_PORT`).
+  - Utökad testsvit med automatiserade enhetstester för telnet- och spot-parsning, frekvenssortering, färgregler, bandfiltrering, login-kommandon och spot-överföring.
+
+### Ändrat
+- Höjt versionsnummer till 1.1.0.
+- Flyttat bygginformation (byggdatum, kompilator) från den översta menyraden till inställningsfönstret (F12) för en renare titelrad.
+- Uppdaterat den inbyggda hjälpdialogen (F9) med en dedikerad flik för DX-Klustret samt manualen och manualsidan (man 1 ueilogg).
+
+---
+
 ## [1.0.1] - 2026-11-23
 
 ### Tillagt

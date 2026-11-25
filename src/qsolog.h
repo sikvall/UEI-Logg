@@ -126,8 +126,9 @@ typedef struct {
  * @brief Fokusläge i huvudgränssnittet (F4 växlar mellan inmatning och loggrader).
  */
 typedef enum {
-    FOCUS_INPUT = 0, /**< Tangentbordsfokus i QSO-inmatningsfälten */
-    FOCUS_LOG   = 1  /**< Tangentbordsfokus i listan över tidigare loggrader */
+    FOCUS_INPUT   = 0, /**< Tangentbordsfokus i QSO-inmatningsfälten */
+    FOCUS_LOG     = 1, /**< Tangentbordsfokus i listan över tidigare loggrader */
+    FOCUS_CLUSTER = 2  /**< Tangentbordsfokus i DX-klusterrutan (Ctrl+K) */
 } FocusMode;
 
 /**
@@ -198,6 +199,10 @@ typedef struct {
     int  show_stats;       /**< 1 om statistikrutan ovanför QSO-inmatningen ska visas (default 1) */
     int  show_space_weather; /**< 1 om rymdvädersrutan längst ned ska visas (default 1) */
     int  show_notes;       /**< 1 om noteringsrader i loggen ska visas (default 1) */
+    int  show_cluster;     /**< 1 om DX-klusterfönstret till vänster ska visas (F11/Ctrl+D) */
+    int  cluster_band_filter; /**< 1 om DX-klustret filtrerar på inställt band, 0 för alla band (Ctrl+B) */
+    char cluster_host[64]; /**< Värdnamn för DX-Kluster (default: "dxc.w3lpl.net") */
+    int  cluster_port;     /**< Port för DX-Kluster (default: 7373) */
     char last_freq[32];    /**< Senast använda frekvens */
     char last_band[16];    /**< Senast använda band */
     char last_mode[16];    /**< Senast använda mode */

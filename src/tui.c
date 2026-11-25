@@ -10,12 +10,14 @@
 #include "logg.h"
 #include "qrb.h"
 #include "space_weather.h"
+#include "dxcluster.h"
 #include "util.h"
 #include <ctype.h>
 #include "theme_editor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 
 /* Färgscheman (UEI-tema som default, Borland Turbo Pascal, Midnight Commander, ren gråskala, ambra, arktisk natt, field day, mörkerläge, solarized dark, dracula, militärradio samt egen profil) */
 const char * const THEME_NAMES[] = {
@@ -66,6 +68,14 @@ void tui_init(void) {
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
+
+    /* Inaktivera XON/XOFF mjukvaruflödesstyrning (Ctrl+S och Ctrl+Q)
+     * så att Ctrl+S når applikationen och inte fryser terminalen */
+    struct termios tty_attrs;
+    if (tcgetattr(STDIN_FILENO, &tty_attrs) == 0) {
+        tty_attrs.c_iflag &= ~(IXON | IXOFF);
+        tcsetattr(STDIN_FILENO, TCSANOW, &tty_attrs);
+    }
     define_key("\033[1;5H", KEY_CTRL_HOME);
     define_key("\033[1;5F", KEY_CTRL_END);
     define_key("\033[1;6H", KEY_CTRL_HOME);
@@ -812,10 +822,7 @@ void draw_top_bar(const StationSettings *st) {
     mvprintw(0, ver_col, "v%s", APP_VERSION);
     attroff(COLOR_PAIR(CP_TOPBAR) | A_BOLD);
 
-    char build_str[64];
-    snprintf(build_str, sizeof(build_str), "(%s)", APP_BUILD_DATE);
-    int build_col = ver_col + 1 + utf8_display_width(APP_VERSION) + 1;
-    int build_w = utf8_display_width(build_str);
+    int after_ver_col = ver_col + 1 + utf8_display_width(APP_VERSION);
 
     char station_info[128];
     char clean_call[32] = "";
@@ -842,23 +849,7 @@ void draw_top_bar(const StationSettings *st) {
 
     int info_w = utf8_display_width(station_info);
     int info_col = (COLS - info_w) / 2;
-    int min_info_col_with_build = build_col + build_w + 1;
-    int min_info_col_no_build = build_col;
-
-    int show_build = (build_col + build_w + 1 < time_col);
-    if (show_build) {
-        int test_col = (info_col < min_info_col_with_build) ? min_info_col_with_build : info_col;
-        if (test_col + info_w >= time_col && min_info_col_no_build + info_w < time_col) {
-            show_build = 0;
-        }
-    }
-
-    int min_info_col = show_build ? min_info_col_with_build : min_info_col_no_build;
-    if (show_build) {
-        attron(COLOR_PAIR(CP_TOPBAR));
-        mvprintw(0, build_col, "%s", build_str);
-        attroff(COLOR_PAIR(CP_TOPBAR));
-    }
+    int min_info_col = after_ver_col + 1;
 
     if (info_col < min_info_col) info_col = min_info_col;
     if (time_col > min_info_col) {
@@ -878,11 +869,12 @@ void draw_top_bar(const StationSettings *st) {
  * Visar QSO, Stationer, DXCC, Lokatorer, Bandland och Rate (senaste 60 min).
  * Sätter etiketten på första raden och siffran på den andra.
  * @param top_y Översta raden för rutan.
+ * @param left_x Vänster startkolumn.
  * @param width Rutans bredd.
  * @param log_list Pekare till logglistan.
  */
-void draw_stats_box(int top_y, int width, const QSOList *log_list) {
-    draw_box_with_title(top_y, 0, 4, width, "Statistik", 0);
+void draw_stats_box(int top_y, int left_x, int width, const QSOList *log_list) {
+    draw_box_with_title(top_y, left_x, 4, width, "Statistik", 0);
 
     LogStats stats;
     compute_log_stats(log_list, &stats);
@@ -912,12 +904,12 @@ void draw_stats_box(int top_y, int width, const QSOList *log_list) {
     int r_val = top_y + 2;
 
     for (int i = 0; i < 6; ++i) {
-        int cx = 1 + (inner_w * (2 * i + 1)) / 12;
+        int cx = left_x + 1 + (inner_w * (2 * i + 1)) / 12;
 
         /* Etikett på rad 1 */
         int llen = utf8_display_width(labels[i]);
         int lx = cx - llen / 2;
-        if (lx < 1) lx = 1;
+        if (lx < left_x + 1) lx = left_x + 1;
         attron(COLOR_PAIR(CP_LABEL));
         mvprintw(r_lbl, lx, "%s", labels[i]);
         attroff(COLOR_PAIR(CP_LABEL));
@@ -927,7 +919,7 @@ void draw_stats_box(int top_y, int width, const QSOList *log_list) {
         snprintf(buf, sizeof(buf), "%d", vals[i]);
         int vlen = (int)strlen(buf);
         int vx = cx - vlen / 2;
-        if (vx < 1) vx = 1;
+        if (vx < left_x + 1) vx = left_x + 1;
         attron(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
         mvprintw(r_val, vx, "%s", buf);
         attroff(COLOR_PAIR(CP_FIELD_INACTIVE) | A_BOLD);
@@ -1083,7 +1075,7 @@ void draw_band_selector_aligned(int row, int colon_col, const char *val,
 /**
  * @brief Ritar den nedersta funktionsknappsraden (F1..F12) beroende på aktivt fokusläge.
  */
-void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter) {
+void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *search_filter, int show_cluster) {
     int y = LINES - 1;
     attron(COLOR_PAIR(CP_TOPBAR));
     mvhline(y, 0, ' ', COLS);
@@ -1094,7 +1086,7 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         const char *label;
     } FKeyItem;
 
-    FKeyItem items[14];
+    FKeyItem items[16];
     int count = 0;
 
     if (mode_type == 1) {
@@ -1104,11 +1096,19 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
         items[count++] = (FKeyItem){"F9", "Hjälp"};
         items[count++] = (FKeyItem){"Esc", "Stäng"};
     } else {
-        if (focus_mode == FOCUS_LOG) {
-            items[count++] = (FKeyItem){"F1", "Rensa"};
-            if (search_filter && search_filter[0]) {
-                items[count++] = (FKeyItem){"Esc", "Återställ"};
-            }
+        if (focus_mode == FOCUS_CLUSTER) {
+            items[count++] = (FKeyItem){"Enter", "Välj"};
+            items[count++] = (FKeyItem){"Esc", "Tillbaka"};
+            items[count++] = (FKeyItem){"^K", "Växla"};
+            items[count++] = (FKeyItem){"Pilar", "Bläddra"};
+            items[count++] = (FKeyItem){"F1", "Kluster*"};
+            items[count++] = (FKeyItem){"^B", "Band"};
+            items[count++] = (FKeyItem){"^S", "Spotta"};
+            items[count++] = (FKeyItem){"F12", (COLS >= 92) ? "Inställn." : "Inst"};
+        } else if (focus_mode == FOCUS_LOG) {
+            items[count++] = (FKeyItem){"F1", show_cluster ? "Kluster*" : "Kluster"};
+            if (show_cluster) items[count++] = (FKeyItem){"^K", "Kluster"};
+            items[count++] = (FKeyItem){"Esc", (search_filter && search_filter[0]) ? "Återställ" : "Rensa"};
             items[count++] = (FKeyItem){"Enter", "Redigera"};
             items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F4", "Fokus"};
@@ -1118,10 +1118,9 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F8", "Radera"};
             items[count++] = (FKeyItem){"F12", "Inställn."};
         } else {
-            items[count++] = (FKeyItem){"F1", "Rensa"};
-            if (search_filter && search_filter[0]) {
-                items[count++] = (FKeyItem){"Esc", "Återställ"};
-            }
+            items[count++] = (FKeyItem){"F1", show_cluster ? "Kluster*" : "Kluster"};
+            if (show_cluster) items[count++] = (FKeyItem){"^K", "Kluster"};
+            items[count++] = (FKeyItem){"Esc", (search_filter && search_filter[0]) ? "Återställ" : "Rensa"};
             items[count++] = (FKeyItem){"F2", (COLS >= 92) ? "Klocka" : "UTC"};
             items[count++] = (FKeyItem){"^L", "QRZ"};
             items[count++] = (FKeyItem){"F3", (search_filter && search_filter[0]) ? "Sök*" : "Sök"};
@@ -1131,6 +1130,10 @@ void draw_bottom_fkey_bar(int mode_type, FocusMode focus_mode, const char *searc
             items[count++] = (FKeyItem){"F7", "QRB"};
             items[count++] = (FKeyItem){"F9", "Hjälp"};
             items[count++] = (FKeyItem){"F10", (COLS >= 92) ? "Avsluta" : "Avsl"};
+            if (show_cluster) {
+                items[count++] = (FKeyItem){"^B", "Band"};
+                items[count++] = (FKeyItem){"^S", "Spotta"};
+            }
             items[count++] = (FKeyItem){"F12", (COLS >= 92) ? "Inställn." : "Inst"};
         }
     }
@@ -1190,10 +1193,11 @@ static void print_sw_field(int row, int colon_col, const char *label, const char
  * Visar K-index (K/Kp), MUF, LUF, CME på rad 1 samt Solfackla, Solvind, Norrsken på rad 2.
  * Tiden då rymdvädret senast hämtades visas högerställt i rutans titelrad.
  * @param top_y Översta raden för rutan.
- * @param width Rutans bredd (COLS).
+ * @param left_x Vänster startkolumn.
+ * @param width Rutans bredd.
  */
-void draw_space_weather_box(int top_y, int width) {
-    draw_box_with_title(top_y, 0, 4, width, "Rymdväder (hf.avitec.se)", 0);
+void draw_space_weather_box(int top_y, int left_x, int width) {
+    draw_box_with_title(top_y, left_x, 4, width, "Rymdväder (hf.avitec.se)", 0);
 
     SpaceWeatherData sw;
     space_weather_get_data(&sw);
@@ -1203,8 +1207,8 @@ void draw_space_weather_box(int top_y, int width) {
         char time_str[64];
         snprintf(time_str, sizeof(time_str), " (kl %s) ", sw.updated_time);
         int tlen = utf8_display_width(time_str);
-        int tx = (width - 1) - tlen;
-        if (tx > 30) {
+        int tx = left_x + (width - 1) - tlen;
+        if (tx > left_x + 30) {
             attron(COLOR_PAIR(CP_TITLE));
             mvprintw(top_y, tx, "%s", time_str);
             attroff(COLOR_PAIR(CP_TITLE));
@@ -1212,10 +1216,10 @@ void draw_space_weather_box(int top_y, int width) {
     }
 
     /* Beräkna kolumnpositioner för kolon */
-    int colon0 = 12;
-    int colon1 = (width >= 90) ? (width * 31 / 100) : 32;
-    int colon2 = (width >= 90) ? (width * 54 / 100) : 52;
-    int colon3 = (width >= 90) ? (width * 77 / 100) : 68;
+    int colon0 = left_x + 12;
+    int colon1 = left_x + ((width >= 90) ? (width * 31 / 100) : 32);
+    int colon2 = left_x + ((width >= 90) ? (width * 54 / 100) : 52);
+    int colon3 = left_x + ((width >= 90) ? (width * 77 / 100) : 68);
 
     int r1 = top_y + 1;
     int r2 = top_y + 2;
@@ -1380,6 +1384,148 @@ void calculate_log_column_layout(int total_cols, LogColumnLayout *layout) {
 }
 
 /**
+ * @brief Ritar DX-klusterfönstret som en vertikal ruta till vänster i systemet.
+ * @param top_y Översta raden för rutan (1).
+ * @param left_x Vänster startkolumn (0).
+ * @param h Rutans höjd (LINES - 2).
+ * @param w Rutans bredd (14 tecken, innerbredd 12 tecken).
+ * @param current_band Loggens aktuellt valda band.
+ * @param band_filter_active 1 om endast spots på inställt band ska visas, 0 för alla band.
+ */
+void draw_cluster_box(int top_y, int left_x, int h, int w,
+                      const char *current_band, int band_filter_active,
+                      const QSOList *log_list, int is_focused,
+                      int selected_pos, int *scroll_offset) {
+    if (h < 4 || w < 10) return;
+
+    char cluster_title[32];
+    if (band_filter_active) {
+        char clean_b[16];
+        copy_str(clean_b, sizeof(clean_b), current_band ? current_band : "");
+        trim_str(clean_b);
+        snprintf(cluster_title, sizeof(cluster_title), "DX: %s", clean_b[0] ? clean_b : "Band");
+    } else {
+        copy_str(cluster_title, sizeof(cluster_title), "DX: Alla");
+    }
+
+    draw_box_with_title(top_y, left_x, h, w, cluster_title, is_focused);
+
+    int avail_rows = h - 2;
+    int spots_per_page = avail_rows / 2;
+    if (spots_per_page < 1) spots_per_page = 1;
+
+    DxSpot spots[MAX_CLUSTER_SPOTS];
+    int spot_count = 0;
+    dxcluster_get_spots(spots, MAX_CLUSTER_SPOTS,
+                        band_filter_active ? current_band : NULL, &spot_count);
+
+    if (spot_count > 0) {
+        if (selected_pos < 0) selected_pos = 0;
+        if (selected_pos >= spot_count) selected_pos = spot_count - 1;
+
+        int offset = scroll_offset ? *scroll_offset : 0;
+        if (selected_pos < offset) {
+            offset = selected_pos;
+        } else if (selected_pos >= offset + spots_per_page) {
+            offset = selected_pos - spots_per_page + 1;
+        }
+        if (offset < 0) offset = 0;
+        if (scroll_offset) *scroll_offset = offset;
+    }
+
+    int cur_r = top_y + 1;
+    if (spot_count == 0) {
+        int conn = dxcluster_is_connected();
+        attron(COLOR_PAIR(CP_LABEL));
+        mvprintw(cur_r++, left_x + 1, "%-12.12s", conn ? "Lyssnar..." : "Ej ansluten");
+        attroff(COLOR_PAIR(CP_LABEL));
+
+        if (cur_r < top_y + h - 1) {
+            attron(COLOR_PAIR(CP_FIELD_INACTIVE));
+            mvprintw(cur_r++, left_x + 1, "%-12.12s", conn ? "W3LPL:7373" : "dxc.w3lpl.net");
+            if (cur_r < top_y + h - 1) mvprintw(cur_r++, left_x + 1, "%-12.12s", "F1 / ^D");
+            if (cur_r < top_y + h - 1) mvprintw(cur_r++, left_x + 1, "%-12.12s", "^K Fokus");
+            if (cur_r < top_y + h - 1) mvprintw(cur_r++, left_x + 1, "%-12.12s", "^B Filter");
+            if (cur_r < top_y + h - 1) mvprintw(cur_r++, left_x + 1, "%-12.12s", "^S Spotta");
+            attroff(COLOR_PAIR(CP_FIELD_INACTIVE));
+        }
+    } else {
+        time_t now = time(NULL);
+        int offset = scroll_offset ? *scroll_offset : 0;
+        for (int i = offset; i < spot_count && (cur_r + 1) < (top_y + h - 1); ++i) {
+            int is_sel = (is_focused && i == selected_pos);
+            int in_log = is_call_in_log(log_list, spots[i].call);
+            double age_sec = difftime(now, spots[i].received_at);
+            int is_new = (!in_log && age_sec >= 0.0 && age_sec <= 300.0);
+
+            int call_pair = CP_LOG_ROW;
+            int call_attr = A_BOLD;
+            int freq_pair = CP_LOG_ROW;
+            int freq_attr = 0;
+
+            if (is_sel) {
+                /* Markerad rad i klusterrutan: samma markeringsfärg som i QSO-tabellen */
+                call_pair = CP_LOG_SELECTED;
+                call_attr = A_BOLD;
+                freq_pair = CP_LOG_SELECTED;
+                freq_attr = 0;
+                if (in_log) {
+                    call_attr |= A_DIM;
+                    freq_attr |= A_DIM;
+                }
+            } else {
+                /* Omarkerad rad: Samma färgschema som i QSO-raderna */
+                if (in_log) {
+                    /* Stationer som redan finns i loggen markeras i grått */
+                    call_pair = CP_FIELD_INACTIVE;
+                    call_attr = A_DIM;
+                    freq_pair = CP_FIELD_INACTIVE;
+                    freq_attr = A_DIM;
+                } else if (is_new) {
+                    /* Nya stationer markeras i gult under 5 minuter */
+                    call_pair = CP_SW_WARN;
+                    call_attr = A_BOLD;
+                    freq_pair = CP_SW_WARN;
+                    freq_attr = 0;
+                } else {
+                    /* Standard QSO-radfärgschema */
+                    call_pair = CP_LOG_ROW;
+                    call_attr = A_BOLD;
+                    freq_pair = CP_LOG_ROW;
+                    freq_attr = 0;
+                }
+            }
+
+            /* Rad 1: Anropssignal */
+            attron(COLOR_PAIR(call_pair) | call_attr);
+            mvprintw(cur_r, left_x + 1, "%-12.12s", spots[i].call);
+            attroff(COLOR_PAIR(call_pair) | call_attr);
+            cur_r++;
+
+            /* Rad 2: Frekvens i kHz under signalen */
+            char f_str[32];
+            if (spots[i].freq_khz >= 100000.0) {
+                snprintf(f_str, sizeof(f_str), "%8.1f kHz", spots[i].freq_khz);
+            } else {
+                snprintf(f_str, sizeof(f_str), " %7.1f kHz", spots[i].freq_khz);
+            }
+            attron(COLOR_PAIR(freq_pair) | freq_attr);
+            mvprintw(cur_r, left_x + 1, "%-12.12s", f_str);
+            attroff(COLOR_PAIR(freq_pair) | freq_attr);
+            cur_r++;
+        }
+    }
+
+    /* Rensa resterande rader i klusterboxen */
+    while (cur_r < top_y + h - 1) {
+        attron(COLOR_PAIR(CP_MAIN_BG));
+        mvhline(cur_r, left_x + 1, ' ', w - 2);
+        attroff(COLOR_PAIR(CP_MAIN_BG));
+        cur_r++;
+    }
+}
+
+/**
  * @brief Ritar hela programmets huvudfönster inklusive inmatningssektion, loggtabell,
  * rymdvädersruta (vid LINES >= 25), statusrad och F-tangentrad.
  */
@@ -1389,6 +1535,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
                       QSOList *log_list, int selected_log_pos, int *log_scroll_offset,
                       const char *search_filter, const char *status_msg,
                       const char *qrb_str, const char *quj_str,
+                      int selected_cluster_pos, int *cluster_scroll_offset,
                       int *cur_y, int *cur_x) {
     erase();
 
@@ -1401,16 +1548,28 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
     draw_top_bar(st);
 
+    /* DX-KLUSTER PÅ VÄNSTER SIDA (om aktiverat och skärmen rymmer minst 74 kolumner) */
+    int cluster_visible = (st != NULL && st->show_cluster && COLS >= 74);
+    int cluster_w = cluster_visible ? 14 : 0;
+    int main_x = cluster_w;
+    int main_w = COLS - main_x;
+
+    if (cluster_visible) {
+        draw_cluster_box(1, 0, LINES - 2, cluster_w, qso->band, st->cluster_band_filter,
+                         log_list, (focus_mode == FOCUS_CLUSTER),
+                         selected_cluster_pos, cluster_scroll_offset);
+    }
+
     /* RITA STATISTIKRUTAN OVANFÖR INMATNINGSRUTAN (endast om LINES >= 30 och aktiverad i inställningar) */
     int stat_h = (st != NULL && st->show_stats && LINES >= 30) ? 4 : 0;
     if (stat_h > 0) {
-        draw_stats_box(1, COLS, log_list);
+        draw_stats_box(1, main_x, main_w, log_list);
     }
 
     /* RITA INMATNINGSSEKTIONEN */
     int input_top = 1 + stat_h;
     int input_h = 6;
-    draw_box_with_title(input_top, 0, input_h, COLS, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
+    draw_box_with_title(input_top, main_x, input_h, main_w, "QSO-inmatning", (focus_mode == FOCUS_INPUT));
 
     int badge_w = 13;
     if (editing_index >= 0) {
@@ -1418,22 +1577,22 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         snprintf(edit_tag, sizeof(edit_tag), "[REDIGERAR QSO #%d]", editing_index + 1);
         badge_w = utf8_display_width(edit_tag) + 3;
         attron(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
-        mvprintw(input_top, COLS - badge_w, "%s", edit_tag);
+        mvprintw(input_top, main_x + main_w - badge_w, "%s", edit_tag);
         attroff(COLOR_PAIR(CP_EDIT_BADGE) | A_BOLD);
     } else if (time_frozen > 0) {
         attron(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
-        mvprintw(input_top, COLS - 13, "[TID FRYST]");
+        mvprintw(input_top, main_x + main_w - 13, "[TID FRYST]");
         attroff(COLOR_PAIR(CP_FROZEN_BADGE) | A_BOLD);
     } else {
         attron(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
-        mvprintw(input_top, COLS - 13, "[LIVE UTC]");
+        mvprintw(input_top, main_x + main_w - 13, "[LIVE UTC]");
         attroff(COLOR_PAIR(CP_LIVE_BADGE) | A_BOLD);
     }
 
     /* Statusmeddelande i fönsterlisten: tre tecken till höger om "QSO-inmatning" */
     if (status_msg != NULL && status_msg[0] != '\0') {
-        int stat_col = 19;
-        int badge_col = COLS - badge_w;
+        int stat_col = main_x + 19;
+        int badge_col = main_x + main_w - badge_w;
         int max_msg = badge_col - stat_col - 2;
         if (max_msg > 0) {
             int is_err = (strstr(status_msg, "Fel:") != NULL ||
@@ -1448,20 +1607,20 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     }
 
     /* Kolumnpositioner för kolon i inmatningsfält */
-    int c1 = 9;
-    int c2 = (COLS >= 95) ? 33 : (COLS >= 85 ? 31 : 29);
-    int c3 = (COLS >= 95) ? 51 : (COLS >= 85 ? 49 : 45);
-    int c4 = (COLS >= 95) ? 65 : (COLS >= 85 ? 63 : 59);
+    int c1 = main_x + 9;
+    int c2 = main_x + ((main_w >= 95) ? 33 : (main_w >= 85 ? 31 : 29));
+    int c3 = main_x + ((main_w >= 95) ? 51 : (main_w >= 85 ? 49 : 45));
+    int c4 = main_x + ((main_w >= 95) ? 65 : (main_w >= 85 ? 63 : 59));
 
-    int form_w_name = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    int form_w_name = (main_w >= 88) ? 14 : (main_w - (c4 - main_x + 2) - 1);
     if (form_w_name < 6) form_w_name = 6;
     if (form_w_name > 16) form_w_name = 16;
 
-    int form_w_qth = (COLS >= 88) ? 14 : (COLS - (c4 + 2) - 1);
+    int form_w_qth = (main_w >= 88) ? 14 : (main_w - (c4 - main_x + 2) - 1);
     if (form_w_qth < 6) form_w_qth = 6;
     if (form_w_qth > 16) form_w_qth = 16;
 
-    int form_w_dxcc = (COLS >= 95) ? 14 : (COLS >= 85 ? 12 : 10);
+    int form_w_dxcc = (main_w >= 95) ? 14 : (main_w >= 85 ? 12 : 10);
 
     /* Rad 1 (y = 6): Signal, RST T, RST R, Namn */
     draw_field_aligned(input_top + 1, c1, "Signal", qso->call,     10,          (focus_mode == FOCUS_INPUT && active_field == FLD_CALL), field_cursor_pos, cur_y, cur_x);
@@ -1505,9 +1664,9 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     attroff(COLOR_PAIR(quj_color) | (has_quj ? A_BOLD : 0));
 
     /* Rad 4 (y = 9): Datum, UTC, Notering */
-    int comm_w = COLS - (c3 + 2) - 1;
+    int comm_w = main_w - (c3 - main_x + 2) - 1;
     if (comm_w < 5) comm_w = 5;
-    const char *lbl_not = (COLS >= 88) ? "Notering" : "Not";
+    const char *lbl_not = (main_w >= 88) ? "Notering" : "Not";
     draw_field_aligned(input_top + 4, c1, "Datum",    qso->date,     10,     (focus_mode == FOCUS_INPUT && active_field == FLD_DATE), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 4, c2, "UTC",      qso->time_utc,  6,     (focus_mode == FOCUS_INPUT && active_field == FLD_TIME), field_cursor_pos, cur_y, cur_x);
     draw_field_aligned(input_top + 4, c3, lbl_not,    qso->comment,  comm_w, (focus_mode == FOCUS_INPUT && active_field == FLD_COMM), field_cursor_pos, cur_y, cur_x);
@@ -1527,18 +1686,32 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     } else {
         snprintf(log_title, sizeof(log_title), "Tidigare QSO (%s)", db_base);
     }
-    draw_box_with_title(log_top, 0, log_h, COLS, log_title, (focus_mode == FOCUS_LOG));
+    draw_box_with_title(log_top, main_x, log_h, main_w, log_title, (focus_mode == FOCUS_LOG));
 
     /* Kolumnrubriker och dynamisk layout */
-    int col_ny = COLS - 4;
+    int col_ny = main_x + main_w - 4;
 
     LogColumnLayout layout;
-    calculate_log_column_layout(COLS, &layout);
+    calculate_log_column_layout(main_w, &layout);
+
+    layout.col_date += main_x;
+    layout.col_time += main_x;
+    layout.col_call += main_x;
+    layout.col_freq += main_x;
+    layout.col_band += main_x;
+    layout.col_mode += main_x;
+    layout.col_rst  += main_x;
+    if (layout.w_name > 0) layout.col_name += main_x;
+    if (layout.w_qth > 0)  layout.col_qth += main_x;
+    if (layout.w_qrb > 0)  layout.col_qrb += main_x;
+    if (layout.w_quj > 0)  layout.col_quj += main_x;
+    if (layout.w_loc > 0)  layout.col_loc += main_x;
+    if (layout.w_dxcc > 0) layout.col_dxcc += main_x;
 
     attron(COLOR_PAIR(CP_TABLE_HEADER) | A_BOLD);
-    mvhline(log_top + 1, 1, ' ', COLS - 2);
+    mvhline(log_top + 1, main_x + 1, ' ', main_w - 2);
     if (layout.show_qso_num) {
-        mvprintw(log_top + 1, 2, "   #");
+        mvprintw(log_top + 1, main_x + 2, "   #");
     }
     mvprintw(log_top + 1, layout.col_date, "YYMMDD");
     mvprintw(log_top + 1, layout.col_time, "HHMM");
@@ -1638,13 +1811,13 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         int row_attr  = (is_selected || is_marked || item->color != LOG_COLOR_NORMAL) ? A_BOLD : 0;
 
         attron(COLOR_PAIR(row_color) | row_attr);
-        mvhline(row_y, 1, ' ', COLS - 2);
+        mvhline(row_y, main_x + 1, ' ', main_w - 2);
 
         char mark_char = is_marked ? '*' : (is_selected ? '>' : ' ');
         if (layout.show_qso_num) {
-            mvprintw(row_y, 2, "%c%3d", mark_char, actual_idx + 1);
+            mvprintw(row_y, main_x + 2, "%c%3d", mark_char, actual_idx + 1);
         } else {
-            mvprintw(row_y, 1, "%c", mark_char);
+            mvprintw(row_y, main_x + 1, "%c", mark_char);
         }
 
         char d_str[16];
@@ -1725,7 +1898,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
 
         if (is_selected) {
             *cur_y = row_y;
-            *cur_x = layout.show_qso_num ? 2 : 1;
+            *cur_x = layout.show_qso_num ? (main_x + 2) : (main_x + 1);
         }
 
         cur_screen_row++;
@@ -1734,10 +1907,10 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
         if (show_notes && item->comment[0] != '\0' && cur_screen_row < log_avail_rows) {
             int note_y = log_top + 2 + cur_screen_row;
             attron(COLOR_PAIR(row_color) | row_attr);
-            mvhline(note_y, 1, ' ', COLS - 2);
+            mvhline(note_y, main_x + 1, ' ', main_w - 2);
 
-            int note_col = layout.show_qso_num ? 7 : layout.col_date;
-            int max_note_w = COLS - (note_col + 12);
+            int note_col = layout.show_qso_num ? (main_x + 7) : layout.col_date;
+            int max_note_w = main_w - (note_col - main_x + 12);
             if (max_note_w < 5) max_note_w = 5;
 
             char note_buf[512];
@@ -1770,7 +1943,7 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     while (cur_screen_row < log_avail_rows) {
         int clear_y = log_top + 2 + cur_screen_row;
         attron(COLOR_PAIR(CP_MAIN_BG));
-        mvhline(clear_y, 1, ' ', COLS - 2);
+        mvhline(clear_y, main_x + 1, ' ', main_w - 2);
         attroff(COLOR_PAIR(CP_MAIN_BG));
         cur_screen_row++;
     }
@@ -1779,13 +1952,13 @@ void draw_main_screen(const StationSettings *st, const QSO *qso,
     /* RITA RYMDVÄDERSKOMPONENTEN (endast om show_sw och LINES >= 25) */
     if (show_sw && LINES >= 25) {
         int sw_top = log_top + log_h;
-        draw_space_weather_box(sw_top, COLS);
+        draw_space_weather_box(sw_top, main_x, main_w);
     }
 
     /* RITA F-TANGENTRAD ALLRA LÄNGST NED */
-    draw_bottom_fkey_bar(0, focus_mode, search_filter);
+    draw_bottom_fkey_bar(0, focus_mode, search_filter, st ? st->show_cluster : 0);
 
-    curs_set(band_selecting ? 0 : 1);
+    curs_set((band_selecting || focus_mode == FOCUS_CLUSTER) ? 0 : 1);
     move(*cur_y, *cur_x);
     refresh();
 }
@@ -1918,6 +2091,7 @@ int run_band_dropdown(StationSettings *st, QSO *qso,
                          field_cursor_pos, *time_frozen, editing_index,
                          log_list, selected_log_pos, log_scroll_offset,
                          search_filter, status_msg, qrb_str, quj_str,
+                         0, NULL,
                          &cur_y, &cur_x);
 
         /* Rita popup-ram */

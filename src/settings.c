@@ -14,6 +14,7 @@
 #include "file_dialog.h"
 #include "help.h"
 #include "theme_editor.h"
+#include "version.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <ncurses.h>
@@ -40,6 +41,10 @@ void load_station_settings(const char *filename, StationSettings *st) {
     st->show_stats = 1;
     st->show_space_weather = 1;
     st->show_notes = 1;
+    st->show_cluster = 0;
+    st->cluster_band_filter = 0;
+    copy_str(st->cluster_host, sizeof(st->cluster_host), "dxc.w3lpl.net");
+    st->cluster_port = 7373;
     st->theme = THEME_DEFAULT;
     st->qrz_username[0] = '\0';
     st->qrz_password[0] = '\0';
@@ -133,6 +138,15 @@ void load_station_settings(const char *filename, StationSettings *st) {
             st->show_space_weather = (atoi(val) != 0) ? 1 : 0;
         } else if (strcasecmp(key, "SHOW_NOTES") == 0 || strcasecmp(key, "NOTES") == 0) {
             st->show_notes = (atoi(val) != 0) ? 1 : 0;
+        } else if (strcasecmp(key, "SHOW_CLUSTER") == 0 || strcasecmp(key, "CLUSTER") == 0) {
+            st->show_cluster = (atoi(val) != 0) ? 1 : 0;
+        } else if (strcasecmp(key, "CLUSTER_BAND_FILTER") == 0 || strcasecmp(key, "CLUSTER_FILTER") == 0) {
+            st->cluster_band_filter = (atoi(val) != 0) ? 1 : 0;
+        } else if (strcasecmp(key, "CLUSTER_HOST") == 0 && val[0] != '\0') {
+            copy_str(st->cluster_host, sizeof(st->cluster_host), val);
+        } else if (strcasecmp(key, "CLUSTER_PORT") == 0 && val[0] != '\0') {
+            int p = atoi(val);
+            if (p > 0 && p < 65536) st->cluster_port = p;
         } else if (strcasecmp(key, "FREQ") == 0 && val[0] != '\0') {
             char norm[32];
             parse_and_normalize_freq(val, norm, sizeof(norm));
@@ -202,6 +216,10 @@ int save_station_settings(const char *filename, const StationSettings *st) {
     fprintf(fp, "SHOW_STATS=%d\n", st->show_stats ? 1 : 0);
     fprintf(fp, "SHOW_SW=%d\n", st->show_space_weather ? 1 : 0);
     fprintf(fp, "SHOW_NOTES=%d\n", st->show_notes ? 1 : 0);
+    fprintf(fp, "SHOW_CLUSTER=%d\n", st->show_cluster ? 1 : 0);
+    fprintf(fp, "CLUSTER_BAND_FILTER=%d\n", st->cluster_band_filter ? 1 : 0);
+    fprintf(fp, "CLUSTER_HOST=%s\n", st->cluster_host[0] ? st->cluster_host : "dxc.w3lpl.net");
+    fprintf(fp, "CLUSTER_PORT=%d\n", st->cluster_port > 0 ? st->cluster_port : 7373);
     fprintf(fp, "FREQ=%s\n", st->last_freq);
     fprintf(fp, "BAND=%s\n", st->last_band);
     fprintf(fp, "MODE=%s\n", st->last_mode);
@@ -1047,16 +1065,44 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
 
     #undef FIELD_Y
 
+    /* Visa bygginformation nederst i inställningsrutan */
+    char build_info[128];
+#if defined(__clang__)
+    snprintf(build_info, sizeof(build_info), "Version: %s | Byggdatum: %s | Kompilator: Clang %s",
+             APP_VERSION, APP_BUILD_DATE, __clang_version__);
+#elif defined(__GNUC__)
+    snprintf(build_info, sizeof(build_info), "Version: %s | Byggdatum: %s | Kompilator: GCC %d.%d.%d",
+             APP_VERSION, APP_BUILD_DATE, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#else
+    snprintf(build_info, sizeof(build_info), "Version: %s | Byggdatum: %s",
+             APP_VERSION, APP_BUILD_DATE);
+#endif
+
     const char *footer_hint =
         (active == 10) ? "Enter: Välj tema. F7 / E: Redigera egen profil. F2/F12: Spara." :
         (active == 15) ? "Skriv databasnamn (~/.ueilogg) eller F3: Välj befintlig. Enter/F2: Byt." :
                          "Tab/Pilar: Byt fält. F5=Import, F6=Export, F8=QRZ-synk. F2/F12: Spara.";
 
-    if (LINES >= 26) {
+    if (LINES >= 28) {
+        /* Gott om plats: status, bygginfo och tangenttips på separata rader */
+        if (status_msg != NULL && status_msg[0] != '\0') {
+            attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+            mvprintw(LINES - 4, 3, "Status: %-s", status_msg);
+            attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+        }
+        attron(COLOR_PAIR(CP_BORDER));
+        mvprintw(LINES - 3, 3, "Bygginfo: %-s", build_info);
+        attroff(COLOR_PAIR(CP_BORDER));
+        mvprintw(LINES - 2, 3, "%s", footer_hint);
+    } else if (LINES >= 24) {
         if (status_msg != NULL && status_msg[0] != '\0') {
             attron(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
             mvprintw(LINES - 3, 3, "Status: %-s", status_msg);
             attroff(COLOR_PAIR(CP_STATUS_WARN) | A_BOLD);
+        } else {
+            attron(COLOR_PAIR(CP_BORDER));
+            mvprintw(LINES - 3, 3, "Bygginfo: %-s", build_info);
+            attroff(COLOR_PAIR(CP_BORDER));
         }
         mvprintw(LINES - 2, 3, "%s", footer_hint);
     } else {
@@ -1069,7 +1115,7 @@ static void draw_settings_dialog_view(const StationSettings *edit, int active, i
         }
     }
 
-    draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL);
+    draw_bottom_fkey_bar(1, FOCUS_INPUT, NULL, 0);
     curs_set(1);
     move(*cur_y, *cur_x);
 }
